@@ -2424,7 +2424,7 @@ export const Aggregator: React.FC = () => {
           <strong style={{ fontSize: "18px", color: "#202124" }}>GoEats Marketplace</strong>
         </div>
         <p style={{ color: "#5f6368", fontSize: "13px", margin: "0 0 10px 0" }}>
-          &copy; {new Date().getFullYear()} GoEats SaaS Platform. Todos los derechos reservados.
+          &copy; {new Date().getFullYear()} GoEats Platform. Todos los derechos reservados.
         </p>
         <div style={{ display: "flex", justifyContent: "center", gap: "20px", fontSize: "13px" }}>
           <Link to="/login?role=restaurant&mode=register" style={{ color: "#111111", fontWeight: "600", textDecoration: "underline" }}>
