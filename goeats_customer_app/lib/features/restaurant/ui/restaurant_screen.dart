@@ -77,7 +77,7 @@ class RestaurantScreen extends ConsumerWidget {
                                 final item = category.items[index];
                                 return MenuItemCard(
                                   item: item,
-                                  onTap: () => ProductDetailSheet.show(context, item),
+                                  onTap: () => ProductDetailSheet.show(context, item, restaurant.id),
                                 );
                               },
                               childCount: category.items.length,

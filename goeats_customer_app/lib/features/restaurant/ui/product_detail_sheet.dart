@@ -5,10 +5,11 @@ import '../../cart/providers/cart_provider.dart';
 
 class ProductDetailSheet extends ConsumerStatefulWidget {
   final MenuItem item;
+  final int restaurantId;
 
-  const ProductDetailSheet({super.key, required this.item});
+  const ProductDetailSheet({super.key, required this.item, required this.restaurantId});
 
-  static void show(BuildContext context, MenuItem item) {
+  static void show(BuildContext context, MenuItem item, int restaurantId) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -16,7 +17,7 @@ class ProductDetailSheet extends ConsumerStatefulWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => ProductDetailSheet(item: item),
+      builder: (context) => ProductDetailSheet(item: item, restaurantId: restaurantId),
     );
   }
 
@@ -37,21 +38,55 @@ class _ProductDetailSheetState extends ConsumerState<ProductDetailSheet> {
     }
   }
 
-  void _addToCart() {
-    if (_selectedVariant != null) {
-      ref.read(cartProvider.notifier).addItem(
-        variantId: _selectedVariant!.id,
-        name: _selectedVariant!.name,
-        itemName: widget.item.name,
-        price: _selectedVariant!.price,
-        quantity: _quantity,
-        comments: _commentsController.text,
-      );
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Agregado al carrito')),
-      );
+  Future<bool> _confirmReplaceCart() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('¿Empezar un carrito nuevo?'),
+        content: const Text(
+          'Tu carrito tiene productos de otro restaurante. Si continúas, se vaciará.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Vaciar y agregar'),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
+  }
+
+  Future<void> _addToCart() async {
+    final variant = _selectedVariant;
+    if (variant == null) return;
+
+    final cart = ref.read(cartProvider);
+    final isOtherRestaurant =
+        cart.items.isNotEmpty && cart.restaurantId != widget.restaurantId;
+    if (isOtherRestaurant) {
+      final confirmed = await _confirmReplaceCart();
+      if (!confirmed || !mounted) return;
     }
+
+    final cartNotifier = ref.read(cartProvider.notifier);
+    cartNotifier.setRestaurant(widget.restaurantId);
+    cartNotifier.addItem(
+      variantId: variant.id,
+      name: variant.name,
+      itemName: widget.item.name,
+      price: variant.price,
+      quantity: _quantity,
+      comments: _commentsController.text,
+    );
+    Navigator.pop(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Agregado al carrito')),
+    );
   }
 
   @override

@@ -80,7 +80,14 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
-  Future<bool> register(String username, String password, String name, String email) async {
+  Future<bool> register(
+    String username,
+    String password,
+    String name,
+    String email,
+    String cedula,
+    String phone,
+  ) async {
     try {
       state = state.copyWith(isLoading: true, clearError: true);
       final dio = ref.read(dioProvider);
@@ -89,6 +96,8 @@ class AuthNotifier extends Notifier<AuthState> {
         'password': password,
         'name': name,
         'email': email,
+        'cedula': cedula,
+        'phone': phone,
       });
 
       if (response.data['success']) {

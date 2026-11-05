@@ -19,54 +19,59 @@ void main() async {
   runApp(const ProviderScope(child: GoEatsApp()));
 }
 
+final routerProvider = Provider<GoRouter>((ref) {
+  final router = GoRouter(
+    initialLocation: '/',
+    routes: [
+      GoRoute(
+        path: '/',
+        builder: (context, state) => const MainScaffold(child: HomeScreen()),
+      ),
+      GoRoute(
+        path: '/login',
+        builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/register',
+        builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: '/restaurant/:slug',
+        builder: (context, state) => MainScaffold(
+          child: RestaurantScreen(slug: state.pathParameters['slug']!),
+        ),
+      ),
+      GoRoute(
+        path: '/checkout',
+        builder: (context, state) => const MainScaffold(child: CheckoutScreen()),
+      ),
+      GoRoute(
+        path: '/orders',
+        builder: (context, state) => const MainScaffold(child: OrdersScreen()),
+      ),
+      GoRoute(
+        path: '/profile',
+        builder: (context, state) => const MainScaffold(child: ProfileScreen()),
+      ),
+    ],
+  );
+  ref.onDispose(router.dispose);
+  return router;
+});
+
 class GoEatsApp extends ConsumerWidget {
   const GoEatsApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Escuchar el estado de autenticación para redirecciones si es necesario
-    final authState = ref.watch(authProvider);
-
-    final router = GoRouter(
-      initialLocation: '/',
-      routes: [
-        GoRoute(
-          path: '/',
-          builder: (context, state) => const MainScaffold(child: HomeScreen()),
-        ),
-        GoRoute(
-          path: '/login',
-          builder: (context, state) => const LoginScreen(),
-        ),
-        GoRoute(
-          path: '/register',
-          builder: (context, state) => const RegisterScreen(),
-        ),
-        GoRoute(
-          path: '/restaurant/:slug',
-          builder: (context, state) => MainScaffold(
-            child: RestaurantScreen(slug: state.pathParameters['slug']!),
-          ),
-        ),
-        GoRoute(
-          path: '/checkout',
-          builder: (context, state) => const MainScaffold(child: CheckoutScreen()),
-        ),
-        GoRoute(
-          path: '/orders',
-          builder: (context, state) => const MainScaffold(child: OrdersScreen()),
-        ),
-        GoRoute(
-          path: '/profile',
-          builder: (context, state) => const MainScaffold(child: ProfileScreen()),
-        ),
-      ],
-    );
+    // Mantiene activo el proveedor para restaurar la sesión al abrir la app.
+    // Usa listen, no watch, para no reconstruir la app con cada cambio de sesión.
+    ref.listen(authProvider, (previous, next) {});
 
     return MaterialApp.router(
       title: 'GoEats',
       theme: AppTheme.lightTheme,
-      routerConfig: router,
+      routerConfig: ref.watch(routerProvider),
       debugShowCheckedModeBanner: false,
     );
   }
