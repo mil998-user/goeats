@@ -18,7 +18,8 @@ GoEats es una plataforma web completa de gestión para restaurantes y pedidos de
 ```text
 goeats/
 ├── backend/                      # API REST & Servidor WebSockets
-│   ├── prisma/                   # Esquema de base de datos MySQL (schema.prisma)
+│   ├── prisma/                   # Esquema, migraciones, datos de prueba (seeds) y SQL
+│   ├── scripts/                  # Tareas manuales: crear admin, usuarios demo, revisar y reiniciar la base
 │   ├── src/
 │   │   ├── config/               # Configuración de base de datos, CORS y entorno
 │   │   ├── middlewares/          # Autenticación JWT y control de roles
@@ -35,7 +36,9 @@ goeats/
 │   ├── vercel.json               # Configuración de reescritura SPA para Vercel
 │   └── vite.config.ts            # Proxy inverso de desarrollo (/api, /socket.io)
 │
-├── walkthrough.md                # Registro exhaustivo de cambios y mejoras implementadas
+├── legacy/                       # Sistema PHP antiguo, solo como referencia
+├── docs/                         # Documentación del sistema e historial de cambios
+│   └── historial_de_cambios.md   # Registro exhaustivo de cambios y mejoras implementadas
 └── README.md                     # Documentación principal del repositorio
 ```
 
@@ -90,4 +93,4 @@ npm run dev
 
 Para consultar el registro completo de todas las características y mejoras implementadas (adaptabilidad móvil, flechas de carruseles, corazones de favoritos, solución GPS multinivel, sistema de aprobación de locales y soporte por WhatsApp), consulta el archivo:
 
-👉 **[`walkthrough.md`](./walkthrough.md)**
+👉 **[`docs/historial_de_cambios.md`](./docs/historial_de_cambios.md)**

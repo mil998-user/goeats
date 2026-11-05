@@ -2,7 +2,7 @@
 
 > **Ruta base:** `goeats_customer_app/`  
 > **Framework:** Flutter (Dart)  
-> **Punto de Entrada:** [`goeats_customer_app/lib/main.dart`](file:///c:/Users/vmont/OneDrive/Desktop/SISTEMA%20GOEATS%20%282%291/SISTEMA%20GOEATS/SISTEMA%20GOEATS/goeats_customer_app/lib/main.dart)
+> **Punto de Entrada:** [`goeats_customer_app/lib/main.dart`](../../goeats_customer_app/lib/main.dart)
 
 ---
 

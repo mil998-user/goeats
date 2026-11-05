@@ -1,7 +1,7 @@
 # 📱 Flujo Operativo del Repartidor (Interfaz Estilo Zaymi)
 
-> **Ubicación de UI en Frontend:** [`frontend/src/pages/DeliveryDashboard.tsx`](file:///c:/Users/vmont/OneDrive/Desktop/SISTEMA%20GOEATS%20%282%291/SISTEMA%20GOEATS/SISTEMA%20GOEATS/frontend/src/pages/DeliveryDashboard.tsx)  
-> **Controlador Backend:** [`backend/src/modules/delivery/delivery.controller.ts`](file:///c:/Users/vmont/OneDrive/Desktop/SISTEMA%20GOEATS%20%282%291/SISTEMA%20GOEATS/SISTEMA%20GOEATS/backend/src/modules/delivery/delivery.controller.ts)
+> **Ubicación de UI en Frontend:** [`frontend/src/pages/DeliveryDashboard.tsx`](../../frontend/src/pages/DeliveryDashboard.tsx)  
+> **Controlador Backend:** [`backend/src/modules/delivery/delivery.controller.ts`](../../backend/src/modules/delivery/delivery.controller.ts)
 
 ---
 

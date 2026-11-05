@@ -1,7 +1,7 @@
 # 💰 Lógica Financiera, Comisiones y Sistema Antifraude para Repartidores
 
-> **Archivo de Código Principal:** [`backend/src/modules/delivery/delivery.controller.ts`](file:///c:/Users/vmont/OneDrive/Desktop/SISTEMA%20GOEATS%20%282%291/SISTEMA%20GOEATS/SISTEMA%20GOEATS/backend/src/modules/delivery/delivery.controller.ts)  
-> **Modelo de Datos:** [`backend/prisma/schema.prisma`](file:///c:/Users/vmont/OneDrive/Desktop/SISTEMA%20GOEATS%20%282%291/SISTEMA%20GOEATS/SISTEMA%20GOEATS/backend/prisma/schema.prisma)
+> **Archivo de Código Principal:** [`backend/src/modules/delivery/delivery.controller.ts`](../../backend/src/modules/delivery/delivery.controller.ts)  
+> **Modelo de Datos:** [`backend/prisma/schema.prisma`](../../backend/prisma/schema.prisma)
 
 ---
 
@@ -96,6 +96,6 @@ La deuda se amortiza de manera 100% automática sin intervención manual.
 
 ## 📌 Enlaces Directos en el Código
 
-- **Cálculo al tomar y completar orden:** [`backend/src/modules/delivery/delivery.controller.ts`](file:///c:/Users/vmont/OneDrive/Desktop/SISTEMA%20GOEATS%20%282%291/SISTEMA%20GOEATS/SISTEMA%20GOEATS/backend/src/modules/delivery/delivery.controller.ts#L69-L290)
-- **Registro en el historial de transacciones:** [`WalletTransaction` en schema.prisma](file:///c:/Users/vmont/OneDrive/Desktop/SISTEMA%20GOEATS%20%282%291/SISTEMA%20GOEATS/SISTEMA%20GOEATS/backend/prisma/schema.prisma#L542-L550)
-- **Visualización en panel móvil/web:** [`frontend/src/pages/DeliveryDashboard.tsx`](file:///c:/Users/vmont/OneDrive/Desktop/SISTEMA%20GOEATS%20%282%291/SISTEMA%20GOEATS/SISTEMA%20GOEATS/frontend/src/pages/DeliveryDashboard.tsx)
+- **Cálculo al tomar y completar orden:** [`backend/src/modules/delivery/delivery.controller.ts`](../../backend/src/modules/delivery/delivery.controller.ts#L69-L290)
+- **Registro en el historial de transacciones:** [`WalletTransaction` en schema.prisma](../../backend/prisma/schema.prisma#L542-L550)
+- **Visualización en panel móvil/web:** [`frontend/src/pages/DeliveryDashboard.tsx`](../../frontend/src/pages/DeliveryDashboard.tsx)

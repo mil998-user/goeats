@@ -45,7 +45,7 @@
 
 ### Ubicación de Archivos
 ```
-SISTEMA GOEATS/LIMPIO/
+legacy/sistema-php/
 ├── CON_IMPRESION/          ← Versión con impresión de tickets (impresora térmica)
 │   ├── base_de_datos_03_2023.sql   (108KB - 3,256 líneas)
 │   ├── sistema/                     ← Panel Admin (MVC PHP)

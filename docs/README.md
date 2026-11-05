@@ -9,6 +9,8 @@
 ```
 docs/
 ├── README.md                          <- Este archivo (Índice Maestro y Guía de Navegación)
+├── SISTEMA_GOEATS_DOCUMENTACION.md    <- Documentación general del sistema
+├── historial_de_cambios.md            <- Registro de cambios y mejoras
 │
 ├── repartidores/                      <- Lógica financiera, operativa y antifraude de motorizados
 │   ├── 01_logica_financiera.md        <- Fórmulas matemáticas, deudas, comisiones y balance antifraude
@@ -27,12 +29,12 @@ docs/
 
 | ¿Qué necesitas consultar o modificar? | Archivo de referencia | Ubicación en código |
 | :--- | :--- | :--- |
-| **Lógica matemática de comisión, deuda y pagos de repartidor** | [01_logica_financiera.md](file:///c:/Users/vmont/OneDrive/Desktop/SISTEMA%20GOEATS%20%282%291/SISTEMA%20GOEATS/SISTEMA%20GOEATS/docs/repartidores/01_logica_financiera.md) | [delivery.controller.ts](file:///c:/Users/vmont/OneDrive/Desktop/SISTEMA%20GOEATS%20%282%291/SISTEMA%20GOEATS/SISTEMA%20GOEATS/backend/src/modules/delivery/delivery.controller.ts) |
-| **Pantalla del repartidor (Pagar Proveedor / Cobrar Cliente estilo Zaymi)** | [02_flujo_operativo.md](file:///c:/Users/vmont/OneDrive/Desktop/SISTEMA%20GOEATS%20%282%291/SISTEMA%20GOEATS/SISTEMA%20GOEATS/docs/repartidores/02_flujo_operativo.md) | [DeliveryDashboard.tsx](file:///c:/Users/vmont/OneDrive/Desktop/SISTEMA%20GOEATS%20%282%291/SISTEMA%20GOEATS/SISTEMA%20GOEATS/frontend/src/pages/DeliveryDashboard.tsx) |
-| **Cortes de 5 horas y liquidaciones a motorizados** | [03_liquidacion_cortes.md](file:///c:/Users/vmont/OneDrive/Desktop/SISTEMA%20GOEATS%20%282%291/SISTEMA%20GOEATS/SISTEMA%20GOEATS/docs/repartidores/03_liquidacion_cortes.md) | [SuperAdmin.tsx](file:///c:/Users/vmont/OneDrive/Desktop/SISTEMA%20GOEATS%20%282%291/SISTEMA%20GOEATS/SISTEMA%20GOEATS/frontend/src/pages/SuperAdmin.tsx) y backend `/delivery/recharge` |
-| **Modelos de Base de Datos y Entidades** | [mapa_backend.md](file:///c:/Users/vmont/OneDrive/Desktop/SISTEMA%20GOEATS%20%282%291/SISTEMA%20GOEATS/SISTEMA%20GOEATS/docs/arquitectura/mapa_backend.md) | [schema.prisma](file:///c:/Users/vmont/OneDrive/Desktop/SISTEMA%20GOEATS%20%282%291/SISTEMA%20GOEATS/SISTEMA%20GOEATS/backend/prisma/schema.prisma) |
-| **Punto de Venta (POS) y Facturación SRI** | [mapa_frontend.md](file:///c:/Users/vmont/OneDrive/Desktop/SISTEMA%20GOEATS%20%282%291/SISTEMA%20GOEATS/SISTEMA%20GOEATS/docs/arquitectura/mapa_frontend.md) | [POS.tsx](file:///c:/Users/vmont/OneDrive/Desktop/SISTEMA%20GOEATS%20%282%291/SISTEMA%20GOEATS/SISTEMA%20GOEATS/frontend/src/pages/POS.tsx) |
-| **App Móvil de Clientes / Pedidos** | [mapa_mobile.md](file:///c:/Users/vmont/OneDrive/Desktop/SISTEMA%20GOEATS%20%282%291/SISTEMA%20GOEATS/SISTEMA%20GOEATS/docs/arquitectura/mapa_mobile.md) | [goeats_customer_app/lib/](file:///c:/Users/vmont/OneDrive/Desktop/SISTEMA%20GOEATS%20%282%291/SISTEMA%20GOEATS/SISTEMA%20GOEATS/goeats_customer_app/lib) |
+| **Lógica matemática de comisión, deuda y pagos de repartidor** | [01_logica_financiera.md](../docs/repartidores/01_logica_financiera.md) | [delivery.controller.ts](../backend/src/modules/delivery/delivery.controller.ts) |
+| **Pantalla del repartidor (Pagar Proveedor / Cobrar Cliente estilo Zaymi)** | [02_flujo_operativo.md](../docs/repartidores/02_flujo_operativo.md) | [DeliveryDashboard.tsx](../frontend/src/pages/DeliveryDashboard.tsx) |
+| **Cortes de 5 horas y liquidaciones a motorizados** | [03_liquidacion_cortes.md](../docs/repartidores/03_liquidacion_cortes.md) | [SuperAdmin.tsx](../frontend/src/pages/SuperAdmin.tsx) y backend `/delivery/recharge` |
+| **Modelos de Base de Datos y Entidades** | [mapa_backend.md](../docs/arquitectura/mapa_backend.md) | [schema.prisma](../backend/prisma/schema.prisma) |
+| **Punto de Venta (POS) y Facturación SRI** | [mapa_frontend.md](../docs/arquitectura/mapa_frontend.md) | [POS.tsx](../frontend/src/pages/POS.tsx) |
+| **App Móvil de Clientes / Pedidos** | [mapa_mobile.md](../docs/arquitectura/mapa_mobile.md) | [goeats_customer_app/lib/](../goeats_customer_app/lib) |
 
 ---
 

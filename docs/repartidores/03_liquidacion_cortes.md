@@ -1,7 +1,7 @@
 # ⏱️ Liquidación, Cortes Periódicos (Cada 5 Horas) y Desbloqueos
 
-> **Controlador de SuperAdmin:** [`backend/src/modules/delivery/delivery.controller.ts`](file:///c:/Users/vmont/OneDrive/Desktop/SISTEMA%20GOEATS%20%282%291/SISTEMA%20GOEATS/SISTEMA%20GOEATS/backend/src/modules/delivery/delivery.controller.ts)  
-> **Panel de Administración:** [`frontend/src/pages/SuperAdmin.tsx`](file:///c:/Users/vmont/OneDrive/Desktop/SISTEMA%20GOEATS%20%282%291/SISTEMA%20GOEATS/SISTEMA%20GOEATS/frontend/src/pages/SuperAdmin.tsx)
+> **Controlador de SuperAdmin:** [`backend/src/modules/delivery/delivery.controller.ts`](../../backend/src/modules/delivery/delivery.controller.ts)  
+> **Panel de Administración:** [`frontend/src/pages/SuperAdmin.tsx`](../../frontend/src/pages/SuperAdmin.tsx)
 
 ---
 
