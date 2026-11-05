@@ -24,6 +24,8 @@ import { FoodPreferencesModal } from "../components/FoodPreferencesModal";
 import { CustomerProfileView } from "../components/CustomerProfileView";
 import { SupportModal } from "../components/SupportModal";
 import { useSocket } from "../context/SocketContext";
+import { systemIconForEmoji } from "../utils/systemIcons";
+
 
 interface OrderItem {
   id: number;
@@ -469,7 +471,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
     <div style={{ maxWidth: "1000px", margin: "20px auto 40px auto", padding: "0 16px" }} className="customer-dashboard-container animate-fade-in">
       {/* Header / Back */}
       <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
-        <Link to="/" style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text-secondary)", fontSize: "13.5px", fontWeight: 600, textDecoration: "none" }}>
+        <Link to="/restaurants" style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text-secondary)", fontSize: "13.5px", fontWeight: 600, textDecoration: "none" }}>
           <ArrowLeft size={16} />
           Volver a Restaurantes
         </Link>
@@ -478,7 +480,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
       <div className="customer-dashboard-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", flexWrap: "wrap", gap: "14px" }}>
         <div>
           <h1 style={{ fontSize: "clamp(22px, 5vw, 28px)", fontWeight: 800, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.5px" }}>
-            Hola, {user?.name} 👋
+            Hola, {user?.name} {systemIconForEmoji("👋")}
           </h1>
           <p style={{ color: "var(--text-secondary)", margin: "4px 0 0 0", fontSize: "14px" }}>
             Administra tus pedidos, revisa estadísticas y gestiona tu Club GoEats Plus.
@@ -611,7 +613,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
             </div>
             <div style={{ flex: 1 }}>
               <h3 style={{ fontSize: "18px", fontWeight: 800, color: "var(--text-primary)", margin: "0 0 4px 0" }}>
-                Club GoEats Plus ✨
+                Club GoEats Plus {systemIconForEmoji("✨")}
               </h3>
               <p style={{ fontSize: "14px", color: "var(--text-secondary)", margin: "0 0 16px 0", maxWidth: "600px" }}>
                 ¡Felicidades! Tu membresía está activa. Tienes envíos gratuitos ilimitados en todos tus pedidos delivery. Tus pedidos son priorizados y no cobran comisión al repartidor, lo que incentiva un servicio impecable.
@@ -672,7 +674,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                 </div>
                 <div style={{ flex: 1 }}>
                   <h3 style={{ fontSize: "17px", fontWeight: 800, color: "var(--text-primary)", margin: "0 0 4px 0" }}>
-                    Solicitud de Suscripción Pendiente ⏳
+                    Solicitud de Suscripción Pendiente {systemIconForEmoji("⏳")}
                   </h3>
                   <p style={{ fontSize: "14px", color: "var(--text-secondary)", margin: "0", maxWidth: "700px" }}>
                     Has solicitado el <strong>{pendingOrder.planName}</strong> (${pendingOrder.amount.toFixed(2)}) utilizando pago por <strong>{pendingOrder.paymentMethod === "TRANSFER" ? "Transferencia Bancaria" : "Tarjeta"}</strong>.
@@ -706,7 +708,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                 </div>
                 <div>
                   <h3 style={{ fontSize: "18px", fontWeight: 800, color: "var(--text-primary)", margin: "0 0 4px 0" }}>
-                    Únete a Club GoEats Plus ✨
+                    Únete a Club GoEats Plus {systemIconForEmoji("✨")}
                   </h3>
                   <p style={{ fontSize: "14px", color: "var(--text-secondary)", margin: 0 }}>
                     Disfruta de envíos completamente gratis ($0.00 de envío) en todos los locales de la plataforma. Tus pedidos serán priorizados y los repartidores recibirán un bono adicional pagado por GoEats.
@@ -782,7 +784,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                               fontWeight: paymentMethod === "CARD" ? "bold" : "normal"
                             }}
                           >
-                            💳 Tarjeta
+                            {systemIconForEmoji("💳")} Tarjeta
                           </button>
                           <button
                             type="button"
@@ -800,7 +802,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                               fontWeight: paymentMethod === "TRANSFER" ? "bold" : "normal"
                             }}
                           >
-                            🏦 Transferencia
+                            {systemIconForEmoji("🏦")} Transferencia
                           </button>
                         </div>
                       </div>
@@ -1078,7 +1080,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                       order.type === "DELIVERY" && (
                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "var(--success)", fontWeight: 600, marginTop: "6px" }}>
                           <span>Costo de envío</span>
-                          <span>Gratis ✨</span>
+                          <span>Gratis {systemIconForEmoji("✨")}</span>
                         </div>
                       )
                     )}
@@ -1108,7 +1110,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                           }}
                         >
                           <MapPin size={13} />
-                          Seguimiento 📍
+                          Seguimiento {systemIconForEmoji("📍")}
                         </button>
                       ) : (
                         <button
@@ -1128,7 +1130,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                           }}
                         >
                           <RefreshCw size={12} />
-                          Pedir de Nuevo 🔁
+                          Pedir de Nuevo {systemIconForEmoji("🔁")}
                         </button>
                       )}
 
@@ -1201,7 +1203,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                 { title: "En Cocina", desc: "Tus platos están siendo preparados.", icon: <Clock size={16} /> },
                 { title: "Listo para Despacho", desc: "Pedido listo, esperando repartidor.", icon: <CheckCircle size={16} /> },
                 { 
-                  title: "En camino 🛵", 
+                  title: "En camino",
                   desc: trackingOrder.deliveryDriver 
                     ? `Tu motorizado: ${trackingOrder.deliveryDriver.name} va en camino.` 
                     : "El repartidor va rumbo a tu dirección.", 
@@ -1267,7 +1269,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
               <div style={{ marginTop: "16px", marginBottom: "12px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
                   <label style={{ fontSize: "12.5px", fontWeight: "700", display: "flex", alignItems: "center", gap: "6px", color: "var(--text-primary)", margin: 0 }}>
-                    🗺️ Ruta y Ubicación en Tiempo Real
+                    {systemIconForEmoji("🗺️")} Ruta y Ubicación en Tiempo Real
                   </label>
                   {trackingOrder.status === "DELIVERING" && (
                     <span style={{

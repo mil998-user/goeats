@@ -12,6 +12,8 @@ import {
   ExternalLink
 } from "lucide-react";
 import { apiRequest } from "../utils/api";
+import { systemIconForEmoji } from "../utils/systemIcons";
+
 
 export interface SupportModalProps {
   isOpen: boolean;
@@ -98,7 +100,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
     } else if (selectedRole === "RESTAURANT") {
       msg = `¡Hola Soporte GoEats! Me comunico desde el restaurante ${restaurantName || ""}.${name ? ` (Contacto: ${name})` : ""} Requiero soporte operativo o técnico.`;
     } else {
-      msg = `🚨 [SOPORTE EN RUTA] Hola GoEats, soy motorizado/repartidor${name ? ` (${name})` : ""}.${orderId ? ` Tengo un problema en curso con la entrega #${orderId}.` : " Requiero asistencia inmediata."}`;
+      msg = `[SOPORTE EN RUTA] Hola GoEats, soy motorizado/repartidor${name ? ` (${name})` : ""}.${orderId ? ` Tengo un problema en curso con la entrega #${orderId}.` : " Requiero asistencia inmediata."}`;
     }
     return encodeURIComponent(msg);
   };
@@ -788,7 +790,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                   marginTop: "2px",
                 }}
               >
-                <span>🕐</span>
+                <span>{systemIconForEmoji("🕐")}</span>
                 <span>
                   <strong>Atención operadores:</strong> Lun a Dom &bull; 8:00 AM &ndash; 11:30 PM
                 </span>

@@ -120,7 +120,7 @@ export async function sendWelcomeEmail(params: {
     const mailOptions = {
       from: `"${fromName}" <${user}>`,
       to: params.to,
-      subject: `🎉 ¡Bienvenido a GoEats, ${params.name}! Tu cuenta ha sido creada con éxito`,
+      subject: ` ¡Bienvenido a GoEats, ${params.name}! Tu cuenta ha sido creada con éxito`,
       html: `
         <div style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #f8fafc; padding: 30px 15px;">
           <div style="max-width: 520px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;">

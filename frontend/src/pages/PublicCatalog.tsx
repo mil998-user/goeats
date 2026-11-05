@@ -6,6 +6,8 @@ import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
 import { LocationPickerMap } from "../components/LocationPickerMap";
 import { SupportModal } from "../components/SupportModal";
+import { systemIconForEmoji, systemTextWithIcons } from "../utils/systemIcons";
+
 
 interface Variant {
   id: number;
@@ -100,11 +102,15 @@ export const PublicCatalog: React.FC = () => {
   const [orderType, setOrderType] = useState<"DINE_IN" | "DELIVERY" | "TAKEOUT">("DELIVERY");
   const [selectedTable, setSelectedTable] = useState<string>("");
   const [customerName, setCustomerName] = useState("");
-  const [deliveryAddress, setDeliveryAddress] = useState("");
-  const [deliveryReference, setDeliveryReference] = useState("");
-  const [deliveryPhone, setDeliveryPhone] = useState("");
-  const [deliveryLat, setDeliveryLat] = useState<number | null>(null);
-  const [deliveryLng, setDeliveryLng] = useState<number | null>(null);
+  const [deliveryAddress, setDeliveryAddress] = useState(() => user?.deliveryAddress || "");
+  const [deliveryReference, setDeliveryReference] = useState(() =>
+    [user?.deliveryFloorApartment, user?.deliverySecondaryStreet, user?.deliveryReferences]
+      .filter(Boolean)
+      .join(", ")
+  );
+  const [deliveryPhone, setDeliveryPhone] = useState(() => user?.phone || "");
+  const [deliveryLat, setDeliveryLat] = useState<number | null>(() => user?.deliveryLatitude ?? null);
+  const [deliveryLng, setDeliveryLng] = useState<number | null>(() => user?.deliveryLongitude ?? null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [orderSuccess, setOrderSuccess] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState(false);
@@ -247,7 +253,7 @@ export const PublicCatalog: React.FC = () => {
         method: "POST",
         body: JSON.stringify({ tableId: selectedTable, action }),
       });
-      setWaiterCallStatus(action === "BILL" ? "🧾 ¡Cuenta solicitada a caja! Enseguida se acercan a cobrar." : "🛎️ ¡Mesero notificado! Enseguida se acerca a tu mesa.");
+      setWaiterCallStatus(action === "BILL" ? "¡Cuenta solicitada a caja! Enseguida se acercan a cobrar." : "¡Mesero notificado! Enseguida se acerca a tu mesa.");
       setTimeout(() => setWaiterCallStatus(null), 8000);
     } catch (err: any) {
       alert("Error: " + err.message);
@@ -412,7 +418,7 @@ export const PublicCatalog: React.FC = () => {
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: isMobile ? "10px" : "20px", flex: 1 }}>
           <button 
-            onClick={() => navigate("/")}
+            onClick={() => navigate("/restaurants")}
             style={{
               display: "flex",
               alignItems: "center",
@@ -447,7 +453,7 @@ export const PublicCatalog: React.FC = () => {
             letterSpacing: "-0.5px",
             margin: 0,
             cursor: "pointer"
-          }} onClick={() => navigate("/")}>
+          }} onClick={() => navigate("/restaurants")}>
             Go<span style={{ color: "#2f3542" }}>Eats</span>
           </h1>
         </div>
@@ -468,7 +474,7 @@ export const PublicCatalog: React.FC = () => {
               gap: "4px",
               transition: "all 0.2s ease"
             }}>
-              Hazte Plus ✨
+              Hazte Plus {systemIconForEmoji("✨")}
             </Link>
           )}
           {isAuthenticated && user ? (
@@ -491,7 +497,7 @@ export const PublicCatalog: React.FC = () => {
                   textDecoration: "none",
                   transition: "all 0.2s ease"
                 }}>
-                  {isMobile ? "Pedidos" : "Mis Pedidos 🍔"}
+                  {isMobile ? "Pedidos" : systemTextWithIcons("Mis Pedidos 🍔")}
                 </Link>
               )}
 
@@ -506,7 +512,7 @@ export const PublicCatalog: React.FC = () => {
                   textDecoration: "none",
                   transition: "all 0.2s ease"
                 }}>
-                  {isMobile ? "Entregas" : "Entregas 🛵"}
+                  {isMobile ? "Entregas" : systemTextWithIcons("Entregas 🛵")}
                 </Link>
               )}
 
@@ -521,7 +527,7 @@ export const PublicCatalog: React.FC = () => {
                   textDecoration: "none",
                   transition: "all 0.2s ease"
                 }}>
-                  {isMobile ? "POS" : "Ir al POS 🖥️"}
+                  {isMobile ? "POS" : systemTextWithIcons("Ir al POS 🖥️")}
                 </Link>
               )}
 
@@ -536,7 +542,7 @@ export const PublicCatalog: React.FC = () => {
                   textDecoration: "none",
                   transition: "all 0.2s ease"
                 }}>
-                  {isMobile ? "Admin" : "Panel Admin 🛡️"}
+                  {isMobile ? "Admin" : systemTextWithIcons("Panel Admin 🛡️")}
                 </Link>
               )}
 
@@ -698,7 +704,7 @@ export const PublicCatalog: React.FC = () => {
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                 <div style={{ width: "42px", height: "42px", borderRadius: "10px", background: "#ffa502", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "1.4rem" }}>
-                  🪑
+                  {systemIconForEmoji("🪑")}
                 </div>
                 <div>
                   <div style={{ fontWeight: "800", fontSize: "1.05rem", color: "var(--text-primary)" }}>
@@ -789,7 +795,7 @@ export const PublicCatalog: React.FC = () => {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border-light)", paddingBottom: "16px", marginBottom: "20px" }}>
                   <div>
                     <span style={{ fontSize: "0.8rem", fontWeight: "800", color: "var(--accent-primary)", textTransform: "uppercase", letterSpacing: "1px" }}>
-                      🛵 Pedido a Domicilio en Curso
+                      {systemIconForEmoji("🛵")} Pedido a Domicilio en Curso
                     </span>
                     <h2 style={{ margin: "4px 0 0 0", fontSize: "1.5rem" }}>
                       Orden #{activeOrder?.id || "---"}
@@ -818,7 +824,7 @@ export const PublicCatalog: React.FC = () => {
                     textAlign: "center"
                   }}>
                     <div style={{ fontSize: "0.85rem", fontWeight: "800", color: "#2ed573", letterSpacing: "1.5px", textTransform: "uppercase" }}>
-                      🔑 CÓDIGO PIN DE ENTREGA (PEDIDOSYA STYLE)
+                      {systemIconForEmoji("🔑")} CÓDIGO PIN DE ENTREGA (PEDIDOSYA STYLE)
                     </div>
                     <div style={{ fontSize: "3.2rem", fontWeight: "900", letterSpacing: "12px", color: "#2ed573", margin: "10px 0", fontFamily: "monospace" }}>
                       {activeOrder.deliveryPin}
@@ -833,9 +839,9 @@ export const PublicCatalog: React.FC = () => {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "8px", margin: "28px 0", textAlign: "center" }}>
                   {[
                     { label: "1. Confirmado", icon: "✓", active: true },
-                    { label: "2. En Cocina", icon: "🔥", active: activeOrder?.status !== "PENDING" },
-                    { label: "3. En Camino", icon: "🛵", active: activeOrder?.status === "DELIVERING" || activeOrder?.status === "DELIVERED" },
-                    { label: "4. Entregado", icon: "🎉", active: activeOrder?.status === "DELIVERED" }
+                    { label: "2. En Cocina", icon: systemTextWithIcons("🔥"), active: activeOrder?.status !== "PENDING" },
+                    { label: "3. En Camino", icon: systemTextWithIcons("🛵"), active: activeOrder?.status === "DELIVERING" || activeOrder?.status === "DELIVERED" },
+                    { label: "4. Entregado", icon: systemTextWithIcons("🎉"), active: activeOrder?.status === "DELIVERED" }
                   ].map((step, idx) => (
                     <div key={idx} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
                       <div style={{
@@ -890,13 +896,13 @@ export const PublicCatalog: React.FC = () => {
 
                 <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap", marginBottom: "20px" }}>
                   <button className="secondary-btn" onClick={() => handleCallWaiter("CALL")} style={{ padding: "10px 20px" }}>
-                    🛎️ Llamar al Mesero
+                    {systemIconForEmoji("🛎️")} Llamar al Mesero
                   </button>
                   <button className="secondary-btn" onClick={() => handleCallWaiter("BILL")} style={{ padding: "10px 20px" }}>
-                    🧾 Solicitar Cuenta
+                    {systemIconForEmoji("🧾")} Solicitar Cuenta
                   </button>
                   <button className="glow-btn" onClick={() => setOrderSuccess(false)} style={{ padding: "10px 20px" }}>
-                    🍽️ Pedir más platos
+                    {systemIconForEmoji("🍽️")} Pedir más platos
                   </button>
                 </div>
               </div>
@@ -1003,7 +1009,7 @@ export const PublicCatalog: React.FC = () => {
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.95rem", color: "var(--text-secondary)" }}>
                       <span>Costo Envío:</span>
                       <span style={{ color: isPlusUser ? "var(--success)" : "inherit", fontWeight: isPlusUser ? "bold" : "normal" }}>
-                        {isPlusUser ? "Gratis con Plus ✨" : `$${currentShippingCost.toFixed(2)}`}
+                        {isPlusUser ? systemTextWithIcons("Gratis con Plus ✨") : `$${currentShippingCost.toFixed(2)}`}
                       </span>
                     </div>
                   )}
@@ -1088,7 +1094,7 @@ export const PublicCatalog: React.FC = () => {
                       <>
                         <div style={{ marginBottom: "15px" }}>
                           <label style={{ fontSize: "12px", fontWeight: "700", marginBottom: "8px", display: "block", color: "var(--text-primary)" }}>
-                            📍 Ubicación de Entrega en el Mapa
+                            {systemIconForEmoji("📍")} Ubicación de Entrega en el Mapa
                           </label>
                           <LocationPickerMap
                             initialLat={deliveryLat || undefined}
@@ -1146,7 +1152,7 @@ export const PublicCatalog: React.FC = () => {
                             <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold", borderTop: "1px dashed var(--border-light)", paddingTop: "6px", color: "var(--text-primary)" }}>
                               <span>Costo de Envío:</span>
                               <span style={{ color: isPlusUser ? "var(--success)" : "inherit" }}>
-                                {isPlusUser ? "Gratis con Plus ✨" : `$${currentShippingCost.toFixed(2)}`}
+                                {isPlusUser ? systemTextWithIcons("Gratis con Plus ✨") : `$${currentShippingCost.toFixed(2)}`}
                               </span>
                             </div>
                           </div>

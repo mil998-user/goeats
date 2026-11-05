@@ -77,6 +77,8 @@ model Restaurant {
   reference          String?          @db.LongText
   openingHours       String?          @db.LongText
   faqsJson           String?          @db.LongText
+  samePriceAsLocal   Boolean          @default(false)
+  promoText          String?          @db.VarChar(191)
   deliveryCommissionPercentage Float  @default(10.0) // % de comisión pactado con el local
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
@@ -145,6 +147,12 @@ model User {
   vehicleType        String?              // "MOTO", "BICI", "AUTO"
   vehiclePlate       String?
   preferencesJson    String?              @db.Text // Array JSON de categorías favoritas para recomendación
+  deliveryAddress    String?              @db.Text
+  deliveryLatitude   Float?
+  deliveryLongitude  Float?
+  deliveryFloorApartment String?
+  deliverySecondaryStreet String?
+  deliveryReferences String?              @db.Text
   isPlus             Boolean              @default(false)
   walletBalance      Float                @default(0.0)
   maxDebtLimit       Float                @default(50.0) // Límite de deuda en balance antes de pausar pedidos en efectivo
@@ -652,4 +660,3 @@ model EmailNotification {
   @@index([type])
   @@index([status])
 }
-

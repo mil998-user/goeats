@@ -1,0 +1,3 @@
+ALTER TABLE `Restaurant`
+  ADD COLUMN `samePriceAsLocal` BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN `promoText` VARCHAR(191) NULL;

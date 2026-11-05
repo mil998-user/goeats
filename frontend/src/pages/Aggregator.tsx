@@ -20,19 +20,35 @@ import {
   ShoppingBag,
   Bike,
   Store,
-  Shield
+  Shield,
+  Pizza,
+  Globe2,
+  Flame,
+  Fish,
+  Coffee,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import { FoodPreferencesModal, FOOD_PREFERENCE_CATEGORIES } from "../components/FoodPreferencesModal";
+import { FoodPreferencesModal } from "../components/FoodPreferencesModal";
+import { FOOD_PREFERENCE_CATEGORIES, normalizeFoodPreferences } from "../utils/foodPreferences";
 import { SupportModal } from "../components/SupportModal";
+import { systemIconForEmoji } from "../utils/systemIcons";
+
 
 interface PublicRestaurant {
   id: number;
   name: string;
   slug: string;
+  description?: string | null;
+  coverImage?: string;
+  categories?: Array<{ id: number; name: string }>;
+  subcategories?: Array<{ id: number; name: string }>;
   logo: string | null;
   address: string | null;
   phone: string | null;
+  createdAt: string;
+  samePriceAsLocal: boolean;
+  promoText: string | null;
+  ordersThisWeek: number;
 }
 
 interface AugmentedRestaurant extends PublicRestaurant {
@@ -45,31 +61,94 @@ interface AugmentedRestaurant extends PublicRestaurant {
   deliveryTime: string;
   deliveryCost: string;
   promoText: string | null;
+  ordersThisWeek: number;
   specialLabel?: string;
-  isPopular: boolean;
   isFavorite: boolean;
 }
 
-const categoriesList = [
-  { id: "all", name: "Todos", emoji: "🍽️" },
-  { id: "super", name: "Súper", emoji: "🍌" },
-  { id: "pizza", name: "Pizza", emoji: "🍕" },
-  { id: "sushi", name: "Sushi", emoji: "🍣" },
-  { id: "poke", name: "Poke", emoji: "🍲" },
-  { id: "burgers", name: "Hamburguesas", emoji: "🍔" },
-  { id: "alitas", name: "Alitas", emoji: "🍗" },
-  { id: "pollo", name: "Pollo", emoji: "🍗" },
-  { id: "mexican", name: "Mexicana", emoji: "🌮" },
-  { id: "tapioca", name: "Té de tapioca", emoji: "🧋" },
-  { id: "healthy", name: "Saludable", emoji: "🥗" },
-  { id: "desserts", name: "Postres", emoji: "🍰" },
-  { id: "sandwiches", name: "Sándwiches", emoji: "🥪" },
-  { id: "bbq", name: "BBQ", emoji: "🍖" },
-  { id: "korean", name: "Coreana", emoji: "🍜" },
-  { id: "italian", name: "Italiana", emoji: "🍝" },
-  { id: "chinese", name: "China", emoji: "🥡" },
-  { id: "fastfood", name: "Comida rápida", emoji: "🍟" },
+type MainCategoryId = "lojana" | "pizzerias" | "international" | "grill" | "seafood" | "desserts";
+type CategoryFilter = { id: string; name: string; icon: React.ElementType };
+interface SaaSCategory {
+  id: number;
+  name: string;
+  subcategories?: Array<{ id: number; name: string }>;
+}
+
+const mainCategories: Array<{
+  id: MainCategoryId;
+  name: string;
+  icon: React.ElementType;
+  keywords: string[];
+}> = [
+  {
+    id: "lojana",
+    name: "Comida Típica y Tradicional Lojana",
+    icon: Utensils,
+    keywords: ["lojana", "lojano", "tradicional", "tipica", "ecuatoriana", "ecuatoriano", "cecina", "repe", "humita", "tamale", "cuy", "gallina criolla"],
+  },
+  {
+    id: "pizzerias",
+    name: "Pizzerías y Bares",
+    icon: Pizza,
+    keywords: ["pizza", "pizzeria", "pizzerias", "bar", "cerveza", "restobar", "gastrobar"],
+  },
+  {
+    id: "international",
+    name: "Cocina Internacional y Latinoamericana",
+    icon: Globe2,
+    keywords: ["internacional", "latinoamericana", "latino", "mexicana", "mexicano", "taco", "sushi", "japonesa", "japones", "china", "chifa", "italiana", "pasta", "coreana", "peruana", "saludable", "ensalada", "sandwich", "postre", "bebida", "comida rapida", "fast food"],
+  },
+  {
+    id: "grill",
+    name: "Carnes, Parrillas y Asados",
+    icon: Flame,
+    keywords: ["carne", "parrilla", "bbq", "asado", "hamburguesa", "burger", "pollo", "alita", "wing", "costilla", "choripan"],
+  },
+  {
+    id: "seafood",
+    name: "Marisquerías",
+    icon: Fish,
+    keywords: ["marisqueria", "marisco", "seafood", "pescado", "ceviche", "camaron", "concha", "pulpo"],
+  },
+  {
+    id: "desserts",
+    name: "Postres, Heladerías y Cafeterías",
+    icon: Coffee,
+    keywords: ["postre", "postres", "heladeria", "helado", "helados", "cafeteria", "cafe", "cafes", "pasteleria", "reposteria", "dulceria"],
+  },
 ];
+
+const activeCategoriesList: CategoryFilter[] = [
+  { id: "all", name: "Todos", icon: Utensils },
+  ...mainCategories.map(({ id, name, icon }) => ({ id: `main-${id}`, name, icon })),
+];
+
+const normalizeCategoryText = (value: string) => value
+  .toLocaleLowerCase("es")
+  .normalize("NFD")
+  .replace(/[\u0300-\u036f]/g, "")
+  .replace(/[^a-z0-9]+/g, " ")
+  .trim();
+
+const getMainCategoryId = (names: string[]): MainCategoryId | null => {
+  const normalizedNames = names.map(normalizeCategoryText).filter(Boolean);
+  const categoryPriority: MainCategoryId[] = ["lojana", "seafood", "pizzerias", "grill", "desserts", "international"];
+    const categoryMatch = categoryPriority
+      .map((id) => mainCategories.find((category) => category.id === id))
+      .find((category) => category && normalizedNames.some((name) =>
+        category.keywords.some((keyword) => name.includes(normalizeCategoryText(keyword)))
+      ));
+  return categoryMatch?.id ?? null;
+};
+
+const getRestaurantMainCategoryId = (restaurant: AugmentedRestaurant): MainCategoryId | null => {
+  const assignedCategories = [
+    ...(restaurant.categories || []).map((category) => category.name),
+    ...(restaurant.subcategories || []).map((subcategory) => subcategory.name),
+  ];
+  return getMainCategoryId(assignedCategories)
+    || getMainCategoryId([restaurant.name, restaurant.description || ""]);
+};
 
 export const Aggregator: React.FC = () => {
   const navigate = useNavigate();
@@ -78,53 +157,14 @@ export const Aggregator: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // SaaS categories dynamic loading
-  const [allCategories, setAllCategories] = useState<any[]>([]);
-
-  const getEmoji = (name: string): string => {
-    const n = name.toLowerCase();
-    if (n.includes("rapida") || n.includes("fast") || n.includes("fastfood")) return "🍟";
-    if (n.includes("hamburguesa") || n.includes("burger")) return "🍔";
-    if (n.includes("pizza")) return "🍕";
-    if (n.includes("sushi")) return "🍣";
-    if (n.includes("pollo") || n.includes("kfc")) return "🍗";
-    if (n.includes("alitas") || n.includes("wing")) return "🍗";
-    if (n.includes("mexicana") || n.includes("taco")) return "🌮";
-    if (n.includes("postre") || n.includes("dulce") || n.includes("helado") || n.includes("pastel")) return "🍰";
-    if (n.includes("saludable") || n.includes("salad") || n.includes("ensalada")) return "🥗";
-    if (n.includes("sandwiches") || n.includes("sanduche")) return "🥪";
-    if (n.includes("carne") || n.includes("bbq") || n.includes("parrilla")) return "🍖";
-    if (n.includes("italiana") || n.includes("pasta") || n.includes("tallarin")) return "🍝";
-    if (n.includes("china") || n.includes("arroz")) return "🥡";
-    if (n.includes("bebida") || n.includes("jugo") || n.includes("tapioca")) return "🧋";
-    return "🍽️";
-  };
-
-  const activeCategoriesList = allCategories.length > 0 ? [
-    { id: "all", name: "Todos", emoji: "🍽️" },
-    ...allCategories.map(cat => ({
-      id: `cat-${cat.id}`,
-      name: cat.name,
-      emoji: getEmoji(cat.name)
-    })),
-    ...allCategories.flatMap(cat => cat.subcategories || []).map((sub: any) => ({
-      id: `sub-${sub.id}`,
-      name: sub.name,
-      emoji: getEmoji(sub.name)
-    }))
-  ] : categoriesList;
+  // SaaS category IDs are used by saved food preferences.
+  const [allCategories, setAllCategories] = useState<SaaSCategory[]>([]);
 
   // Filter States
   const [activeCategory, setActiveCategory] = useState("all");
+  const [activeSubcategory, setActiveSubcategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [deliveryMode, setDeliveryMode] = useState<"delivery" | "takeout">("delivery");
   
-  // Quick Filter Chips
-  const [onlyOffers, setOnlyOffers] = useState(false);
-  const [fastDelivery, setFastDelivery] = useState(false);
-  const [highRating, setHighRating] = useState(false);
-  const [sortBy, setSortBy] = useState<"none" | "rating" | "name">("none");
-
   // Favorites Local State
   const [favorites, setFavorites] = useState<number[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -176,7 +216,7 @@ export const Aggregator: React.FC = () => {
         window.removeEventListener("resize", checkCategoryScroll);
       };
     }
-  }, [activeCategoriesList]);
+  }, []);
 
   const scrollCategories = (direction: "left" | "right") => {
     const el = categoriesRef.current;
@@ -275,9 +315,7 @@ export const Aggregator: React.FC = () => {
       "https://images.unsplash.com/photo-1493770348161-369560ae357d?w=600&auto=format&fit=crop&q=80",
     ];
 
-    const categories = ["Pizza", "Sushi", "Hamburguesas", "Alitas", "Pollo", "Mexicana", "Saludable", "Postres"];
-
-    const augmentedDb = dbList.map((rest: any, index) => {
+    const augmentedDb = dbList.map((rest, index) => {
       const finalLogo = BRAND_LOGOS[rest.slug] || rest.logo || "/logos/prueba.svg";
       const finalCover = BRAND_COVERS[rest.slug] || rest.coverImage || defaultCovers[index % defaultCovers.length];
 
@@ -285,15 +323,15 @@ export const Aggregator: React.FC = () => {
         ...rest,
         logo: finalLogo,
         coverImage: finalCover,
-        category: rest.categories?.[0]?.name || categories[index % categories.length],
+        category: rest.categories?.[0]?.name || "Restaurante local",
         categories: rest.categories || [],
         subcategories: rest.subcategories || [],
         rating: (4.5 + (index * 0.08) % 0.4).toFixed(1),
         reviews: `(${500 + (index * 680) % 8000}+)`,
         deliveryTime: `${15 + (index * 4) % 18} min`,
         deliveryCost: index % 2 === 0 ? "Envío gratis" : "Costo de envío: $1.25",
-        promoText: index % 3 === 0 ? "$5.00 de descuento en tu compra" : null,
-        isPopular: index % 2 === 0,
+        promoText: rest.promoText || null,
+        ordersThisWeek: rest.ordersThisWeek || 0,
         isFavorite: false
       };
     });
@@ -312,8 +350,8 @@ export const Aggregator: React.FC = () => {
         const res = await apiRequest("/restaurants/public/list");
         const list = res.restaurants || [];
         setRestaurants(getAugmentedRestaurants(list));
-      } catch (err: any) {
-        setError(err.message || "Error al cargar restaurantes");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Error al cargar restaurantes");
       } finally {
         setLoading(false);
       }
@@ -324,13 +362,13 @@ export const Aggregator: React.FC = () => {
   // Sync Food Preferences from user profile, localStorage, or setup query parameter
   useEffect(() => {
     if (user && (user as any).preferences && Array.isArray((user as any).preferences)) {
-      setUserPreferences((user as any).preferences);
+      setUserPreferences(normalizeFoodPreferences((user as any).preferences));
     } else {
       try {
         const stored = localStorage.getItem("goeats_food_preferences");
         if (stored) {
           const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed)) setUserPreferences(parsed);
+          if (Array.isArray(parsed)) setUserPreferences(normalizeFoodPreferences(parsed));
         }
       } catch (e) {}
     }
@@ -376,64 +414,168 @@ export const Aggregator: React.FC = () => {
 
   const matchesCategory = (rest: AugmentedRestaurant, selectedId: string) => {
     if (selectedId === "all") return true;
+    if (selectedId.startsWith("main-")) {
+      const mainCategoryId = selectedId.replace("main-", "") as MainCategoryId;
+      return getRestaurantMainCategoryId(rest) === mainCategoryId;
+    }
+    if (mainCategories.some((category) => category.id === selectedId)) {
+      return getRestaurantMainCategoryId(rest) === selectedId;
+    }
     if (selectedId.startsWith("cat-")) {
       const catId = parseInt(selectedId.replace("cat-", ""), 10);
-      return rest.categories?.some((c: any) => c.id === catId);
+      return rest.categories?.some((category) => category.id === catId) || false;
     }
     if (selectedId.startsWith("sub-")) {
       const subId = parseInt(selectedId.replace("sub-", ""), 10);
-      return rest.subcategories?.some((s: any) => s.id === subId);
+      return rest.subcategories?.some((subcategory) => subcategory.id === subId) || false;
     }
-    
-    // For fallback static category list compatibility
-    const catObj = categoriesList.find(c => c.id === selectedId);
-    if (!catObj) return true;
-    const catName = catObj.name.toLowerCase();
-    return rest.category?.toLowerCase().includes(catName) || 
-           rest.categories?.some((c: any) => c.name.toLowerCase().includes(catName)) ||
-           rest.subcategories?.some((s: any) => s.name.toLowerCase().includes(catName));
+    const category = allCategories.find((item) => item.id === Number(selectedId));
+    return category
+      ? rest.categories?.some((restaurantCategory) => restaurantCategory.id === category.id) || false
+      : true;
   };
+
+  const selectedMainCategory = mainCategories.find((category) => activeCategory === `main-${category.id}`);
+  const availableSubcategories = selectedMainCategory
+    ? Array.from(new Map(
+      restaurants
+        .filter((restaurant) => matchesCategory(restaurant, activeCategory))
+        .flatMap((restaurant) => [
+          ...(restaurant.categories || []).map((category) => ({ id: `cat-${category.id}`, name: category.name })),
+          ...(restaurant.subcategories || []).map((subcategory) => ({ id: `sub-${subcategory.id}`, name: subcategory.name })),
+        ])
+        .map((subcategory) => [subcategory.id, subcategory])
+    ).values())
+    : [];
 
   // Filter & Sort Logic
   const filteredRestaurants = restaurants.filter(rest => {
     if (!matchesCategory(rest, activeCategory)) return false;
+    if (activeSubcategory && !matchesCategory(rest, activeSubcategory)) return false;
 
-    if (searchQuery.trim() && 
+    if (searchQuery.trim() &&
         !rest.name.toLowerCase().includes(searchQuery.toLowerCase()) && 
-        !rest.category.toLowerCase().includes(searchQuery.toLowerCase())) {
+        !rest.category.toLowerCase().includes(searchQuery.toLowerCase()) &&
+        !rest.categories?.some((category) => category.name.toLowerCase().includes(searchQuery.toLowerCase())) &&
+        !rest.subcategories?.some((subcategory) => subcategory.name.toLowerCase().includes(searchQuery.toLowerCase()))) {
       return false;
-    }
-
-    if (onlyOffers && !rest.promoText) return false;
-
-    if (fastDelivery) {
-      const mins = parseInt(rest.deliveryTime, 10);
-      if (isNaN(mins) || mins > 20) return false;
-    }
-
-    if (highRating) {
-      const ratingVal = parseFloat(rest.rating);
-      if (isNaN(ratingVal) || ratingVal < 4.5) return false;
     }
 
     return true;
   });
 
-  if (sortBy === "rating") {
-    filteredRestaurants.sort((a, b) => parseFloat(b.rating) - parseFloat(a.rating));
-  } else if (sortBy === "name") {
-    filteredRestaurants.sort((a, b) => a.name.localeCompare(b.name));
-  }
-
   // Subdivided categories for UI Sections
-  const popularRestaurants = filteredRestaurants.filter(r => r.isPopular || parseFloat(r.rating) >= 4.6);
+  const recentCutoff = new Date();
+  recentCutoff.setDate(recentCutoff.getDate() - 30);
+  const newRestaurants = filteredRestaurants
+    .filter((restaurant) => new Date(restaurant.createdAt) >= recentCutoff)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const weeklyTopRestaurants = [...filteredRestaurants]
+    .filter((restaurant) => restaurant.ordersThisWeek > 0)
+    .sort((a, b) => b.ordersThisWeek - a.ordersThisWeek);
   const offerRestaurants = filteredRestaurants.filter(r => r.promoText !== null);
+  const samePriceRestaurants = filteredRestaurants.filter((restaurant) => restaurant.samePriceAsLocal);
 
   // Smart Recommendations based on culinary preferences
-  const recommendedRestaurants = filteredRestaurants.filter(rest => {
+  const recommendedRestaurants = restaurants.filter(rest => {
     if (userPreferences.length === 0) return false;
     return userPreferences.some(prefId => matchesCategory(rest, prefId));
   });
+
+  const renderRestaurantSection = (
+    title: string,
+    sectionRestaurants: AugmentedRestaurant[],
+    keyPrefix: string,
+    badge: string
+  ) => (
+    <section aria-label={title}>
+      <h2 style={{ fontSize: "22px", fontWeight: 800, color: "#202124", margin: "0 0 18px" }}>
+        {title}
+      </h2>
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))",
+        gap: "18px",
+      }}>
+        {sectionRestaurants.map((restaurant) => (
+          <Link
+            to={`/r/${restaurant.slug}`}
+            key={`${keyPrefix}-${restaurant.id}`}
+            style={{
+              overflow: "hidden",
+              border: "1px solid #e5e7eb",
+              borderRadius: "16px",
+              color: "inherit",
+              textDecoration: "none",
+              background: "#fff",
+            }}
+          >
+            <div style={{ position: "relative", height: "150px", background: "#f1f3f4" }}>
+              <img
+                src={restaurant.coverImage}
+                alt={restaurant.name}
+                onError={(e) => {
+                  e.currentTarget.src = "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop&q=80";
+                }}
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
+              <span style={{
+                position: "absolute",
+                top: "10px",
+                left: "10px",
+                padding: "5px 9px",
+                borderRadius: "999px",
+                background: "#fff",
+                color: "#202124",
+                fontSize: "11px",
+                fontWeight: 700,
+              }}>
+                {badge}
+              </span>
+              {isAuthenticated && (
+                <button
+                  type="button"
+                  aria-label={favorites.includes(restaurant.id) ? "Quitar de favoritos" : "Agregar a favoritos"}
+                  onClick={(e) => toggleFavorite(restaurant.id, e)}
+                  style={{
+                    position: "absolute",
+                    top: "9px",
+                    right: "9px",
+                    display: "grid",
+                    width: "34px",
+                    height: "34px",
+                    placeItems: "center",
+                    border: 0,
+                    borderRadius: "50%",
+                    background: "#fff",
+                    cursor: "pointer",
+                  }}
+                >
+                  <Heart size={16} fill={favorites.includes(restaurant.id) ? "#111111" : "none"} />
+                </button>
+              )}
+            </div>
+            <div style={{ padding: "12px 14px" }}>
+              <h3 style={{
+                margin: 0,
+                overflow: "hidden",
+                color: "#202124",
+                fontSize: "15px",
+                fontWeight: 700,
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}>
+                {restaurant.name}
+              </h3>
+              <p style={{ margin: "5px 0 0", color: "#5f6368", fontSize: "12px" }}>
+                {restaurant.category}
+              </p>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#ffffff", paddingBottom: "60px" }}>
@@ -454,55 +596,13 @@ export const Aggregator: React.FC = () => {
           <h1 style={{
             fontSize: "24px",
             fontWeight: "800",
-            color: "#ff4757",
+            color: "#111111",
             letterSpacing: "-0.5px",
             margin: 0,
             cursor: "pointer"
-          }} onClick={() => navigate("/")}>
+          }} onClick={() => navigate("/restaurants")}>
             Go<span style={{ color: "#2f3542" }}>Eats</span>
           </h1>
-
-          {/* Delivery/Takeout Selector Button Block */}
-          <div className="mobile-hide" style={{
-            display: "flex",
-            backgroundColor: "#f1f3f4",
-            padding: "3px",
-            borderRadius: "30px",
-            gap: "2px"
-          }}>
-            <button
-              onClick={() => setDeliveryMode("delivery")}
-              style={{
-                padding: "8px 18px",
-                borderRadius: "30px",
-                fontSize: "13px",
-                fontWeight: "600",
-                backgroundColor: deliveryMode === "delivery" ? "#ffffff" : "transparent",
-                color: deliveryMode === "delivery" ? "#000000" : "#5f6368",
-                cursor: "pointer",
-                boxShadow: deliveryMode === "delivery" ? "0 2px 5px rgba(0,0,0,0.05)" : "none",
-                transition: "all 0.2s ease"
-              }}
-            >
-              Entrega
-            </button>
-            <button
-              onClick={() => setDeliveryMode("takeout")}
-              style={{
-                padding: "8px 18px",
-                borderRadius: "30px",
-                fontSize: "13px",
-                fontWeight: "600",
-                backgroundColor: deliveryMode === "takeout" ? "#ffffff" : "transparent",
-                color: deliveryMode === "takeout" ? "#000000" : "#5f6368",
-                cursor: "pointer",
-                boxShadow: deliveryMode === "takeout" ? "0 2px 5px rgba(0,0,0,0.05)" : "none",
-                transition: "all 0.2s ease"
-              }}
-            >
-              Para llevar
-            </button>
-          </div>
 
           {/* Search bar inside header */}
           <div className="aggregator-search-bar" style={{
@@ -538,11 +638,11 @@ export const Aggregator: React.FC = () => {
             style={{
               fontSize: "13px",
               fontWeight: "700",
-              color: user?.isPlus ? "#b45309" : "#d97706",
+              color: user?.isPlus ? "#111111" : "#111111",
               padding: "8px 16px",
               borderRadius: "30px",
-              backgroundColor: user?.isPlus ? "#fef3c7" : "rgba(251, 191, 36, 0.08)",
-              border: "1px solid #fbbf24",
+              backgroundColor: user?.isPlus ? "#eeeeee" : "rgba(0, 0, 0, 0.06)",
+              border: "1px solid #333333",
               textDecoration: "none",
               display: "flex",
               alignItems: "center",
@@ -550,8 +650,8 @@ export const Aggregator: React.FC = () => {
               transition: "all 0.2s ease"
             }}
           >
-            <Sparkles size={14} color="#d97706" />
-            {user?.isPlus ? "Miembro Plus ⭐" : "Hazte Plus ✨"}
+            <Sparkles size={14} color="#111111" />
+            {user?.isPlus ? "Miembro Plus" : "Hazte Plus"}
           </Link>
 
           {isAuthenticated && user ? (
@@ -580,7 +680,7 @@ export const Aggregator: React.FC = () => {
                     width: "32px",
                     height: "32px",
                     borderRadius: "50%",
-                    background: "linear-gradient(135deg, #ff4757 0%, #ff6b81 100%)",
+                    background: "linear-gradient(135deg, #111111 0%, #333333 100%)",
                     color: "#ffffff",
                     display: "flex",
                     alignItems: "center",
@@ -588,7 +688,7 @@ export const Aggregator: React.FC = () => {
                     fontSize: "12px",
                     fontWeight: "700",
                     flexShrink: 0,
-                    boxShadow: "0 2px 6px rgba(255, 71, 87, 0.25)"
+                    boxShadow: "0 2px 6px rgba(0, 0, 0, 0.18)"
                   }}
                 >
                   {getInitials(user.name)}
@@ -647,7 +747,7 @@ export const Aggregator: React.FC = () => {
                           width: "38px",
                           height: "38px",
                           borderRadius: "50%",
-                          background: "linear-gradient(135deg, #ff4757 0%, #ff6b81 100%)",
+                          background: "linear-gradient(135deg, #111111 0%, #333333 100%)",
                           color: "#ffffff",
                           display: "flex",
                           alignItems: "center",
@@ -708,12 +808,12 @@ export const Aggregator: React.FC = () => {
                             borderRadius: "12px",
                             fontSize: "11px",
                             fontWeight: "600",
-                            backgroundColor: "#fef3c7",
-                            color: "#b45309",
+                            backgroundColor: "#eeeeee",
+                            color: "#111111",
                             border: "1px solid #fde68a"
                           }}
                         >
-                          Socio Plus ⭐
+                          Socio Plus
                         </span>
                       )}
                     </div>
@@ -741,7 +841,7 @@ export const Aggregator: React.FC = () => {
                           onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f1f5f9")}
                           onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                         >
-                          <ShoppingBag size={16} color="#ff4757" />
+                          <ShoppingBag size={16} color="#111111" />
                           <span>Mis Pedidos</span>
                         </Link>
 
@@ -793,7 +893,7 @@ export const Aggregator: React.FC = () => {
                           onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                         >
                           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                            <Sparkles size={16} color="#d97706" />
+                            <Sparkles size={16} color="#111111" />
                             <span>Mis Preferencias</span>
                           </div>
                           {userPreferences.length > 0 && (
@@ -801,8 +901,8 @@ export const Aggregator: React.FC = () => {
                               style={{
                                 fontSize: "11px",
                                 fontWeight: "700",
-                                backgroundColor: "#fef3c7",
-                                color: "#b45309",
+                                backgroundColor: "#eeeeee",
+                                color: "#111111",
                                 padding: "2px 8px",
                                 borderRadius: "10px"
                               }}
@@ -857,7 +957,7 @@ export const Aggregator: React.FC = () => {
                         onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f1f5f9")}
                         onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                       >
-                        <Store size={16} color="#f59e0b" />
+                        <Store size={16} color="#333333" />
                         <span>Sistema POS</span>
                       </Link>
                     )}
@@ -1037,15 +1137,15 @@ export const Aggregator: React.FC = () => {
                   gap: "8px",
                   fontSize: "14px",
                   fontWeight: "700",
-                  color: "#d97706",
+                  color: "#111111",
                   padding: "12px 16px",
                   borderRadius: "30px",
-                  backgroundColor: "rgba(251, 191, 36, 0.08)",
-                  border: "1px solid #fbbf24",
+                  backgroundColor: "rgba(0, 0, 0, 0.06)",
+                  border: "1px solid #333333",
                   textDecoration: "none"
                 }}
               >
-                Hazte Plus ✨
+                Hazte Plus
               </Link>
 
               <button
@@ -1057,11 +1157,11 @@ export const Aggregator: React.FC = () => {
                   gap: "8px",
                   fontSize: "14px",
                   fontWeight: 600,
-                  color: "#ff4757",
+                  color: "#111111",
                   padding: "12px 16px",
                   borderRadius: "30px",
-                  backgroundColor: "rgba(255, 71, 87, 0.08)",
-                  border: "1px solid rgba(255, 71, 87, 0.2)",
+                  backgroundColor: "rgba(0, 0, 0, 0.08)",
+                  border: "1px solid rgba(0, 0, 0, 0.2)",
                   cursor: "pointer"
                 }}
               >
@@ -1085,13 +1185,13 @@ export const Aggregator: React.FC = () => {
                           fontWeight: 600,
                           padding: "12px 16px",
                           borderRadius: "30px",
-                          color: "#ff4757",
-                          backgroundColor: "rgba(255, 71, 87, 0.05)",
-                          border: "1px solid rgba(255, 71, 87, 0.15)",
+                          color: "#111111",
+                          backgroundColor: "rgba(0, 0, 0, 0.05)",
+                          border: "1px solid rgba(0, 0, 0, 0.15)",
                           textDecoration: "none"
                         }}
                       >
-                        Mis Pedidos 🍔
+                        Mis Pedidos
                       </Link>
 
                       <Link
@@ -1112,7 +1212,7 @@ export const Aggregator: React.FC = () => {
                           textDecoration: "none"
                         }}
                       >
-                        <User size={16} color="#ff4757" />
+                        <User size={16} color="#111111" />
                         Mi Perfil e Información
                       </Link>
                     </>
@@ -1131,13 +1231,13 @@ export const Aggregator: React.FC = () => {
                         fontWeight: 600,
                         padding: "12px 16px",
                         borderRadius: "30px",
-                        color: "#ff4757",
-                        backgroundColor: "rgba(255, 71, 87, 0.05)",
-                        border: "1px solid rgba(255, 71, 87, 0.15)",
+                        color: "#111111",
+                        backgroundColor: "rgba(0, 0, 0, 0.05)",
+                        border: "1px solid rgba(0, 0, 0, 0.15)",
                         textDecoration: "none"
                       }}
                     >
-                      Entregas 🛵
+                      Entregas
                     </Link>
                   )}
 
@@ -1154,13 +1254,13 @@ export const Aggregator: React.FC = () => {
                         fontWeight: 600,
                         padding: "12px 16px",
                         borderRadius: "30px",
-                        color: "#ff4757",
-                        backgroundColor: "rgba(255, 71, 87, 0.05)",
-                        border: "1px solid rgba(255, 71, 87, 0.15)",
+                        color: "#111111",
+                        backgroundColor: "rgba(0, 0, 0, 0.05)",
+                        border: "1px solid rgba(0, 0, 0, 0.15)",
                         textDecoration: "none"
                       }}
                     >
-                      Ir al POS 🖥️
+                      Ir al POS {systemIconForEmoji("🖥️")}
                     </Link>
                   )}
 
@@ -1177,13 +1277,13 @@ export const Aggregator: React.FC = () => {
                         fontWeight: 600,
                         padding: "12px 16px",
                         borderRadius: "30px",
-                        color: "#ff4757",
-                        backgroundColor: "rgba(255, 71, 87, 0.05)",
-                        border: "1px solid rgba(255, 71, 87, 0.15)",
+                        color: "#111111",
+                        backgroundColor: "rgba(0, 0, 0, 0.05)",
+                        border: "1px solid rgba(0, 0, 0, 0.15)",
                         textDecoration: "none"
                       }}
                     >
-                      Panel Admin 🛡️
+                      Panel Admin {systemIconForEmoji("🛡️")}
                     </Link>
                   )}
                 </>
@@ -1221,8 +1321,8 @@ export const Aggregator: React.FC = () => {
                   color: "#3b82f6",
                   padding: "12px 16px",
                   borderRadius: "30px",
-                  backgroundColor: "rgba(59, 130, 246, 0.08)",
-                  border: "1px solid rgba(59, 130, 246, 0.2)",
+                  backgroundColor: "rgba(0, 0, 0, 0.05)",
+                  border: "1px solid rgba(0, 0, 0, 0.15)",
                   cursor: "pointer"
                 }}
               >
@@ -1252,9 +1352,9 @@ export const Aggregator: React.FC = () => {
                     gap: "6px",
                     padding: "10px 16px",
                     borderRadius: "30px",
-                    backgroundColor: "rgba(255, 71, 87, 0.1)",
-                    border: "1px solid rgba(255, 71, 87, 0.2)",
-                    color: "#ff4757",
+                    backgroundColor: "rgba(0, 0, 0, 0.1)",
+                    border: "1px solid rgba(0, 0, 0, 0.2)",
+                    color: "#111111",
                     cursor: "pointer",
                     fontSize: "13px",
                     fontWeight: 600
@@ -1270,7 +1370,7 @@ export const Aggregator: React.FC = () => {
       </nav>
 
       {/* Main Aggregator Body */}
-      <div style={{ maxWidth: "1240px", margin: "0 auto", padding: "0 20px" }}>
+      <div id="goeats-restaurants" style={{ maxWidth: "1240px", margin: "0 auto", padding: "0 20px", scrollMarginTop: "90px" }}>
 
         {/* Categories Bar Horizontal Slider with Navigation Arrows */}
         <div style={{ position: "relative", margin: "10px 0" }}>
@@ -1337,15 +1437,24 @@ export const Aggregator: React.FC = () => {
               WebkitOverflowScrolling: "touch"
             }}
           >
-            {activeCategoriesList.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => setActiveCategory(cat.id)}
+            {activeCategoriesList.map((cat) => {
+              const CategoryIcon = cat.icon;
+              const isSelected = activeCategory === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() => {
+                    setActiveCategory(cat.id);
+                    setActiveSubcategory(null);
+                  }}
                 style={{
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
                   gap: "8px",
+                  width: cat.id === "all" ? "82px" : "150px",
                   flexShrink: 0,
                   cursor: "pointer",
                   background: "none",
@@ -1360,26 +1469,28 @@ export const Aggregator: React.FC = () => {
                   width: "60px",
                   height: "60px",
                   borderRadius: "50%",
-                  backgroundColor: activeCategory === cat.id ? "#ffeef0" : "#f1f3f4",
-                  border: activeCategory === cat.id ? "2px solid #ff4757" : "2px solid transparent",
+                  backgroundColor: isSelected ? "#eeeeee" : "#f1f3f4",
+                  border: isSelected ? "2px solid #111111" : "2px solid transparent",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: "24px",
                   transition: "all 0.2s ease"
                 }}>
-                  {cat.emoji}
+                  <CategoryIcon size={25} strokeWidth={1.8} color={isSelected ? "#111111" : "#5f6368"} />
                 </div>
                 <span style={{
                   fontSize: "11px",
-                  fontWeight: activeCategory === cat.id ? "700" : "500",
-                  color: activeCategory === cat.id ? "#ff4757" : "#202124",
-                  whiteSpace: "nowrap"
+                  fontWeight: isSelected ? "700" : "500",
+                  color: isSelected ? "#111111" : "#202124",
+                  lineHeight: 1.3,
+                  textAlign: "center",
+                  whiteSpace: "normal"
                 }}>
                   {cat.name}
                 </span>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
 
           {/* Right Navigation Arrow */}
@@ -1428,197 +1539,49 @@ export const Aggregator: React.FC = () => {
           )}
         </div>
 
-        {/* Filter Pills / Chips Container */}
-        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "25px" }}>
-          <button
-            onClick={() => setOnlyOffers(prev => !prev)}
-            style={{
-              padding: "8px 16px",
-              borderRadius: "30px",
-              fontSize: "12px",
-              fontWeight: "600",
-              border: "1px solid #cbd5e1",
-              backgroundColor: onlyOffers ? "#ff4757" : "#ffffff",
-              color: onlyOffers ? "#ffffff" : "#202124",
-              cursor: "pointer",
-              transition: "all 0.2s"
-            }}
+        {selectedMainCategory && availableSubcategories.length > 0 && (
+          <div
+            aria-label={`Subcategorías de ${selectedMainCategory.name}`}
+            style={{ display: "flex", flexWrap: "wrap", gap: "8px", margin: "4px 0 22px" }}
           >
-            Ofertas
-          </button>
-          
-          <button
-            onClick={() => setFastDelivery(prev => !prev)}
-            style={{
-              padding: "8px 16px",
-              borderRadius: "30px",
-              fontSize: "12px",
-              fontWeight: "600",
-              border: "1px solid #cbd5e1",
-              backgroundColor: fastDelivery ? "#ff4757" : "#ffffff",
-              color: fastDelivery ? "#ffffff" : "#202124",
-              cursor: "pointer",
-              transition: "all 0.2s"
-            }}
-          >
-            Menos de 20 min
-          </button>
-
-          <button
-            onClick={() => setHighRating(prev => !prev)}
-            style={{
-              padding: "8px 16px",
-              borderRadius: "30px",
-              fontSize: "12px",
-              fontWeight: "600",
-              border: "1px solid #cbd5e1",
-              backgroundColor: highRating ? "#ff4757" : "#ffffff",
-              color: highRating ? "#ffffff" : "#202124",
-              cursor: "pointer",
-              transition: "all 0.2s"
-            }}
-          >
-            Calificación 4.5+ ★
-          </button>
-
-          <select
-            value={sortBy}
-            onChange={(e: any) => setSortBy(e.target.value)}
-            style={{
-              padding: "8px 16px",
-              borderRadius: "30px",
-              fontSize: "12px",
-              fontWeight: "600",
-              border: "1px solid #cbd5e1",
-              backgroundColor: sortBy !== "none" ? "#ff4757" : "#ffffff",
-              color: sortBy !== "none" ? "#ffffff" : "#202124",
-              cursor: "pointer",
-              outline: "none"
-            }}
-          >
-            <option value="none" style={{ color: "#000" }}>Ordenar por</option>
-            <option value="rating" style={{ color: "#000" }}>Mejor Calificación</option>
-            <option value="name" style={{ color: "#000" }}>Nombre (A-Z)</option>
-          </select>
-        </div>
-
-        {/* Double Promo Banners Grid */}
-        {activeCategory === "all" && !searchQuery && (
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-            gap: "20px",
-            marginBottom: "40px"
-          }}>
-            {/* Promo Banner 1: Green */}
-            <div style={{
-              background: "linear-gradient(135deg, #10ac84 0%, #1dd1a1 100%)",
-              borderRadius: "20px",
-              padding: "35px 30px",
-              color: "#ffffff",
-              position: "relative",
-              overflow: "hidden",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-between",
-              minHeight: "210px"
-            }}>
-              <div style={{ zIndex: 2 }}>
-                <h2 style={{ fontSize: "clamp(20px, 4vw, 26px)", fontWeight: "800", color: "#ffffff", lineHeight: "1.2", margin: "0 0 10px 0" }}>
-                  Contraataca los antojos con ofertas ganadoras
-                </h2>
-                <p style={{ fontSize: "14px", opacity: 0.9, margin: 0, maxWidth: "280px" }}>
-                  Disfruta hoy de hasta 40% de descuento en locales seleccionados.
-                </p>
-              </div>
-              <button
-                onClick={() => setOnlyOffers(true)}
-                style={{
-                  alignSelf: "flex-start",
-                  backgroundColor: "#ffffff",
-                  color: "#10ac84",
-                  fontSize: "13px",
-                  fontWeight: "700",
-                  padding: "10px 20px",
-                  borderRadius: "30px",
-                  cursor: "pointer",
-                  marginTop: "15px",
-                  zIndex: 2,
-                  border: "none",
-                  transition: "all 0.2s"
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.03)"}
-                onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
-              >
-                Disfruta ahora
-              </button>
-              {/* Mock visual element */}
-              <div style={{
-                position: "absolute",
-                right: "-20px",
-                bottom: "-30px",
-                fontSize: "140px",
-                opacity: 0.15,
-                pointerEvents: "none"
-              }}>
-                🍔
-              </div>
-            </div>
-
-            {/* Promo Banner 2: Dark / Sunset Orange */}
-            <div style={{
-              background: "linear-gradient(135deg, #2f3542 0%, #ff7f50 100%)",
-              borderRadius: "20px",
-              padding: "35px 30px",
-              color: "#ffffff",
-              position: "relative",
-              overflow: "hidden",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-between",
-              minHeight: "210px"
-            }}>
-              <div style={{ zIndex: 2 }}>
-                <h2 style={{ fontSize: "clamp(20px, 4vw, 26px)", fontWeight: "800", color: "#ffffff", lineHeight: "1.2", margin: "0 0 10px 0" }}>
-                  Hazte Plus ✨
-                </h2>
-                <p style={{ fontSize: "14px", opacity: 0.9, margin: 0, maxWidth: "280px" }}>
-                  Disfruta de envíos gratis ilimitados y beneficios exclusivos en tus pedidos.
-                </p>
-              </div>
-              <button
-                onClick={() => navigate("/plus")}
-                style={{
-                  alignSelf: "flex-start",
-                  backgroundColor: "#ffffff",
-                  color: "#2f3542",
-                  fontSize: "13px",
-                  fontWeight: "700",
-                  padding: "10px 20px",
-                  borderRadius: "30px",
-                  cursor: "pointer",
-                  marginTop: "15px",
-                  zIndex: 2,
-                  border: "none",
-                  transition: "all 0.2s"
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.03)"}
-                onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
-              >
-                Únete ahora
-              </button>
-              {/* Mock visual element */}
-              <div style={{
-                position: "absolute",
-                right: "-20px",
-                bottom: "-30px",
-                fontSize: "140px",
-                opacity: 0.15,
-                pointerEvents: "none"
-              }}>
-                🛵
-              </div>
-            </div>
+            <button
+              type="button"
+              onClick={() => setActiveSubcategory(null)}
+              aria-pressed={activeSubcategory === null}
+              style={{
+                padding: "8px 14px",
+                border: `1px solid ${activeSubcategory === null ? "#111111" : "#e0e0e0"}`,
+                borderRadius: "999px",
+                color: activeSubcategory === null ? "#111111" : "#5f6368",
+                background: activeSubcategory === null ? "#f1f1f1" : "#ffffff",
+                fontSize: "12px",
+                fontWeight: 600,
+              }}
+            >
+              Todas
+            </button>
+            {availableSubcategories.map((subcategory) => {
+              const isSelected = activeSubcategory === subcategory.id;
+              return (
+                <button
+                  key={subcategory.id}
+                  type="button"
+                  onClick={() => setActiveSubcategory(isSelected ? null : subcategory.id)}
+                  aria-pressed={isSelected}
+                  style={{
+                    padding: "8px 14px",
+                    border: `1px solid ${isSelected ? "#111111" : "#e0e0e0"}`,
+                    borderRadius: "999px",
+                    color: isSelected ? "#111111" : "#5f6368",
+                    background: isSelected ? "#f1f1f1" : "#ffffff",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                  }}
+                >
+                  {subcategory.name}
+                </button>
+              );
+            })}
           </div>
         )}
 
@@ -1637,7 +1600,7 @@ export const Aggregator: React.FC = () => {
             ))}
           </div>
         ) : error ? (
-          <div style={{ padding: "40px", textAlign: "center", color: "#ff4757", border: "1px solid #cbd5e1", borderRadius: "12px", marginTop: "20px" }}>
+          <div style={{ padding: "40px", textAlign: "center", color: "#111111", border: "1px solid #cbd5e1", borderRadius: "12px", marginTop: "20px" }}>
             <p>Error de conexión: {error}</p>
           </div>
         ) : filteredRestaurants.length === 0 ? (
@@ -1653,10 +1616,10 @@ export const Aggregator: React.FC = () => {
             {activeCategory === "all" && !searchQuery && (
               userPreferences.length > 0 && recommendedRestaurants.length > 0 ? (
                 <div style={{
-                  backgroundColor: "rgba(255, 71, 87, 0.02)",
+                  backgroundColor: "rgba(0, 0, 0, 0.02)",
                   borderRadius: "24px",
                   padding: "24px 20px",
-                  border: "1px solid rgba(255, 71, 87, 0.12)",
+                  border: "1px solid rgba(0, 0, 0, 0.12)",
                 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "18px", flexWrap: "wrap", gap: "10px" }}>
                     <div>
@@ -1666,7 +1629,7 @@ export const Aggregator: React.FC = () => {
                         gap: "6px",
                         fontSize: "12px",
                         fontWeight: 700,
-                        color: "#ff4757",
+                        color: "#111111",
                         textTransform: "uppercase",
                         letterSpacing: "0.5px",
                         marginBottom: "4px"
@@ -1680,17 +1643,21 @@ export const Aggregator: React.FC = () => {
                         {userPreferences.map((prefId) => {
                           const cat = FOOD_PREFERENCE_CATEGORIES.find(c => c.id === prefId);
                           if (!cat) return null;
+                          const CategoryIcon = cat.icon;
                           return (
                             <span key={prefId} style={{
                               fontSize: "12px",
                               backgroundColor: "#ffffff",
-                              border: "1px solid #ffd1d6",
-                              color: "#d63031",
+                              border: "1px solid #d6d6d6",
+                              color: "#111111",
                               padding: "2px 8px",
                               borderRadius: "12px",
-                              fontWeight: 600
+                              fontWeight: 600,
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "5px",
                             }}>
-                              {cat.emoji} {cat.name}
+                              <CategoryIcon size={13} /> {cat.name}
                             </span>
                           );
                         })}
@@ -1704,14 +1671,14 @@ export const Aggregator: React.FC = () => {
                         alignItems: "center",
                         gap: "6px",
                         fontSize: "12px",
-                        color: "#ff4757",
+                        color: "#111111",
                         fontWeight: "700",
                         cursor: "pointer",
                         background: "#ffffff",
-                        border: "1px solid rgba(255, 71, 87, 0.3)",
+                        border: "1px solid rgba(0, 0, 0, 0.3)",
                         borderRadius: "20px",
                         padding: "6px 14px",
-                        boxShadow: "0 2px 5px rgba(255, 71, 87, 0.08)",
+                        boxShadow: "0 2px 5px rgba(0, 0, 0, 0.08)",
                       }}
                     >
                       <SlidersHorizontal size={13} />
@@ -1772,7 +1739,7 @@ export const Aggregator: React.FC = () => {
                             alignItems: "center",
                             gap: "4px"
                           }}>
-                            <Sparkles size={11} color="#fbbf24" /> Recomendado
+                            <Sparkles size={11} color="#333333" /> Recomendado
                           </div>
 
                           {isAuthenticated && (
@@ -1791,10 +1758,10 @@ export const Aggregator: React.FC = () => {
                                 alignItems: "center",
                                 justifyContent: "center",
                                 cursor: "pointer",
-                                color: favorites.includes(rest.id) ? "#ff4757" : "#5f6368"
+                                color: favorites.includes(rest.id) ? "#111111" : "#5f6368"
                               }}
                             >
-                              <Heart size={16} fill={favorites.includes(rest.id) ? "#ff4757" : "none"} />
+                              <Heart size={16} fill={favorites.includes(rest.id) ? "#111111" : "none"} />
                             </button>
                           )}
                         </div>
@@ -1814,7 +1781,7 @@ export const Aggregator: React.FC = () => {
                               padding: "2px 6px",
                               borderRadius: "6px"
                             }}>
-                              <Star size={12} fill="#ff4757" color="#ff4757" />
+                              <Star size={12} fill="#111111" color="#111111" />
                               <span>{rest.rating}</span>
                             </div>
                           </div>
@@ -1826,72 +1793,20 @@ export const Aggregator: React.FC = () => {
                     ))}
                   </div>
                 </div>
-              ) : userPreferences.length === 0 ? (
-                /* Recommendation Teaser Banner */
-                <div style={{
-                  background: "linear-gradient(135deg, #fff5f5 0%, #ffe3e3 100%)",
-                  borderRadius: "20px",
-                  padding: "24px 28px",
-                  border: "1px solid #ffd1d6",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: "20px",
-                  flexWrap: "wrap",
-                }}>
-                  <div style={{ maxWidth: "560px" }}>
-                    <div style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "6px",
-                      fontSize: "11px",
-                      fontWeight: 800,
-                      color: "#e84118",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                      marginBottom: "6px",
-                    }}>
-                      <Sparkles size={14} /> Recomendaciones a tu medida
-                    </div>
-                    <h3 style={{ fontSize: "18px", fontWeight: 800, color: "#2f3640", margin: "0 0 6px 0" }}>
-                      ¿Qué se te antoja comer hoy?
-                    </h3>
-                    <p style={{ fontSize: "13px", color: "#718093", margin: 0, lineHeight: "1.4" }}>
-                      Elige tus categorías y comidas preferidas (hamburguesas, pizza, sushi, tacos...) y te recomendaremos los mejores platos y locales destacados.
-                    </p>
-                  </div>
-
-                  <button
-                    onClick={() => setPreferencesModalOpen(true)}
-                    style={{
-                      background: "linear-gradient(135deg, #ff4757, #ff6b81)",
-                      color: "#ffffff",
-                      border: "none",
-                      borderRadius: "30px",
-                      padding: "12px 22px",
-                      fontSize: "13px",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      boxShadow: "0 4px 14px rgba(255, 71, 87, 0.3)",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <SlidersHorizontal size={15} />
-                    Personalizar mis preferencias
-                  </button>
-                </div>
-              ) : null
+              ) : (
+                null
+              )
             )}
 
-            {/* SECTION 1: Favoritos Nacionales (Carousel) */}
-            {activeCategory === "all" && !searchQuery && popularRestaurants.length > 0 && (
+            {activeCategory === "all" && !searchQuery && newRestaurants.length > 0 &&
+              renderRestaurantSection("Nuevos restaurantes", newRestaurants, "new", "Nuevo en GoEats")}
+
+            {/* SECTION 1: Most ordered this week */}
+            {activeCategory === "all" && !searchQuery && filteredRestaurants.length > 0 && (
               <div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px" }}>
                   <h2 style={{ fontSize: "22px", fontWeight: "800", color: "#202124", margin: 0 }}>
-                    Favoritos nacionales
+                    Lo más pedido esta semana
                   </h2>
                   <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                     <span style={{ fontSize: "12px", color: "#5f6368", fontWeight: "600", cursor: "pointer" }}>Ver todos</span>
@@ -1944,21 +1859,22 @@ export const Aggregator: React.FC = () => {
                   </div>
                 </div>
 
-                <div
-                  ref={popularRef}
-                  className="no-scrollbar"
-                  style={{
-                    display: "flex",
-                    gap: "20px",
-                    overflowX: "auto",
-                    paddingBottom: "10px",
-                    scrollBehavior: "smooth"
-                  }}
-                >
-                  {popularRestaurants.map((rest) => (
+                {weeklyTopRestaurants.length > 0 ? (
+                  <div
+                    ref={popularRef}
+                    className="no-scrollbar"
+                    style={{
+                      display: "flex",
+                      gap: "20px",
+                      overflowX: "auto",
+                      paddingBottom: "10px",
+                      scrollBehavior: "smooth"
+                    }}
+                  >
+                    {weeklyTopRestaurants.map((rest) => (
                     <Link
                       to={`/r/${rest.slug}`}
-                      key={`fav-${rest.id}`}
+                      key={`weekly-${rest.id}`}
                       style={{
                         width: "320px",
                         flexShrink: 0,
@@ -1992,7 +1908,7 @@ export const Aggregator: React.FC = () => {
                             position: "absolute",
                             top: "15px",
                             left: "0px",
-                            backgroundColor: "#ff4757",
+                            backgroundColor: "#111111",
                             color: "#ffffff",
                             padding: "4px 10px",
                             fontSize: "11px",
@@ -2028,8 +1944,8 @@ export const Aggregator: React.FC = () => {
                           >
                             <Heart
                               size={16}
-                              fill={favorites.includes(rest.id) ? "#ff4757" : "none"}
-                              color={favorites.includes(rest.id) ? "#ff4757" : "#5f6368"}
+                              fill={favorites.includes(rest.id) ? "#111111" : "none"}
+                              color={favorites.includes(rest.id) ? "#111111" : "#5f6368"}
                             />
                           </button>
                         )}
@@ -2065,46 +1981,42 @@ export const Aggregator: React.FC = () => {
                           <div style={{
                             display: "flex",
                             alignItems: "center",
-                            gap: "2px",
+                            gap: "4px",
                             backgroundColor: "#f1f3f4",
-                            padding: "3px 6px",
-                            borderRadius: "12px",
+                            padding: "4px 8px",
+                            borderRadius: "999px",
                             fontSize: "12px",
                             fontWeight: "700",
                             flexShrink: 0,
                             marginLeft: "8px"
                           }}>
-                            <Star size={12} fill="#000000" color="#000000" />
-                            <span>{rest.rating}</span>
+                            <span>{rest.ordersThisWeek} pedidos</span>
                           </div>
                         </div>
-                        <div style={{ display: "flex", gap: "5px", fontSize: "12px", color: "#5f6368", marginTop: "3px", alignItems: "center" }}>
-                          <span>{rest.reviews}</span>
-                          <span>•</span>
-                          <span>{rest.deliveryTime}</span>
-                          {rest.specialLabel && (
-                            <>
-                              <span>•</span>
-                              <span style={{ color: "#ff4757", fontWeight: "700" }}>{rest.specialLabel}</span>
-                            </>
-                          )}
-                        </div>
-                        <div style={{ fontSize: "12px", color: "#80868b", marginTop: "2px" }}>
-                          {rest.deliveryCost}
+                        <div style={{ fontSize: "12px", color: "#5f6368", marginTop: "3px" }}>
+                          {rest.category}
                         </div>
                       </div>
                     </Link>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{ margin: 0, padding: "18px 20px", borderRadius: "12px", backgroundColor: "#f8f9fa", color: "#5f6368", fontSize: "14px" }}>
+                    Aún no hay pedidos registrados esta semana.
+                  </p>
+                )}
               </div>
             )}
 
-            {/* SECTION 2: Las ofertas más populares (Carousel) */}
+            {activeCategory === "all" && !searchQuery && samePriceRestaurants.length > 0 &&
+              renderRestaurantSection("Mismo precio que en el local", samePriceRestaurants, "same-price", "Precio del local")}
+
+            {/* SECTION 2: Restaurant offers */}
             {activeCategory === "all" && !searchQuery && offerRestaurants.length > 0 && (
-              <div>
+              <div id="popular-offers">
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px" }}>
                   <h2 style={{ fontSize: "22px", fontWeight: "800", color: "#202124", margin: 0 }}>
-                    Las ofertas más populares
+                    Ofertas de restaurantes
                   </h2>
                   <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                     <span style={{ fontSize: "12px", color: "#5f6368", fontWeight: "600", cursor: "pointer" }}>Ver todos</span>
@@ -2204,7 +2116,7 @@ export const Aggregator: React.FC = () => {
                           position: "absolute",
                           top: "15px",
                           left: "0px",
-                          backgroundColor: "#ff4757",
+                          backgroundColor: "#111111",
                           color: "#ffffff",
                           padding: "4px 10px",
                           fontSize: "11px",
@@ -2241,8 +2153,8 @@ export const Aggregator: React.FC = () => {
                           >
                             <Heart
                               size={16}
-                              fill={favorites.includes(rest.id) ? "#ff4757" : "none"}
-                              color={favorites.includes(rest.id) ? "#ff4757" : "#5f6368"}
+                              fill={favorites.includes(rest.id) ? "#111111" : "none"}
+                              color={favorites.includes(rest.id) ? "#111111" : "#5f6368"}
                             />
                           </button>
                         )}
@@ -2352,7 +2264,7 @@ export const Aggregator: React.FC = () => {
                           position: "absolute",
                           top: "15px",
                           left: "0px",
-                          backgroundColor: "#ff4757",
+                          backgroundColor: "#111111",
                           color: "#ffffff",
                           padding: "4px 12px",
                           fontSize: "11px",
@@ -2387,8 +2299,8 @@ export const Aggregator: React.FC = () => {
                         >
                           <Heart
                             size={16}
-                            fill={favorites.includes(rest.id) ? "#ff4757" : "none"}
-                            color={favorites.includes(rest.id) ? "#ff4757" : "#5f6368"}
+                            fill={favorites.includes(rest.id) ? "#111111" : "none"}
+                            color={favorites.includes(rest.id) ? "#111111" : "#5f6368"}
                           />
                         </button>
                       )}
@@ -2434,7 +2346,7 @@ export const Aggregator: React.FC = () => {
                           justifyContent: "center",
                           fontSize: "18px",
                           fontWeight: "bold",
-                          color: "#ff4757"
+                          color: "#111111"
                         }}>
                           {rest.name[0].toUpperCase()}
                         </div>
@@ -2477,8 +2389,8 @@ export const Aggregator: React.FC = () => {
                             <>
                               <span>•</span>
                               <span style={{
-                                backgroundColor: "#ffeef0",
-                                color: "#ff4757",
+                                backgroundColor: "#eeeeee",
+                                color: "#111111",
                                 padding: "2px 6px",
                                 borderRadius: "4px",
                                 fontWeight: "600",
@@ -2508,14 +2420,14 @@ export const Aggregator: React.FC = () => {
         backgroundColor: "#f8f9fa"
       }}>
         <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "8px", marginBottom: "15px" }}>
-          <Utensils size={24} color="#ff4757" />
+          <Utensils size={24} color="#111111" />
           <strong style={{ fontSize: "18px", color: "#202124" }}>GoEats Marketplace</strong>
         </div>
         <p style={{ color: "#5f6368", fontSize: "13px", margin: "0 0 10px 0" }}>
           &copy; {new Date().getFullYear()} GoEats SaaS Platform. Todos los derechos reservados.
         </p>
         <div style={{ display: "flex", justifyContent: "center", gap: "20px", fontSize: "13px" }}>
-          <Link to="/auth" style={{ color: "#ff4757", fontWeight: "600", textDecoration: "underline" }}>
+          <Link to="/login?role=restaurant&mode=register" style={{ color: "#111111", fontWeight: "600", textDecoration: "underline" }}>
             Inscribir Establecimiento
           </Link>
           <span style={{ color: "#cbd5e1" }}>|</span>

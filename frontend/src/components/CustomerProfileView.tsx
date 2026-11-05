@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiRequest } from "../utils/api";
 import { 
@@ -19,8 +19,11 @@ import {
   Trash2,
   AlertTriangle
 } from "lucide-react";
-import { FoodPreferencesModal, FOOD_PREFERENCE_CATEGORIES } from "./FoodPreferencesModal";
+import { FoodPreferencesModal } from "./FoodPreferencesModal";
+import { FOOD_PREFERENCE_CATEGORIES, normalizeFoodPreferences } from "../utils/foodPreferences";
 import { Link } from "react-router-dom";
+import { systemIconForEmoji } from "../utils/systemIcons";
+
 
 export const CustomerProfileView: React.FC = () => {
   const { user, updateUser, logout } = useAuth();
@@ -54,11 +57,7 @@ export const CustomerProfileView: React.FC = () => {
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchProfile();
-  }, []);
-
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     try {
       setLoading(true);
       setErrorMsg(null);
@@ -72,7 +71,7 @@ export const CustomerProfileView: React.FC = () => {
         setUsername(u.username || "");
         setCreatedAt(u.createdAt || "");
         setIsPlus(u.isPlus || false);
-        setPreferences(u.preferences || []);
+        setPreferences(normalizeFoodPreferences(u.preferences || []));
 
         updateUser({
           name: u.name,
@@ -84,7 +83,7 @@ export const CustomerProfileView: React.FC = () => {
           preferences: u.preferences,
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.warn("Error loading profile:", err);
       // Fallback to local user
       if (user) {
@@ -98,7 +97,7 @@ export const CustomerProfileView: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [updateUser, user]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,7 +122,12 @@ export const CustomerProfileView: React.FC = () => {
 
     try {
       setSaving(true);
-      const payload: any = {
+      const payload: {
+        name: string;
+        phone: string | null;
+        cedula: string | null;
+        password?: string;
+      } = {
         name: name.trim(),
         phone: phone.trim() || null,
         cedula: cedula.trim() || null,
@@ -154,8 +158,9 @@ export const CustomerProfileView: React.FC = () => {
       } else {
         setErrorMsg(res.message || "No se pudo actualizar el perfil.");
       }
-    } catch (err: any) {
-      setErrorMsg(err.message || "Error al conectar con el servidor.");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Error al conectar con el servidor.";
+      setErrorMsg(message);
     } finally {
       setSaving(false);
     }
@@ -180,12 +185,21 @@ export const CustomerProfileView: React.FC = () => {
       } else {
         setDeleteError(res.message || "No se pudo eliminar la cuenta.");
       }
-    } catch (err: any) {
-      setDeleteError(err.message || "Error al procesar la eliminación de la cuenta.");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Error al procesar la eliminación de la cuenta.";
+      setDeleteError(message);
     } finally {
       setDeletingAccount(false);
     }
   };
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void fetchProfile();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [fetchProfile]);
 
   const formattedDate = createdAt
     ? new Date(createdAt).toLocaleDateString("es-ES", {
@@ -330,7 +344,7 @@ export const CustomerProfileView: React.FC = () => {
               }}
             >
               <Crown size={15} />
-              Hazte Plus ✨
+              Hazte Plus {systemIconForEmoji("✨")}
             </Link>
           )}
         </div>
@@ -685,26 +699,29 @@ export const CustomerProfileView: React.FC = () => {
 
           {selectedPrefCategories.length > 0 ? (
             <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginTop: "12px" }}>
-              {selectedPrefCategories.map((cat) => (
-                <div
-                  key={cat.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    padding: "8px 14px",
-                    borderRadius: "30px",
-                    backgroundColor: "#f8fafc",
-                    border: "1px solid #e2e8f0",
-                    fontSize: "13px",
-                    fontWeight: "600",
-                    color: "#334155",
-                  }}
-                >
-                  <span style={{ fontSize: "16px" }}>{cat.emoji}</span>
-                  <span>{cat.name}</span>
-                </div>
-              ))}
+              {selectedPrefCategories.map((cat) => {
+                const CategoryIcon = cat.icon;
+                return (
+                  <div
+                    key={cat.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                      padding: "8px 14px",
+                      borderRadius: "30px",
+                      backgroundColor: "#f8fafc",
+                      border: "1px solid #e2e8f0",
+                      fontSize: "13px",
+                      fontWeight: "600",
+                      color: "#334155",
+                    }}
+                  >
+                    <CategoryIcon size={16} />
+                    <span>{cat.name}</span>
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div style={{ padding: "20px", textAlign: "center", backgroundColor: "#f8fafc", borderRadius: "12px", border: "1px dashed #cbd5e1" }}>
@@ -882,7 +899,7 @@ export const CustomerProfileView: React.FC = () => {
 
             {deleteError && (
               <div style={{ fontSize: "12px", color: "#ef4444", fontWeight: "600" }}>
-                ⚠️ {deleteError}
+                {systemIconForEmoji("⚠️")} {deleteError}
               </div>
             )}
 

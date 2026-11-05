@@ -87,9 +87,15 @@ export async function updateRestaurant(req: Request, res: Response, next: NextFu
       reference,
       openingHours,
       faqsJson,
+      samePriceAsLocal,
+      promoText,
       categoryIds,
       subcategoryIds,
     } = req.body;
+
+    if (typeof promoText === "string" && promoText.length > 191) {
+      return res.status(400).json({ success: false, message: "La oferta no puede superar 191 caracteres." });
+    }
 
     const parsedLat = (mapLatitude !== undefined && mapLatitude !== null && mapLatitude !== "") ? parseFloat(mapLatitude) : null;
     const parsedLng = (mapLongitude !== undefined && mapLongitude !== null && mapLongitude !== "") ? parseFloat(mapLongitude) : null;
@@ -118,6 +124,8 @@ export async function updateRestaurant(req: Request, res: Response, next: NextFu
         reference,
         openingHours,
         faqsJson,
+        samePriceAsLocal: typeof samePriceAsLocal === "boolean" ? samePriceAsLocal : undefined,
+        promoText: typeof promoText === "string" ? (promoText.trim() || null) : undefined,
         categories: categoryIds ? { set: categoryIds.map((cid: number) => ({ id: cid })) } : undefined,
         subcategories: subcategoryIds ? { set: subcategoryIds.map((sid: number) => ({ id: sid })) } : undefined,
         isActive: req.user?.role === "SUPER_ADMIN" ? isActive : undefined, // Only SuperAdmin can activate/deactivate
@@ -248,8 +256,13 @@ export async function getPublicRestaurantCatalog(req: Request, res: Response, ne
 
 export async function getPublicRestaurantList(req: Request, res: Response, next: NextFunction) {
   try {
+    const startOfWeek = new Date();
+    startOfWeek.setDate(startOfWeek.getDate() - ((startOfWeek.getDay() + 6) % 7));
+    startOfWeek.setHours(0, 0, 0, 0);
+
     const restaurants = await prisma.restaurant.findMany({
       where: { isActive: true },
+      orderBy: { createdAt: "desc" },
       select: {
         id: true,
         name: true,
@@ -259,6 +272,9 @@ export async function getPublicRestaurantList(req: Request, res: Response, next:
         description: true,
         address: true,
         phone: true,
+        createdAt: true,
+        samePriceAsLocal: true,
+        promoText: true,
         categories: {
           select: { id: true, name: true }
         },
@@ -268,7 +284,26 @@ export async function getPublicRestaurantList(req: Request, res: Response, next:
       },
     });
 
-    return res.status(200).json({ success: true, restaurants });
+    const weeklyOrderCounts = await prisma.order.groupBy({
+      by: ["restaurantId"],
+      where: {
+        restaurantId: { in: restaurants.map((restaurant) => restaurant.id) },
+        createdAt: { gte: startOfWeek },
+        status: { not: OrderStatus.CANCELLED },
+      },
+      _count: { _all: true },
+    });
+    const orderCountByRestaurantId = new Map(
+      weeklyOrderCounts.map((entry) => [entry.restaurantId, entry._count._all])
+    );
+
+    return res.status(200).json({
+      success: true,
+      restaurants: restaurants.map((restaurant) => ({
+        ...restaurant,
+        ordersThisWeek: orderCountByRestaurantId.get(restaurant.id) || 0,
+      })),
+    });
   } catch (error) {
     next(error);
   }
@@ -537,7 +572,7 @@ export async function callWaiterFromTable(req: Request, res: Response, next: Nex
 
     const isBill = action === "BILL";
     const notifType = isBill ? "BILL" : "CALL_WAITER";
-    const title = isBill ? "🧾 ¡Solicitud de Cuenta!" : "🛎️ ¡Llamado de Mesa!";
+    const title = isBill ? " ¡Solicitud de Cuenta!" : " ¡Llamado de Mesa!";
     const message = isBill
       ? `La Mesa ${table.number} (${table.diningArea.name}) está solicitando la cuenta para pagar.`
       : `La Mesa ${table.number} (${table.diningArea.name}) solicita la atención de un mesero.`;
@@ -896,5 +931,3 @@ export async function reviewRestaurant(req: Request, res: Response, next: NextFu
     next(error);
   }
 }
-
-

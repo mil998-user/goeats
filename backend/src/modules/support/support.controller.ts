@@ -72,7 +72,7 @@ export class SupportController {
       ${phone ? `
       <div class="field">
         <div class="field-label">Teléfono / WhatsApp</div>
-        <div class="field-value"><a href="https://wa.me/${phone.replace(/[^0-9]/g, "")}" style="color: #10b981; text-decoration: none;">💬 +${phone} (Clic para chatear)</a></div>
+        <div class="field-value"><a href="https://wa.me/${phone.replace(/[^0-9]/g, "")}" style="color: #10b981; text-decoration: none;"> +${phone} (Clic para chatear)</a></div>
       </div>` : ""}
       <div class="field">
         <div class="field-label">Categoría &bull; Asunto</div>

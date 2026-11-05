@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { RouteMap } from "../components/RouteMap";
 import { SupportModal } from "../components/SupportModal";
+import { systemIconForEmoji, systemTextWithIcons } from "../utils/systemIcons";
+
 
 interface Order {
   id: number;
@@ -209,7 +211,7 @@ export const DeliveryDashboard: React.FC = () => {
     let pinToSend: string | undefined = undefined;
 
     if (requiresPin) {
-      const enteredPin = prompt("🔒 INGRESE EL PIN DE 4 DÍGITOS DEL CLIENTE (PEDIDOSYA STYLE):\n(El cliente tiene este código en su pantalla de seguimiento para validar la entrega)");
+      const enteredPin = prompt("INGRESE EL PIN DE 4 DÍGITOS DEL CLIENTE (PEDIDOSYA STYLE):\n(El cliente tiene este código en su pantalla de seguimiento para validar la entrega)");
       if (enteredPin === null) return; // cancelado
       if (!enteredPin.trim()) {
         alert("Debes ingresar el PIN de 4 dígitos proporcionado por el cliente.");
@@ -227,7 +229,7 @@ export const DeliveryDashboard: React.FC = () => {
         body: JSON.stringify({ pin: pinToSend }),
       });
       if (res.success) {
-        alert("🎉 ¡Entrega verificada y completada con éxito!");
+        alert("¡Entrega verificada y completada con éxito!");
         loadData();
       }
     } catch (err: any) {
@@ -369,7 +371,7 @@ export const DeliveryDashboard: React.FC = () => {
           { id: "available", label: `Pedidos Disponibles (${availableOrders.length})`, icon: Clock },
           { id: "active", label: `Mis Entregas (${activeOrders.length})`, icon: Truck },
           { id: "wallet", label: "Mi Billetera", icon: Wallet },
-          { id: "saas_plans", label: "Planes de Recarga 🎫", icon: Wallet }
+          { id: "saas_plans", label: systemTextWithIcons("Planes de Recarga 🎫"), icon: Wallet }
         ].map((t) => {
           const Icon = t.icon;
           return (
@@ -461,7 +463,7 @@ export const DeliveryDashboard: React.FC = () => {
                             transition: "all 0.2s ease"
                           }}
                         >
-                          <span>🗺️ {showMapForOrder[order.id] ? "Ocultar Mapa" : "Ver Ruta en Mapa"}</span>
+                          <span>{systemIconForEmoji("🗺️")} {showMapForOrder[order.id] ? "Ocultar Mapa" : "Ver Ruta en Mapa"}</span>
                         </button>
                       </div>
 
@@ -686,7 +688,7 @@ export const DeliveryDashboard: React.FC = () => {
                             <div style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "13px" }}>
                               {order.items.map((it) => (
                                 <div key={it.id} style={{ display: "flex", justifyContent: "space-between" }}>
-                                  <span>🛒 {it.quantity}x {it.variant.menuItem.name} ({it.variant.name})</span>
+                                  <span>{systemIconForEmoji("🛒")} {it.quantity}x {it.variant.menuItem.name} ({it.variant.name})</span>
                                   <span>${(it.price * it.quantity).toFixed(2)}</span>
                                 </div>
                               ))}
@@ -706,7 +708,7 @@ export const DeliveryDashboard: React.FC = () => {
                                 gap: "8px",
                               }}>
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                  <span style={{ fontSize: "14px", fontWeight: "bold", color: "#3498db" }}>💵 Pagar proveedor:</span>
+                                  <span style={{ fontSize: "14px", fontWeight: "bold", color: "#3498db" }}>{systemIconForEmoji("💵")} Pagar proveedor:</span>
                                   <span style={{ fontSize: "16px", fontWeight: "bold", color: "#3498db" }}>
                                     ${order.financialBreakdown.providerPayAmount.toFixed(2)}
                                   </span>
@@ -716,7 +718,7 @@ export const DeliveryDashboard: React.FC = () => {
                                 </p>
 
                                 <div style={{ fontSize: "11px", color: "#e8eaed", marginTop: "4px" }}>
-                                  🎁 GoEats le pagará <strong>${order.financialBreakdown.driverBonus.toFixed(2)} extras</strong> por este pedido. Recuerde siempre cobrar al cliente lo que marca.
+                                  {systemIconForEmoji("🎁")} GoEats le pagará <strong>${order.financialBreakdown.driverBonus.toFixed(2)} extras</strong> por este pedido. Recuerde siempre cobrar al cliente lo que marca.
                                 </div>
 
                                 <div style={{
@@ -742,7 +744,7 @@ export const DeliveryDashboard: React.FC = () => {
                                   alignItems: "center",
                                   marginTop: "4px"
                                 }}>
-                                  <span style={{ fontSize: "14px", fontWeight: "bold", color: "var(--success)" }}>🧾 Cobrar cliente:</span>
+                                  <span style={{ fontSize: "14px", fontWeight: "bold", color: "var(--success)" }}>{systemIconForEmoji("🧾")} Cobrar cliente:</span>
                                   <span style={{ fontSize: "17px", fontWeight: "bold", color: "var(--success)" }}>
                                     ${order.financialBreakdown.customerTotal.toFixed(2)}
                                   </span>
@@ -863,7 +865,7 @@ export const DeliveryDashboard: React.FC = () => {
                               }}
                             >
                               <CheckCircle size={16} />
-                              {order.requiresPin ? "🔒 Completar con PIN del Cliente" : "Completar y Entregar Pedido"}
+                              {order.requiresPin ? systemTextWithIcons("🔒 Completar con PIN del Cliente") : "Completar y Entregar Pedido"}
                             </button>
                           </div>
                         )}
@@ -909,7 +911,7 @@ export const DeliveryDashboard: React.FC = () => {
                   color: isDebtLocked ? "#e74c3c" : "#2ecc71",
                   marginBottom: "15px"
                 }}>
-                  {isDebtLocked ? "⚠️ CUENTA PAUSADA POR DEUDA" : "✓ ESTADO ACTIVO"}
+                  {isDebtLocked ? systemTextWithIcons("⚠️ CUENTA PAUSADA POR DEUDA") : "✓ ESTADO ACTIVO"}
                 </div>
 
                 <div style={{
@@ -1045,7 +1047,7 @@ export const DeliveryDashboard: React.FC = () => {
                           }}
                           style={{ padding: "8px", fontSize: "0.85rem" }}
                         >
-                          💳 Tarjeta
+                          {systemIconForEmoji("💳")} Tarjeta
                         </button>
                         <button
                           type="button"
@@ -1056,7 +1058,7 @@ export const DeliveryDashboard: React.FC = () => {
                           }}
                           style={{ padding: "8px", fontSize: "0.85rem" }}
                         >
-                          🏦 Transferencia
+                          {systemIconForEmoji("🏦")} Transferencia
                         </button>
                       </div>
                     </div>

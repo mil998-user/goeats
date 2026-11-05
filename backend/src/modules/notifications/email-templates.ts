@@ -212,7 +212,7 @@ export function renderEmailTemplate(
     // CLIENTES
     // ==========================================
     case NotificationEvent.CUSTOMER_WELCOME: {
-      const subject = `🎉 ¡Bienvenido a Go Eats, ${recipientName}! Tu cuenta está lista`;
+      const subject = ` ¡Bienvenido a Go Eats, ${recipientName}! Tu cuenta está lista`;
       const html = renderBaseLayout({
         title: "¡Bienvenido a la comunidad Go Eats!",
         recipientName,
@@ -324,7 +324,7 @@ export function renderEmailTemplate(
           
           <div class="card-box" style="background-color: #ecfdf5; border-color: #a7f3d0;">
             <p style="margin: 0; font-size: 14px; color: #065f46; font-weight: 600;">
-              ⏱️ Tiempo estimado de entrega: ${data.estimatedTime || "30 - 45 minutos"}
+               Tiempo estimado de entrega: ${data.estimatedTime || "30 - 45 minutos"}
             </p>
           </div>
         `,
@@ -338,7 +338,7 @@ export function renderEmailTemplate(
     }
 
     case NotificationEvent.ORDER_PREPARING: {
-      const subject = `🍳 Tu pedido #${data.orderNumber || data.orderId} se está preparando — Go Eats`;
+      const subject = ` Tu pedido #${data.orderNumber || data.orderId} se está preparando — Go Eats`;
       const html = renderBaseLayout({
         title: `La cocina está en marcha`,
         recipientName,
@@ -357,7 +357,7 @@ export function renderEmailTemplate(
     }
 
     case NotificationEvent.DRIVER_ASSIGNED: {
-      const subject = `🛵 Repartidor asignado a tu pedido #${data.orderNumber || data.orderId} — Go Eats`;
+      const subject = ` Repartidor asignado a tu pedido #${data.orderNumber || data.orderId} — Go Eats`;
       const html = renderBaseLayout({
         title: `Tu repartidor va en camino al local`,
         recipientName,
@@ -384,7 +384,7 @@ export function renderEmailTemplate(
     }
 
     case NotificationEvent.ORDER_ON_THE_WAY: {
-      const subject = `🚀 Tu pedido #${data.orderNumber || data.orderId} va en camino — Go Eats`;
+      const subject = ` Tu pedido #${data.orderNumber || data.orderId} va en camino — Go Eats`;
       const html = renderBaseLayout({
         title: `¡Tu comida está muy cerca!`,
         recipientName,
@@ -393,8 +393,8 @@ export function renderEmailTemplate(
         contentHtml: `
           <p><strong>${data.driverName || "Tu repartidor"}</strong> ya recogió tu pedido en <strong>${data.restaurantName}</strong> y se dirige a tu dirección de entrega:</p>
           <div class="card-box">
-            <p style="margin: 0; font-size: 13px; color: #1e293b;">📍 <strong>Destino:</strong> ${data.deliveryAddress || "Tu ubicación"}</p>
-            ${data.deliveryPin ? `<p style="margin: 6px 0 0 0; font-size: 13px; color: #ff4757;">🔑 <strong>PIN de entrega:</strong> ${data.deliveryPin}</p>` : ""}
+            <p style="margin: 0; font-size: 13px; color: #1e293b;"> <strong>Destino:</strong> ${data.deliveryAddress || "Tu ubicación"}</p>
+            ${data.deliveryPin ? `<p style="margin: 6px 0 0 0; font-size: 13px; color: #ff4757;"> <strong>PIN de entrega:</strong> ${data.deliveryPin}</p>` : ""}
           </div>
         `,
         actionButton: {
@@ -406,7 +406,7 @@ export function renderEmailTemplate(
     }
 
     case NotificationEvent.ORDER_DELIVERED: {
-      const subject = `🎉 ¡Pedido #${data.orderNumber || data.orderId} entregado! Buen provecho — Go Eats`;
+      const subject = ` ¡Pedido #${data.orderNumber || data.orderId} entregado! Buen provecho — Go Eats`;
       const html = renderBaseLayout({
         title: `¡Esperamos que disfrutes tu comida!`,
         recipientName,
@@ -472,7 +472,7 @@ export function renderEmailTemplate(
     }
 
     case NotificationEvent.DRIVER_APPROVED: {
-      const subject = `✅ ¡Tu cuenta de repartidor ha sido APROBADA! — Go Eats`;
+      const subject = ` ¡Tu cuenta de repartidor ha sido APROBADA! — Go Eats`;
       const html = renderBaseLayout({
         title: `¡Felicidades! Ya puedes comenzar a repartir`,
         recipientName,
@@ -512,7 +512,7 @@ export function renderEmailTemplate(
     }
 
     case NotificationEvent.DRIVER_NEW_ORDER: {
-      const subject = `⚡ ¡Nuevo pedido disponible para entrega #${data.orderNumber || data.orderId}! — Go Eats`;
+      const subject = ` ¡Nuevo pedido disponible para entrega #${data.orderNumber || data.orderId}! — Go Eats`;
       const html = renderBaseLayout({
         title: `Nuevo pedido asignado`,
         recipientName,
@@ -582,7 +582,7 @@ export function renderEmailTemplate(
     }
 
     case NotificationEvent.RESTAURANT_APPROVED: {
-      const subject = `🎉 ¡Tu local ${data.restaurantName} fue APROBADO! — Go Eats`;
+      const subject = ` ¡Tu local ${data.restaurantName} fue APROBADO! — Go Eats`;
       const html = renderBaseLayout({
         title: `¡Felicidades! Tu restaurante ya está activo`,
         recipientName,
@@ -632,7 +632,7 @@ export function renderEmailTemplate(
     }
 
     case NotificationEvent.RESTAURANT_NEW_ORDER: {
-      const subject = `🔔 ¡Nuevo pedido #${data.orderNumber || data.orderId} recibido! — Go Eats`;
+      const subject = ` ¡Nuevo pedido #${data.orderNumber || data.orderId} recibido! — Go Eats`;
       const html = renderBaseLayout({
         title: `¡Tienes una nueva comanda entrante!`,
         recipientName,

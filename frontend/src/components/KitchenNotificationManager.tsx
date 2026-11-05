@@ -4,6 +4,8 @@ import { useSocket } from "../context/SocketContext";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Bell, BellRing, X, Clock, Volume2, VolumeX, CheckCircle2, Sparkles } from "lucide-react";
+import { systemIconForEmoji, systemTextWithIcons } from "../utils/systemIcons";
+
 
 export interface KitchenNotification {
   id: string;
@@ -40,7 +42,7 @@ export const KitchenNotificationManager: React.FC = () => {
     return "denied";
   });
   const [dismissedPushBanner, setDismissedPushBanner] = useState(false);
-  const toastTimerRef = useRef<any>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 1. Register Service Worker on mount for real native background Push Notifications
   useEffect(() => {
@@ -55,16 +57,16 @@ export const KitchenNotificationManager: React.FC = () => {
         });
     }
 
-    if (typeof window !== "undefined" && "Notification" in window) {
-      setPushPermission(Notification.permission);
-    }
   }, []);
 
   // 2. Audio Chime Synthesizer via HTML5 Web Audio API
   const playSoundAlert = (type: "ALMOST_READY" | "ALL_READY" | "CALL_WAITER") => {
     if (!soundEnabled) return;
     try {
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const AudioCtor = window.AudioContext ?? (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtor) return;
+
+      const audioCtx = new AudioCtor();
       const now = audioCtx.currentTime;
 
       if (type === "ALMOST_READY") {
@@ -121,7 +123,9 @@ export const KitchenNotificationManager: React.FC = () => {
     if (typeof window !== "undefined" && "vibrate" in navigator) {
       try {
         navigator.vibrate([250, 100, 250, 100, 300]);
-      } catch (e) {}
+      } catch {
+        // Some browsers reject vibration requests; ignore the error.
+      }
     }
 
     if (typeof window === "undefined" || !("Notification" in window) || Notification.permission !== "granted") {
@@ -181,13 +185,13 @@ export const KitchenNotificationManager: React.FC = () => {
       if (perm === "granted") {
         playSoundAlert("ALL_READY");
         await fireNativePush(
-          "🛎️ ¡Notificaciones Push Activadas con Éxito!",
+          "¡Notificaciones push activadas con éxito!",
           "A partir de ahora recibirás avisos del cocinero aquí directamente en tu pantalla.",
           null,
           0
         );
       } else if (perm === "denied") {
-        alert("Las notificaciones están bloqueadas en tu navegador. Puedes desbloquearlas haciendo clic en el candado 🔒 junto a 'localhost' en la barra de direcciones.");
+        alert("Las notificaciones están bloqueadas en tu navegador. Puedes desbloquearlas haciendo clic en el candado junto a la dirección del sitio en la barra de direcciones.");
       }
     } catch (err) {
       console.error("Error requesting push permission:", err);
@@ -202,7 +206,7 @@ export const KitchenNotificationManager: React.FC = () => {
     }
     playSoundAlert("CALL_WAITER");
     await fireNativePush(
-      "🛎️ Prueba de Notificación Push - GoEats",
+      "Prueba de notificación push - GoEats",
       "¡Excelente! Las notificaciones push funcionan correctamente en tu dispositivo.",
       null,
       9999
@@ -213,7 +217,21 @@ export const KitchenNotificationManager: React.FC = () => {
   useEffect(() => {
     if (!socket) return;
 
-    const handleWaiterNotification = (payload: any) => {
+    const handleWaiterNotification = (payload: {
+      restaurantId?: number | string;
+      orderId?: number;
+      tableId?: number | null;
+      tableNumber?: string | number;
+      tableName?: string;
+      mozoId?: number | null;
+      readyItems?: number;
+      totalItems?: number;
+      itemJustReady?: string;
+      title?: string;
+      message?: string;
+      timestamp?: string;
+      type?: KitchenNotification["type"];
+    }) => {
       console.log("[KitchenNotificationManager] Received event:", payload);
 
       // Verify tenant restaurant context if available
@@ -221,19 +239,27 @@ export const KitchenNotificationManager: React.FC = () => {
         return;
       }
 
+      const normalizedRestaurantId = payload.restaurantId == null ? undefined : Number(payload.restaurantId);
+      const normalizedTableId = payload.tableId == null ? undefined : Number(payload.tableId);
+      const normalizedOrderId = Number(payload.orderId ?? 0);
+      const normalizedMozoId = payload.mozoId == null ? undefined : Number(payload.mozoId);
+      const normalizedReadyItems = Number(payload.readyItems ?? 0);
+      const normalizedTotalItems = Number(payload.totalItems ?? 0);
+      const normalizedTableNumber = payload.tableNumber == null ? undefined : String(payload.tableNumber);
+
       const notif: KitchenNotification = {
         id: `${Date.now()}-${Math.random()}`,
         type: payload.type || "CALL_WAITER",
-        orderId: payload.orderId,
-        restaurantId: payload.restaurantId,
-        tableId: payload.tableId,
-        tableNumber: payload.tableNumber,
-        tableName: payload.tableName || (payload.tableNumber ? `Mesa ${payload.tableNumber}` : "Mesa"),
-        mozoId: payload.mozoId,
-        readyItems: payload.readyItems || 0,
-        totalItems: payload.totalItems || 0,
+        orderId: normalizedOrderId,
+        restaurantId: normalizedRestaurantId,
+        tableId: normalizedTableId,
+        tableNumber: normalizedTableNumber,
+        tableName: payload.tableName || (normalizedTableNumber ? `Mesa ${normalizedTableNumber}` : "Mesa"),
+        mozoId: normalizedMozoId,
+        readyItems: normalizedReadyItems,
+        totalItems: normalizedTotalItems,
         itemJustReady: payload.itemJustReady,
-        title: payload.title || "🛎️ Llamada de Cocina",
+        title: payload.title || "Llamada de cocina",
         message: payload.message || "Cocina solicita atención para un pedido.",
         timestamp: payload.timestamp || new Date().toISOString(),
         read: false,
@@ -317,11 +343,11 @@ export const KitchenNotificationManager: React.FC = () => {
             </div>
             <div>
               <strong style={{ fontSize: "13px", color: "#ffffff", display: "block" }}>
-                🔔 Activar Notificaciones Push de Cocina
+                {systemIconForEmoji("🔔")} Activar Notificaciones Push de Cocina
               </strong>
               <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
                 {pushPermission === "denied"
-                  ? "Las notificaciones están bloqueadas en tu navegador. Haz clic en el candado 🔒 de la URL para permitirlas."
+                  ? "Las notificaciones están bloqueadas en tu navegador. Haz clic en el candado de la dirección para permitirlas."
                   : "Permite los avisos para enterarte al instante cuando un plato esté casi listo o el cocinero te llame."}
               </span>
             </div>
@@ -454,7 +480,7 @@ export const KitchenNotificationManager: React.FC = () => {
                   gap: "6px"
                 }}
               >
-                🍽️ Ir a {activeToast.tableName}
+                {systemIconForEmoji("🍽️")} Ir a {activeToast.tableName}
               </button>
               <button
                 type="button"
@@ -601,7 +627,7 @@ export const KitchenNotificationManager: React.FC = () => {
                 justifyContent: "space-between"
               }}>
                 <span>
-                  {pushPermission === "granted" ? "🟢 Push: Activadas" : "🔴 Push: Desactivadas"}
+                  {pushPermission === "granted" ? systemTextWithIcons("🟢 Push: Activadas") : systemTextWithIcons("🔴 Push: Desactivadas")}
                 </span>
                 {pushPermission !== "granted" && (
                   <button
@@ -654,7 +680,7 @@ export const KitchenNotificationManager: React.FC = () => {
                           backgroundColor: notif.type === "ALMOST_READY" ? "rgba(255, 165, 2, 0.15)" : "rgba(46, 213, 115, 0.15)",
                           color: notif.type === "ALMOST_READY" ? "var(--warning)" : "var(--success)"
                         }}>
-                          {notif.type === "ALMOST_READY" ? "🟡 Casi Listo" : "🟢 ¡Listo para Servir!"}
+                          {notif.type === "ALMOST_READY" ? systemTextWithIcons("🟡 Casi Listo") : systemTextWithIcons("🟢 ¡Listo para Servir!")}
                         </span>
                         <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
                           {new Date(notif.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -667,7 +693,7 @@ export const KitchenNotificationManager: React.FC = () => {
                         {notif.message}
                       </div>
                       <div style={{ fontSize: "11px", color: "var(--accent-primary)", fontWeight: 600, marginTop: "4px" }}>
-                        👉 Click para abrir {notif.tableName}
+                        {systemIconForEmoji("👉")} Click para abrir {notif.tableName}
                       </div>
                     </div>
                   ))

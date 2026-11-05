@@ -17,7 +17,7 @@ export class NotificationService {
     );
 
     if (isGmailOAuthReady) {
-      // ✅ Enrutador oficial de Gmail API vía OAuth2
+      //  Enrutador oficial de Gmail API vía OAuth2
       return {
         transporter: nodemailer.createTransport({
           service: "gmail",
@@ -175,7 +175,7 @@ export class NotificationService {
       let messageId = "";
 
       if (isGmailOAuthReady) {
-        // ✅ Envío directo mediante Gmail API REST v1 con OAuth2
+        //  Envío directo mediante Gmail API REST v1 con OAuth2
         const result = await this.sendViaGmailApi({
           from: env.GMAIL_USER,
           to: recipient.email,
@@ -207,10 +207,10 @@ export class NotificationService {
         },
       });
 
-      console.log(`[NotificationService] 📧 Correo enviado [${event}] -> ${recipient.email} (${provider}: ${messageId})`);
+      console.log(`[NotificationService]  Correo enviado [${event}] -> ${recipient.email} (${provider}: ${messageId})`);
       return { success: true, notification: updated, provider };
     } catch (err: any) {
-      console.error(`[NotificationService] ❌ Error enviando correo [${event}] a ${recipient.email}:`, err.message || err);
+      console.error(`[NotificationService]  Error enviando correo [${event}] a ${recipient.email}:`, err.message || err);
 
       await prisma.emailNotification.update({
         where: { id: record.id },
@@ -293,10 +293,10 @@ export class NotificationService {
         },
       });
 
-      console.log(`[NotificationService] 📧 Reintento exitoso [ID ${id}] -> ${record.recipientEmail} (${provider})`);
+      console.log(`[NotificationService]  Reintento exitoso [ID ${id}] -> ${record.recipientEmail} (${provider})`);
       return { success: true, notification: updated, provider };
     } catch (err: any) {
-      console.error(`[NotificationService] ❌ Reintento fallido [ID ${id}]:`, err.message || err);
+      console.error(`[NotificationService]  Reintento fallido [ID ${id}]:`, err.message || err);
       await prisma.emailNotification.update({
         where: { id },
         data: {

@@ -168,7 +168,7 @@ export async function updateItemStatus(req: Request, res: Response, next: NextFu
             mozoId: freshOrder.mozoId,
             readyItems,
             totalItems,
-            title: `🛎️ ¡${tableName} - Todos los Pedidos Listos!`,
+            title: ` ¡${tableName} - Todos los Pedidos Listos!`,
             message: `¡Cocina ha terminado de preparar todos los platos de la ${tableName}! Ya pueden ser servidos.`,
             timestamp: new Date().toISOString(),
           };
@@ -188,7 +188,7 @@ export async function updateItemStatus(req: Request, res: Response, next: NextFu
             readyItems,
             totalItems,
             itemJustReady: updatedItem.variant.menuItem.name,
-            title: `🟡 ${tableName} - Pedido Casi Listo`,
+            title: ` ${tableName} - Pedido Casi Listo`,
             message: `El pedido de la ${tableName} está casi listo (${readyItems}/${totalItems} platos preparados). Plato listo: ${updatedItem.variant.menuItem.name}.`,
             timestamp: new Date().toISOString(),
           };
@@ -249,7 +249,7 @@ export async function callWaiter(req: Request, res: Response, next: NextFunction
         mozoId: order.mozoId,
         readyItems,
         totalItems,
-        title: `🛎️ ¡Llamada de Cocina - ${tableName}!`,
+        title: ` ¡Llamada de Cocina - ${tableName}!`,
         message: `El cocinero solicita al mesero para retirar los pedidos de la ${tableName} (${readyItems}/${totalItems} platos listos).`,
         timestamp: new Date().toISOString(),
       };

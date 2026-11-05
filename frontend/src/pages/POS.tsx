@@ -21,6 +21,8 @@ import {
   VolumeX,
   LayoutGrid
 } from "lucide-react";
+import { systemIconForEmoji, systemTextWithIcons } from "../utils/systemIcons";
+
 
 export interface WaiterNotification {
   id: string;
@@ -992,7 +994,7 @@ export const POS: React.FC = () => {
                       backgroundColor: notif.type === "ALMOST_READY" ? "rgba(255, 165, 2, 0.15)" : "rgba(46, 213, 115, 0.15)",
                       color: notif.type === "ALMOST_READY" ? "var(--warning)" : "var(--success)"
                     }}>
-                      {notif.type === "ALMOST_READY" ? "🟡 Casi Listo" : "🟢 ¡Listo para Servir!"}
+                      {notif.type === "ALMOST_READY" ? systemTextWithIcons("🟡 Casi Listo") : systemTextWithIcons("🟢 ¡Listo para Servir!")}
                     </span>
                     <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
                       {new Date(notif.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -1006,7 +1008,7 @@ export const POS: React.FC = () => {
                   </div>
                   {notif.tableId && (
                     <div style={{ fontSize: "11px", color: "var(--accent-primary)", fontWeight: 600, marginTop: "4px" }}>
-                      👉 Click para abrir mesa
+                      {systemIconForEmoji("👉")} Click para abrir mesa
                     </div>
                   )}
                 </div>
@@ -1275,7 +1277,7 @@ export const POS: React.FC = () => {
                               gap: "2px",
                               zIndex: 2
                             }}>
-                              🛎️ ¡Listo!
+                              {systemIconForEmoji("🛎️")} ¡Listo!
                             </span>
                           )}
                           {isAlmostReady && (
@@ -1295,7 +1297,7 @@ export const POS: React.FC = () => {
                               gap: "2px",
                               zIndex: 2
                             }}>
-                              ⏳ {readiness.readyItems}/{readiness.totalItems}
+                              {systemIconForEmoji("⏳")} {readiness.readyItems}/{readiness.totalItems}
                             </span>
                           )}
 
@@ -1303,7 +1305,7 @@ export const POS: React.FC = () => {
                           <span style={{ fontSize: "10px", opacity: 0.7 }}>Cap. {table.capacity}</span>
                           {isAllReady && (
                             <span style={{ fontSize: "9px", color: "var(--success)", fontWeight: 700, marginTop: "2px" }}>
-                              Servir 🛎️
+                              Servir {systemIconForEmoji("🛎️")}
                             </span>
                           )}
                           {isAlmostReady && (
@@ -1425,7 +1427,7 @@ export const POS: React.FC = () => {
                 gap: "10px"
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <span style={{ fontSize: "16px" }}>🪑</span>
+                  <span style={{ fontSize: "16px" }}>{systemIconForEmoji("🪑")}</span>
                   <div>
                     <strong style={{ fontSize: "13px", color: "var(--text-primary)" }}>Mesa {selectedTable.number}</strong>
                     <span style={{ fontSize: "11px", color: "var(--text-secondary)", marginLeft: "6px" }}>
@@ -1462,7 +1464,7 @@ export const POS: React.FC = () => {
                 gap: "10px"
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <span style={{ fontSize: "16px" }}>⚠️</span>
+                  <span style={{ fontSize: "16px" }}>{systemIconForEmoji("⚠️")}</span>
                   <span style={{ fontSize: "12px", color: "var(--warning)", fontWeight: 700 }}>Ninguna mesa seleccionada</span>
                 </div>
                 <button
@@ -1539,7 +1541,7 @@ export const POS: React.FC = () => {
                     padding: "8px 16px",
                     fontSize: "13px"
                   }}>
-                    ⚠️ Abrir Caja Primero
+                    {systemIconForEmoji("⚠️")} Abrir Caja Primero
                   </Link>
                 )}
                 {(user?.role === "RESTAURANT_OWNER" || user?.role === "PRODUCCION") && (
@@ -1562,7 +1564,7 @@ export const POS: React.FC = () => {
                 onClick={() => setSelectedCategory(null)}
                 className={`pos-category-card ${selectedCategory === null ? "active" : ""}`}
               >
-                <span className="pos-category-card-icon">🍽️</span>
+                <span className="pos-category-card-icon">{systemIconForEmoji("🍽️")}</span>
                 <span className="pos-category-card-title">Todos</span>
                 <span className="pos-category-card-count">
                   {menuCategories.reduce((sum, cat) => sum + cat.items.length, 0)} platos
@@ -1572,16 +1574,16 @@ export const POS: React.FC = () => {
               {/* Dynamic Categories */}
               {menuCategories.map(cat => {
                 // Pick emoji helper based on name
-                let emoji = "🍔";
+                let emoji = systemTextWithIcons("🍔");
                 const nameLower = cat.name.toLowerCase();
-                if (nameLower.includes("desayuno") || nameLower.includes("breakfast")) emoji = "🍳";
-                else if (nameLower.includes("sopa") || nameLower.includes("soup") || nameLower.includes("caldo")) emoji = "🍜";
-                else if (nameLower.includes("pasta") || nameLower.includes("tallarin")) emoji = "🍝";
-                else if (nameLower.includes("fuerte") || nameLower.includes("fondo") || nameLower.includes("carne") || nameLower.includes("chili")) emoji = "🌮";
-                else if (nameLower.includes("burger") || nameLower.includes("hamburguesa")) emoji = "🍔";
-                else if (nameLower.includes("bebida") || nameLower.includes("jugo") || nameLower.includes("drink")) emoji = "🍹";
-                else if (nameLower.includes("postre") || nameLower.includes("dulce")) emoji = "🍰";
-                else if (nameLower.includes("ensalada") || nameLower.includes("salad") || nameLower.includes("diet")) emoji = "🥗";
+                if (nameLower.includes("desayuno") || nameLower.includes("breakfast")) emoji = systemTextWithIcons("🍳");
+                else if (nameLower.includes("sopa") || nameLower.includes("soup") || nameLower.includes("caldo")) emoji = systemTextWithIcons("🍜");
+                else if (nameLower.includes("pasta") || nameLower.includes("tallarin")) emoji = systemTextWithIcons("🍝");
+                else if (nameLower.includes("fuerte") || nameLower.includes("fondo") || nameLower.includes("carne") || nameLower.includes("chili")) emoji = systemTextWithIcons("🌮");
+                else if (nameLower.includes("burger") || nameLower.includes("hamburguesa")) emoji = systemTextWithIcons("🍔");
+                else if (nameLower.includes("bebida") || nameLower.includes("jugo") || nameLower.includes("drink")) emoji = systemTextWithIcons("🍹");
+                else if (nameLower.includes("postre") || nameLower.includes("dulce")) emoji = systemTextWithIcons("🍰");
+                else if (nameLower.includes("ensalada") || nameLower.includes("salad") || nameLower.includes("diet")) emoji = systemTextWithIcons("🥗");
 
                 return (
                   <div
@@ -1684,7 +1686,7 @@ export const POS: React.FC = () => {
                                 ${item.variants[0]?.price.toFixed(2) || "0.00"}
                               </span>
                               <span className={`pos-dish-card-diet ${isVeg ? "veg" : "non-veg"}`}>
-                                {isVeg ? "🥬 Veg" : "🍗 Carnes"}
+                                {isVeg ? systemTextWithIcons("🥬 Veg") : systemTextWithIcons("🍗 Carnes")}
                               </span>
                             </div>
 
@@ -1780,18 +1782,18 @@ export const POS: React.FC = () => {
                             color: isAlmostReady ? "#000" : "#fff"
                           }}
                         >
-                          {isAllReady ? "🛎️" : `T${table.number}`}
+                          {isAllReady ? systemTextWithIcons("🛎️") : `T${table.number}`}
                         </div>
                         <div className="pos-table-pill-info">
                           <span className="pos-table-pill-name">Mesa {table.number}</span>
                           <span className="pos-table-pill-status">{table.areaName}</span>
                           {isAllReady ? (
                             <span style={{ color: "var(--success)", fontWeight: "bold", fontSize: "11px" }}>
-                              🛎️ ¡Listo para servir!
+                              {systemIconForEmoji("🛎️")} ¡Listo para servir!
                             </span>
                           ) : isAlmostReady ? (
                             <span style={{ color: "var(--warning)", fontWeight: "bold", fontSize: "11px" }}>
-                              ⏳ Casi listo ({readiness.readyItems}/{readiness.totalItems})
+                              {systemIconForEmoji("⏳")} Casi listo ({readiness.readyItems}/{readiness.totalItems})
                             </span>
                           ) : (
                             <span className="pos-table-pill-process">Cuentas</span>
@@ -1849,7 +1851,7 @@ export const POS: React.FC = () => {
                     alignItems: "center",
                     gap: "4px"
                   }}>
-                    🛎️ ¡Todos los platos listos para servir!
+                    {systemIconForEmoji("🛎️")} ¡Todos los platos listos para servir!
                   </span>
                 ) : (
                   <span style={{
@@ -1863,7 +1865,7 @@ export const POS: React.FC = () => {
                     alignItems: "center",
                     gap: "4px"
                   }}>
-                    🟡 Casi listo ({tableReadinessMap[selectedTable.id].readyItems}/{tableReadinessMap[selectedTable.id].totalItems} platos)
+                    {systemIconForEmoji("🟡")} Casi listo ({tableReadinessMap[selectedTable.id].readyItems}/{tableReadinessMap[selectedTable.id].totalItems} platos)
                   </span>
                 )}
               </div>
@@ -1991,11 +1993,11 @@ export const POS: React.FC = () => {
               gap: "6px"
             }}>
               <div style={{ fontSize: "12px", fontWeight: "bold", color: "var(--accent-primary)", display: "flex", alignItems: "center", gap: "6px" }}>
-                <span>⚠️ Comprobante por Verificar</span>
+                <span>{systemIconForEmoji("⚠️")} Comprobante por Verificar</span>
               </div>
               {user?.role === "MOZO" ? (
                 <div style={{ fontSize: "11px", color: "var(--text-secondary)", fontStyle: "italic" }}>
-                  Pendiente de verificación por caja 🖥️
+                  Pendiente de verificación por caja {systemIconForEmoji("🖥️")}
                 </div>
               ) : (
                 <button
@@ -2168,7 +2170,7 @@ export const POS: React.FC = () => {
                 style={{ flex: 1, padding: "12px", fontSize: "14px" }}
                 disabled={cart.length === 0}
               >
-                🖨️ Imprimir Comanda
+                {systemIconForEmoji("🖨️")} Imprimir Comanda
               </button>
 
               {/* Pedir a Cocina / Guardar Pedido */}
@@ -2187,7 +2189,7 @@ export const POS: React.FC = () => {
                 }}
                 disabled={cart.length === 0}
               >
-                🔥 Enviar a Cocina
+                {systemIconForEmoji("🔥")} Enviar a Cocina
               </button>
             </div>
 
@@ -2773,7 +2775,7 @@ export const POS: React.FC = () => {
               margin: "0 auto 16px auto",
               fontSize: "2.2rem"
             }}>
-              🛵
+              {systemIconForEmoji("🛵")}
             </div>
 
             <span style={{
@@ -2809,10 +2811,10 @@ export const POS: React.FC = () => {
               flexDirection: "column",
               gap: "8px"
             }}>
-              <div><strong>📍 Entrega:</strong> {incomingDeliveryOrder.deliveryAddress || "A domicilio"}</div>
-              <div><strong>📞 Teléfono:</strong> {incomingDeliveryOrder.deliveryPhone || "No especificado"}</div>
-              <div><strong>💰 Total:</strong> ${Number(incomingDeliveryOrder.total || 0).toFixed(2)}</div>
-              <div><strong>🍽️ Platos:</strong> {incomingDeliveryOrder.items?.length || 1} producto(s)</div>
+              <div><strong>{systemIconForEmoji("📍")} Entrega:</strong> {incomingDeliveryOrder.deliveryAddress || "A domicilio"}</div>
+              <div><strong>{systemIconForEmoji("📞")} Teléfono:</strong> {incomingDeliveryOrder.deliveryPhone || "No especificado"}</div>
+              <div><strong>{systemIconForEmoji("💰")} Total:</strong> ${Number(incomingDeliveryOrder.total || 0).toFixed(2)}</div>
+              <div><strong>{systemIconForEmoji("🍽️")} Platos:</strong> {incomingDeliveryOrder.items?.length || 1} producto(s)</div>
             </div>
 
             <div style={{ display: "flex", gap: "12px" }}>

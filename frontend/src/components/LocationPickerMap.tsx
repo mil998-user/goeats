@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { MapPin, Navigation, Compass, Loader2, Search, X } from "lucide-react";
+import { systemTextWithIcons } from "../utils/systemIcons";
+
 
 interface LocationPickerMapProps {
   initialLat?: number;
@@ -9,6 +11,7 @@ interface LocationPickerMapProps {
   restaurantLat?: number;
   restaurantLng?: number;
   restaurantName?: string;
+  showRestaurantLocation?: boolean;
   onLocationSelect: (lat: number, lng: number, addressText?: string, distanceKm?: number) => void;
   height?: string;
 }
@@ -38,6 +41,7 @@ export const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
   restaurantLat = -3.9965,
   restaurantLng = -79.2030,
   restaurantName = "Restaurante",
+  showRestaurantLocation = true,
   onLocationSelect,
   height = "280px",
 }) => {
@@ -325,7 +329,7 @@ export const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
     setCurrentCoords({ lat, lng });
 
     let distance = 0;
-    if (restaurantLat && restaurantLng) {
+    if (showRestaurantLocation && restaurantLat && restaurantLng) {
       const routeData = await fetchStreetRoute(restaurantLat, restaurantLng, lat, lng);
       distance = routeData.distanceKm;
       setEstimatedDistance(distance);
@@ -402,8 +406,8 @@ export const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
             const ok = await tryIpGeolocation();
             setLocating(false);
             if (!ok) {
-              const fallbackLat = restaurantLat || initialLat || DEFAULT_LAT;
-              const fallbackLng = restaurantLng || initialLng || DEFAULT_LNG;
+              const fallbackLat = showRestaurantLocation ? restaurantLat || initialLat || DEFAULT_LAT : initialLat || DEFAULT_LAT;
+              const fallbackLng = showRestaurantLocation ? restaurantLng || initialLng || DEFAULT_LNG : initialLng || DEFAULT_LNG;
               if (mapInstanceRef.current) {
                 mapInstanceRef.current.flyTo([fallbackLat, fallbackLng], 15, { animate: true });
               }
@@ -443,7 +447,7 @@ export const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
       const userPinHtml = `
         <div style="position: relative; display: flex; flex-direction: column; align-items: center; cursor: grab; transform: translate(-50%, -100%);">
           <div style="background: rgba(255, 71, 87, 0.95); color: white; padding: 3px 8px; border-radius: 12px; font-weight: 800; font-size: 10px; box-shadow: 0 4px 12px rgba(255,71,87,0.4); white-space: nowrap; margin-bottom: 2px; border: 1px solid rgba(255,255,255,0.4);">
-            📍 Tu Entrega
+            Tu Entrega
           </div>
           <div style="width: 24px; height: 24px; background: #ff4757; border: 2.5px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(255,71,87,0.6);">
             <div style="width: 8px; height: 8px; background: #ffffff; border-radius: 50%;"></div>
@@ -477,11 +481,11 @@ export const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
       });
 
       // If restaurant coordinates provided, plot street-routed polyline
-      if (restaurantLat && restaurantLng) {
+      if (showRestaurantLocation && restaurantLat && restaurantLng) {
         const restPinHtml = `
           <div style="position: relative; display: flex; flex-direction: column; align-items: center; transform: translate(-50%, -100%);">
             <div style="background: rgba(20, 24, 33, 0.9); color: #ffd700; padding: 3px 8px; border-radius: 12px; font-weight: 800; font-size: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.4); white-space: nowrap; margin-bottom: 2px; border: 1px solid rgba(255,215,0,0.3); backdrop-filter: blur(4px);">
-              🏪 ${restaurantName}
+              ${restaurantName}
             </div>
             <div style="width: 22px; height: 22px; background: #ff9f43; border: 2.5px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(255,159,67,0.5);">
               <div style="width: 7px; height: 7px; background: #ffffff; border-radius: 50%;"></div>
@@ -566,7 +570,7 @@ export const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
           }} />
           <input
             type="text"
-            placeholder="🔍 Escribe la calle o punto de entrega en Loja..."
+            placeholder="Escribe la calle o punto de entrega en Loja..."
             value={searchQuery}
             onChange={handleSearchInputChange}
             onFocus={() => {
@@ -725,7 +729,7 @@ export const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
             ) : (
               <Navigation size={13} fill="#ff4757" color="#ff4757" />
             )}
-            <span>{locating ? "Detectando..." : "📍 Mi GPS actual"}</span>
+            <span>{locating ? "Detectando..." : systemTextWithIcons("📍 Mi GPS actual")}</span>
           </button>
         </div>
       </div>

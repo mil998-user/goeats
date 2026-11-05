@@ -32,6 +32,8 @@ import {
 import { ClipboardList, ShoppingBag, DollarSign } from "lucide-react";
 import { RestaurantLocationPicker } from "../components/RestaurantLocationPicker";
 import { TableQRModal } from "../components/TableQRModal";
+import { systemIconForEmoji, systemTextWithIcons } from "../utils/systemIcons";
+
 
 interface BankAccount {
   id: string;
@@ -75,6 +77,8 @@ export const Settings: React.FC = () => {
   const [mapIframe, setMapIframe] = useState("");
   const [reference, setReference] = useState("");
   const [openingHours, setOpeningHours] = useState("");
+  const [samePriceAsLocal, setSamePriceAsLocal] = useState(false);
+  const [promoText, setPromoText] = useState("");
   const [faqs, setFaqs] = useState<{ question: string; answer: string }[]>([]);
   const [resolvingMaps, setResolvingMaps] = useState(false);
   const [mapsDetectMsg, setMapsDetectMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -742,6 +746,8 @@ export const Settings: React.FC = () => {
         setMapIframe(r.mapIframe || "");
         setReference(r.reference || "");
         setOpeningHours(r.openingHours || "");
+        setSamePriceAsLocal(r.samePriceAsLocal === true);
+        setPromoText(r.promoText || "");
         setSelectedCategoryIds(r.categories?.map((c: any) => c.id) || []);
         setSelectedSubcategoryIds(r.subcategories?.map((s: any) => s.id) || []);
         
@@ -820,7 +826,7 @@ export const Settings: React.FC = () => {
       setMapLatitude(lat);
       setMapLongitude(lng);
       setMapIframe(`<iframe src="https://maps.google.com/maps?q=${lat},${lng}&z=16&output=embed" width="100%" height="300" style="border:0;" allowfullscreen="" loading="lazy"></iframe>`);
-      setMapsDetectMsg({ type: "success", text: `📍 ¡Ubicación detectada! Coordenadas: (${lat}, ${lng})` });
+      setMapsDetectMsg({ type: "success", text: `¡Ubicación detectada! Coordenadas: (${lat}, ${lng})` });
       return;
     }
 
@@ -833,7 +839,7 @@ export const Settings: React.FC = () => {
         setMapLatitude(lat);
         setMapLongitude(lng);
         setMapIframe(`<iframe src="https://maps.google.com/maps?q=${lat},${lng}&z=16&output=embed" width="100%" height="300" style="border:0;" allowfullscreen="" loading="lazy"></iframe>`);
-        setMapsDetectMsg({ type: "success", text: `📍 ¡Ubicación detectada! Coordenadas: (${lat}, ${lng})` });
+        setMapsDetectMsg({ type: "success", text: `¡Ubicación detectada! Coordenadas: (${lat}, ${lng})` });
         return;
       }
 
@@ -844,7 +850,7 @@ export const Settings: React.FC = () => {
         setMapLatitude(lat);
         setMapLongitude(lng);
         setMapIframe(`<iframe src="https://maps.google.com/maps?q=${lat},${lng}&z=16&output=embed" width="100%" height="300" style="border:0;" allowfullscreen="" loading="lazy"></iframe>`);
-        setMapsDetectMsg({ type: "success", text: `📍 ¡Ubicación detectada! Coordenadas: (${lat}, ${lng})` });
+        setMapsDetectMsg({ type: "success", text: `¡Ubicación detectada! Coordenadas: (${lat}, ${lng})` });
         return;
       }
     }
@@ -865,7 +871,7 @@ export const Settings: React.FC = () => {
         setMapIframe(`<iframe src="https://maps.google.com/maps?q=${lat},${lng}&z=16&output=embed" width="100%" height="300" style="border:0;" allowfullscreen="" loading="lazy"></iframe>`);
         setMapsDetectMsg({
           type: "success",
-          text: `📍 ¡Ubicación detectada con éxito! ${res.placeName ? `(${res.placeName}) ` : ""}[${lat}, ${lng}]`,
+          text: `¡Ubicación detectada con éxito! ${res.placeName ? `(${res.placeName}) ` : ""}[${lat}, ${lng}]`,
         });
       } else {
         setMapsDetectMsg({
@@ -914,6 +920,8 @@ export const Settings: React.FC = () => {
         mapIframe,
         reference,
         openingHours,
+        samePriceAsLocal,
+        promoText,
         faqsJson: JSON.stringify(faqs),
         categoryIds: selectedCategoryIds,
         subcategoryIds: selectedSubcategoryIds
@@ -926,7 +934,7 @@ export const Settings: React.FC = () => {
 
       if (res.success) {
         setSuccessMsg("¡Configuración y ubicación guardadas con éxito!");
-        setToastMsg("✅ ¡Configuración y ubicación guardadas con éxito!");
+        setToastMsg("¡Configuración y ubicación guardadas con éxito!");
         setTimeout(() => {
           setSuccessMsg(null);
           setToastMsg(null);
@@ -935,7 +943,7 @@ export const Settings: React.FC = () => {
     } catch (err: any) {
       const msg = err.message || "Error al guardar la configuración";
       setError(msg);
-      alert(`⚠️ Error al guardar: ${msg}`);
+      alert(`Error al guardar: ${msg}`);
     } finally {
       setSaving(false);
     }
@@ -1401,6 +1409,36 @@ export const Settings: React.FC = () => {
               Personalización de la Portada y Presentación
             </h3>
 
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "20px",
+              alignItems: "center",
+              marginBottom: "20px",
+            }}>
+              <label style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "14px", fontWeight: 600 }}>
+                <input
+                  type="checkbox"
+                  checked={samePriceAsLocal}
+                  onChange={(e) => setSamePriceAsLocal(e.target.checked)}
+                  style={{ width: "18px", height: "18px", accentColor: "var(--accent-primary)", cursor: "pointer" }}
+                />
+                Mismos precios que en el local
+              </label>
+              <div className="input-group" style={{ margin: 0 }}>
+                <label htmlFor="restaurant-promo">Oferta para mostrar en GoEats (opcional)</label>
+                <input
+                  id="restaurant-promo"
+                  type="text"
+                  maxLength={191}
+                  placeholder="Ej. 15% de descuento en tu pedido"
+                  value={promoText}
+                  onChange={(e) => setPromoText(e.target.value)}
+                  className="input-field"
+                />
+              </div>
+            </div>
+
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "20px" }}>
               <div className="input-group">
                 <label>Slogan o Descripción Corta</label>
@@ -1505,7 +1543,7 @@ export const Settings: React.FC = () => {
                       setMapLatitude(lat);
                       setMapLongitude(lng);
                       setMapIframe(`<iframe src="https://maps.google.com/maps?q=${lat},${lng}&z=16&output=embed" width="100%" height="300" style="border:0;" allowfullscreen="" loading="lazy"></iframe>`);
-                      alert(`📍 ¡Ubicación GPS detectada al instante! (${lat}, ${lng})`);
+                      alert(`¡Ubicación GPS detectada al instante! (${lat}, ${lng})`);
                     },
                     (err) => {
                       console.warn("GPS error:", err);
@@ -1530,7 +1568,7 @@ export const Settings: React.FC = () => {
                 }}
               >
                 <Navigation size={13} />
-                <span>📍 Detectar mi GPS Actual</span>
+                <span>{systemIconForEmoji("📍")} Detectar mi GPS Actual</span>
               </button>
             </h3>
 
@@ -1547,14 +1585,14 @@ export const Settings: React.FC = () => {
               border: "1px solid var(--border-light)"
             }}>
               <span style={{ fontSize: "12px", fontWeight: "700", color: "var(--text-muted)", marginRight: "4px" }}>
-                ⚡ Fijar Ciudad:
+                {systemIconForEmoji("⚡")} Fijar Ciudad:
               </span>
               {[
-                { name: "📍 Loja Centro", lat: "-3.993130", lng: "-79.204220" },
-                { name: "📍 El Artesanal (Loja)", lat: "-3.996500", lng: "-79.203000" },
-                { name: "📍 Quito", lat: "-0.180700", lng: "-78.484200" },
-                { name: "📍 Guayaquil", lat: "-2.189400", lng: "-79.889100" },
-                { name: "📍 Cuenca", lat: "-2.900100", lng: "-79.005900" },
+                { name: "Loja Centro", lat: "-3.993130", lng: "-79.204220" },
+                { name: "El Artesanal (Loja)", lat: "-3.996500", lng: "-79.203000" },
+                { name: "Quito", lat: "-0.180700", lng: "-78.484200" },
+                { name: "Guayaquil", lat: "-2.189400", lng: "-79.889100" },
+                { name: "Cuenca", lat: "-2.900100", lng: "-79.005900" },
               ].map((city) => (
                 <button
                   key={city.name}
@@ -1575,6 +1613,7 @@ export const Settings: React.FC = () => {
                     cursor: "pointer"
                   }}
                 >
+                  {systemIconForEmoji("📍")}
                   {city.name}
                 </button>
               ))}
@@ -1666,14 +1705,14 @@ export const Settings: React.FC = () => {
               )}
 
               <small style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px", display: "block" }}>
-                💡 Pega cualquier link de Google Maps (incluyendo enlaces cortos como maps.app.goo.gl) y las coordenadas se extraerán automáticamente.
+                {systemIconForEmoji("💡")} Pega cualquier link de Google Maps (incluyendo enlaces cortos como maps.app.goo.gl) y las coordenadas se extraerán automáticamente.
               </small>
             </div>
 
             {/* Interactive Visual Map Picker for Restaurant Only */}
             <div style={{ marginBottom: "20px" }}>
               <label style={{ fontSize: "12px", fontWeight: "700", marginBottom: "8px", display: "block", color: "var(--text-primary)" }}>
-                🗺️ Ubicación Oficial de la Puerta de tu Local (Arrastra o Haz Clic)
+                {systemIconForEmoji("🗺️")} Ubicación Oficial de la Puerta de tu Local (Arrastra o Haz Clic)
               </label>
               <RestaurantLocationPicker
                 key={`${mapLatitude}-${mapLongitude}`}
@@ -1772,7 +1811,7 @@ export const Settings: React.FC = () => {
                 ) : (
                   <>
                     <Save size={16} />
-                    <span>💾 Guardar Ubicación del Local</span>
+                    <span>{systemIconForEmoji("💾")} Guardar Ubicación del Local</span>
                   </>
                 )}
               </button>
@@ -2112,7 +2151,7 @@ export const Settings: React.FC = () => {
               ) : (
                 <>
                   <Save size={16} />
-                  💾 Guardar Todos los Cambios
+                  {systemIconForEmoji("💾")} Guardar Todos los Cambios
                 </>
               )}
             </button>
@@ -3263,7 +3302,7 @@ export const Settings: React.FC = () => {
                             <td style={{ padding: "12px 10px" }}>{sup.category?.name || "Sin Categoría"}</td>
                             <td style={{ padding: "12px 10px", textAlign: "right", fontWeight: 700, color: isLowStock ? "var(--danger)" : "var(--text-primary)" }}>
                               {sup.stock.toFixed(2)} {sup.unit?.name}
-                              {isLowStock && <span style={{ fontSize: "10px", display: "block", color: "var(--danger)", fontWeight: "normal" }}>⚠️ Stock Bajo</span>}
+                              {isLowStock && <span style={{ fontSize: "10px", display: "block", color: "var(--danger)", fontWeight: "normal" }}>{systemIconForEmoji("⚠️")} Stock Bajo</span>}
                             </td>
                             <td style={{ padding: "12px 10px", textAlign: "right", color: "var(--text-secondary)" }}>{sup.minStock.toFixed(2)} {sup.unit?.name}</td>
                             <td style={{ padding: "12px 10px", textAlign: "right" }}>${sup.cost.toFixed(2)}</td>
@@ -3441,7 +3480,7 @@ export const Settings: React.FC = () => {
                       <strong style={{ fontSize: "20px", color: "var(--accent-primary)" }}>${getPurchaseTotal().toFixed(2)}</strong>
                     </div>
                     <button type="submit" className="glow-btn" style={{ width: "100%", padding: "12px" }} disabled={purchaseItems.length === 0}>
-                      Procesar y Registrar Compra 📦
+                      Procesar y Registrar Compra {systemIconForEmoji("📦")}
                     </button>
                   </div>
                 </form>
@@ -3594,10 +3633,10 @@ export const Settings: React.FC = () => {
                             <td style={{ padding: "12px 10px", textAlign: "right", color: "var(--text-muted)" }}>${mov.costUnit.toFixed(2)}</td>
                             <td style={{ padding: "12px 10px", textAlign: "right", fontWeight: 600 }}>${totalVal.toFixed(2)}</td>
                             <td style={{ padding: "12px 10px", fontWeight: 500, color: "var(--text-secondary)" }}>
-                              {mov.reason === "COMPRA" && "🛒 Factura de Compra"}
-                              {mov.reason === "VENTA" && "🍔 Descuento por Venta POS"}
-                              {mov.reason === "DESPERDICIO" && "🗑️ Merma / Desperdicio"}
-                              {mov.reason === "AJUSTE_MANUAL" && "🔧 Ajuste de Inventario"}
+                              {mov.reason === "COMPRA" && systemTextWithIcons("🛒 Factura de Compra")}
+                              {mov.reason === "VENTA" && systemTextWithIcons("🍔 Descuento por Venta POS")}
+                              {mov.reason === "DESPERDICIO" && systemTextWithIcons("🗑️ Merma / Desperdicio")}
+                              {mov.reason === "AJUSTE_MANUAL" && systemTextWithIcons("🔧 Ajuste de Inventario")}
                               {!["COMPRA", "VENTA", "DESPERDICIO", "AJUSTE_MANUAL"].includes(mov.reason) && mov.reason}
                             </td>
                           </tr>
@@ -3654,7 +3693,7 @@ export const Settings: React.FC = () => {
                             <td style={{ padding: "12px 10px", textAlign: "right", fontWeight: 700, color: balance > 0 ? "var(--danger)" : "var(--text-primary)" }}>${balance.toFixed(2)}</td>
                             <td style={{ padding: "12px 10px", color: isOverdue ? "var(--danger)" : "var(--text-primary)", fontWeight: isOverdue ? "bold" : "normal" }}>
                               {cred.dueDate ? new Date(cred.dueDate).toLocaleDateString() : "—"}
-                              {isOverdue && <span style={{ fontSize: "10px", display: "block", color: "var(--danger)" }}>⚠️ Vencido</span>}
+                              {isOverdue && <span style={{ fontSize: "10px", display: "block", color: "var(--danger)" }}>{systemIconForEmoji("⚠️")} Vencido</span>}
                             </td>
                             <td style={{ padding: "12px 10px" }}>
                               <span style={{

@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { apiRequest } from "../utils/api";
 import { LogIn, UserPlus, Shield, Store, Mail, Lock, User as UserIcon, Link, ShoppingBag, Truck, ArrowLeft, Eye, EyeOff, Phone, MapPin } from "lucide-react";
 
+
 declare global {
   interface Window {
     google?: any;
@@ -12,13 +13,25 @@ declare global {
 }
 
 export const Auth: React.FC = () => {
-  const [selectedRole, setSelectedRole] = useState<"customer" | "driver" | "restaurant" | "superadmin" | null>(null);
-  const [isLogin, setIsLogin] = useState(true);
+  const [selectedRole, setSelectedRole] = useState<"customer" | "driver" | "restaurant" | "superadmin" | null>(() => {
+    const role = new URLSearchParams(window.location.search).get("role");
+    return role === "superadmin" || role === "restaurant" || role === "driver" || role === "customer"
+      ? role
+      : "customer";
+  });
+  const [isLogin, setIsLogin] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("role") === "superadmin" || params.get("mode") !== "register";
+  });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [selectedRole]);
 
 
 
@@ -52,18 +65,7 @@ export const Auth: React.FC = () => {
   };
 
   const handleBack = () => {
-    setSelectedRole(null);
-    setError(null);
-    setUsername("");
-    setPassword("");
-    setName("");
-    setEmail("");
-    setPhone("");
-    setCedula("");
-    setRestaurantName("");
-    setSlug("");
-    setAddress("");
-    setVehiclePlate("");
+    navigate("/");
   };
 
 
@@ -86,7 +88,12 @@ export const Auth: React.FC = () => {
       }
 
       login(res.token, res.user);
-      navigate("/");
+      const returnTo = new URLSearchParams(window.location.search).get("returnTo");
+      if (res.user.role === "CUSTOMER" && returnTo === "/plus#pricing-plans") {
+        navigate(returnTo);
+      } else {
+        navigate(res.user.role === "CUSTOMER" && !res.user.deliveryAddress ? "/customer/location-setup" : "/restaurants");
+      }
     } catch (err: any) {
       console.error("Error en login social:", err);
       setError(err.message || "Error al autenticar credenciales con el servidor.");
@@ -232,7 +239,7 @@ export const Auth: React.FC = () => {
         } else if (res.user.role === "MOTORIZADO") {
           navigate("/delivery");
         } else if (res.user.role === "CUSTOMER") {
-          navigate("/");
+          navigate(res.user.deliveryAddress ? "/restaurants" : "/customer/location-setup");
         } else if (res.user.role === "RESTAURANT_OWNER") {
           navigate("/reports");
         } else {
@@ -278,7 +285,8 @@ export const Auth: React.FC = () => {
             isPlus: false,
           });
           setError(null);
-          navigate("/?setup_preferences=true");
+          const returnTo = new URLSearchParams(window.location.search).get("returnTo");
+          navigate(returnTo === "/plus#pricing-plans" ? returnTo : "/customer/location-setup");
           return;
         }
         
@@ -300,7 +308,7 @@ export const Auth: React.FC = () => {
   return (
     <div className="auth-container animate-fade-in" style={{
       display: "flex",
-      alignItems: "center",
+      alignItems: selectedRole === null ? "center" : "flex-start",
       justifyContent: "center",
       minHeight: "100vh",
       padding: "20px",
@@ -613,7 +621,7 @@ export const Auth: React.FC = () => {
           </div>
 
           {/* Tab Selector (only for Customer/Driver OR Restaurant (as owner register)) */}
-          {selectedRole !== "superadmin" && (
+          {selectedRole !== "superadmin" && selectedRole !== "customer" && (
             <div style={{
               display: "flex",
               background: "var(--bg-tertiary)",
@@ -915,9 +923,9 @@ export const Auth: React.FC = () => {
                           onChange={(e: any) => setVehicleType(e.target.value)}
                           required
                         >
-                          <option value="MOTO">🛵 Motocicleta</option>
-                          <option value="BICI">🚲 Bicicleta</option>
-                          <option value="AUTO">🚗 Automóvil / Furgoneta</option>
+                          <option value="MOTO">Motocicleta</option>
+                          <option value="BICI">Bicicleta</option>
+                          <option value="AUTO">Automóvil / Furgoneta</option>
                         </select>
                       </div>
                     </div>
@@ -1146,7 +1154,7 @@ export const Auth: React.FC = () => {
                         });
                       }
                       login(loginRes.token, loginRes.user);
-                      navigate("/");
+                      navigate("/restaurants");
                     } catch (err: any) {
                       setError(err.message || "Error sandbox");
                     } finally {

@@ -29,6 +29,8 @@ import {
   Phone,
 } from "lucide-react";
 import { EmailNotificationsTab } from "../components/admin/EmailNotificationsTab";
+import { systemIconForEmoji, systemTextWithIcons } from "../utils/systemIcons";
+
 
 interface Restaurant {
   id: number;
@@ -803,7 +805,7 @@ export const SuperAdmin: React.FC = () => {
         <div style={{ display: "flex", gap: "10px" }}>
           <button
             onClick={async () => {
-              if (window.confirm("🔥 ATENCIÓN: Esto vaciará por completo todas las órdenes, ventas, facturas, transacciones y turnos de caja del sistema. Las configuraciones de restaurantes, mesas y usuarios base se mantendrán. ¿Desea continuar?")) {
+              if (window.confirm("ATENCIÓN: Esto vaciará por completo todas las órdenes, ventas, facturas, transacciones y turnos de caja del sistema. Las configuraciones de restaurantes, mesas y usuarios base se mantendrán. ¿Desea continuar?")) {
                 try {
                   const res = await apiRequest("/auth/reset-database", { method: "POST" });
                   alert(res.message || "Sistema vaciado exitosamente.");
@@ -827,7 +829,7 @@ export const SuperAdmin: React.FC = () => {
               fontSize: "13px"
             }}
           >
-            🔥 Vaciar Sistema (Reset)
+            {systemIconForEmoji("🔥")} Vaciar Sistema (Reset)
           </button>
 
           <button
@@ -1217,7 +1219,7 @@ export const SuperAdmin: React.FC = () => {
                                 fontWeight: 700
                               }}>
                                 <Clock size={12} />
-                                ⏳ Pendiente
+                                {systemIconForEmoji("⏳")} Pendiente
                               </span>
                             ) : restaurant.status === "UNDER_REVIEW" ? (
                               <span style={{
@@ -1232,7 +1234,7 @@ export const SuperAdmin: React.FC = () => {
                                 fontWeight: 700
                               }}>
                                 <Search size={12} />
-                                🔍 En Revisión
+                                {systemIconForEmoji("🔍")} En Revisión
                               </span>
                             ) : restaurant.status === "REJECTED" ? (
                               <span style={{
@@ -1247,7 +1249,7 @@ export const SuperAdmin: React.FC = () => {
                                 fontWeight: 700
                               }}>
                                 <XCircle size={12} />
-                                ❌ Rechazado
+                                {systemIconForEmoji("❌")} Rechazado
                               </span>
                             ) : (restaurant.status === "APPROVED" || restaurant.status === "ACTIVE" || (!restaurant.status && restaurant.isActive)) ? (
                               <span style={{
@@ -1262,7 +1264,7 @@ export const SuperAdmin: React.FC = () => {
                                 fontWeight: 700
                               }}>
                                 <CheckCircle size={12} />
-                                ✅ Aprobado
+                                {systemIconForEmoji("✅")} Aprobado
                               </span>
                             ) : (
                               <span style={{
@@ -1940,7 +1942,7 @@ export const SuperAdmin: React.FC = () => {
                             fontWeight: 600,
                             fontSize: "12px"
                           }}>
-                            {driver.vehicleType === "BICI" ? "🚲 Bicicleta" : driver.vehicleType === "AUTO" ? "🚗 Automóvil" : "🛵 Moto"}
+                            {driver.vehicleType === "BICI" ? systemTextWithIcons("🚲 Bicicleta") : driver.vehicleType === "AUTO" ? systemTextWithIcons("🚗 Automóvil") : systemTextWithIcons("🛵 Moto")}
                           </span>
                           {driver.vehiclePlate && (
                             <div style={{ fontSize: "11px", color: "var(--text-secondary)", marginTop: "4px" }}>
@@ -1960,7 +1962,7 @@ export const SuperAdmin: React.FC = () => {
                               fontSize: "12px",
                               border: "1px solid rgba(46, 213, 115, 0.3)"
                             }}>
-                              ✅ Aprobado / Activo
+                              {systemIconForEmoji("✅")} Aprobado / Activo
                             </span>
                           ) : (
                             <span style={{
@@ -1973,7 +1975,7 @@ export const SuperAdmin: React.FC = () => {
                               fontSize: "12px",
                               border: "1px solid rgba(255, 171, 0, 0.3)"
                             }}>
-                              ⏳ Pendiente Aprobación
+                              {systemIconForEmoji("⏳")} Pendiente Aprobación
                             </span>
                           )}
                         </td>
@@ -1986,7 +1988,7 @@ export const SuperAdmin: React.FC = () => {
                           </div>
                           {driver.walletBalance <= -50 && (
                             <span style={{ fontSize: "10px", color: "#ff4757", fontWeight: "bold" }}>
-                              ⚠️ DEUDA &gt; $50 (PAUSADO)
+                              {systemIconForEmoji("⚠️")} DEUDA &gt; $50 (PAUSADO)
                             </span>
                           )}
                           {driver.walletBalance > 0 && (
@@ -2011,7 +2013,7 @@ export const SuperAdmin: React.FC = () => {
                                 }}
                                 title="Liquidar corte y registrar transferencia al motorizado"
                               >
-                                ⚡ Liquidar ${driver.walletBalance.toFixed(2)}
+                                {systemIconForEmoji("⚡")} Liquidar ${driver.walletBalance.toFixed(2)}
                               </button>
                             )}
                             <button
@@ -2029,7 +2031,7 @@ export const SuperAdmin: React.FC = () => {
                               }}
                               title={driver.isActive ? "Suspender acceso" : "Aprobar y habilitar cuenta"}
                             >
-                              {driver.isActive ? "Pausar" : "Aprobar ✅"}
+                              {driver.isActive ? "Pausar" : systemTextWithIcons("Aprobar ✅")}
                             </button>
 
                             <button
@@ -2108,7 +2110,7 @@ export const SuperAdmin: React.FC = () => {
                               fontSize: "11px",
                               fontWeight: "bold"
                             }}>
-                              Club Plus ✨
+                              Club Plus {systemIconForEmoji("✨")}
                             </span>
                           ) : (
                             <span style={{
@@ -2504,7 +2506,7 @@ export const SuperAdmin: React.FC = () => {
                             {order.user.name} (@{order.user.username})
                           </td>
                           <td style={{ padding: "16px 20px", fontSize: "13px" }}>
-                            {order.user.role === "MOTORIZADO" ? "Motorizado 🛵" : "Cliente 🍔"}
+                            {order.user.role === "MOTORIZADO" ? systemTextWithIcons("Motorizado 🛵") : systemTextWithIcons("Cliente 🍔")}
                           </td>
                           <td style={{ padding: "16px 20px", fontSize: "13px" }}>
                             {order.type === "RECHARGE" ? "Recarga Wallet" : "Club GoEats Plus"}
@@ -2516,7 +2518,7 @@ export const SuperAdmin: React.FC = () => {
                             ${order.amount.toFixed(2)}
                           </td>
                           <td style={{ padding: "16px 20px", textAlign: "center", fontSize: "12px" }}>
-                            {order.paymentMethod === "CARD" ? "💳 Tarjeta (Payphone)" : "🏦 Transferencia"}
+                            {order.paymentMethod === "CARD" ? systemTextWithIcons("💳 Tarjeta (Payphone)") : systemTextWithIcons("🏦 Transferencia")}
                           </td>
                           <td style={{ padding: "16px 20px", textAlign: "center" }}>
                             <span style={{
@@ -3124,4 +3126,3 @@ export const SuperAdmin: React.FC = () => {
     </div>
   );
 };
-

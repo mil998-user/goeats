@@ -32,7 +32,7 @@ async function main() {
     },
   });
 
-  console.log("✅ Super Admin registrado o actualizado con éxito:");
+  console.log(" Super Admin registrado o actualizado con éxito:");
   console.log({
     id: admin.id,
     username: admin.username,

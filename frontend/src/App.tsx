@@ -19,6 +19,8 @@ import { Orders } from "./pages/Orders";
 import { TablesPage } from "./pages/TablesPage";
 import { KitchenNotificationManager } from "./components/KitchenNotificationManager";
 import { SupportPage } from "./pages/SupportPage";
+import { CustomerLocationSetup } from "./pages/CustomerLocationSetup";
+import { LandingExperience } from "./components/LandingExperience";
 import { ShoppingBag, ChefHat, Wallet, Settings, TrendingUp, LogOut, Shield, Truck, BookOpen, Menu as MenuIcon, Utensils, ClipboardList, User, HelpCircle } from "lucide-react";
 
 // Protected Route Guard
@@ -51,7 +53,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
     if (user.role === "CAJERO" || user.role === "MOZO") {
       return <Navigate to="/pos" replace />;
     }
-    return <Navigate to="/" replace />;
+    return <Navigate to="/restaurants" replace />;
   }
 
   return <>{children}</>;
@@ -299,7 +301,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <div style={{ display: "flex", alignItems: "center", gap: "6px", maxWidth: "calc(100vw - 120px)", overflow: "hidden" }}>
             <span style={{
               fontSize: "15px",
-              fontFamily: "var(--font-title)",
+              fontFamily: "var(--font-body)",
               fontWeight: 700,
               whiteSpace: "nowrap",
               overflow: "hidden",
@@ -346,7 +348,8 @@ function App() {
         <SocketProvider>
           <Routes>
             {/* Public Routes */}
-            <Route path="/" element={<Aggregator />} />
+            <Route path="/" element={<LandingExperience />} />
+            <Route path="/restaurants" element={<Aggregator />} />
             <Route path="/r/:slug" element={<PublicCatalog />} />
             <Route path="/r/:slug/mesa/:tableId" element={<PublicCatalog />} />
             <Route path="/qr/:slug/:tableId" element={<PublicCatalog />} />
@@ -431,6 +434,11 @@ function App() {
                 <AppLayout>
                   <CustomerDashboard />
                 </AppLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/customer/location-setup" element={
+              <ProtectedRoute allowedRoles={["CUSTOMER"]}>
+                <CustomerLocationSetup />
               </ProtectedRoute>
             } />
             <Route path="/customer/profile" element={

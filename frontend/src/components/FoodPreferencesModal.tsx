@@ -2,30 +2,8 @@ import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Sparkles, Check, X } from "lucide-react";
 import { apiRequest } from "../utils/api";
+import { FOOD_PREFERENCE_CATEGORIES, normalizeFoodPreferences } from "../utils/foodPreferences";
 import { useAuth } from "../context/AuthContext";
-
-export interface FoodCategoryOption {
-  id: string;
-  name: string;
-  emoji: string;
-  description: string;
-  gradient: string;
-}
-
-export const FOOD_PREFERENCE_CATEGORIES: FoodCategoryOption[] = [
-  { id: "burgers", name: "Hamburguesas", emoji: "🍔", description: "Smash, artesanales y papas", gradient: "linear-gradient(135deg, #ff7675, #d63031)" },
-  { id: "pizza", name: "Pizzas", emoji: "🍕", description: "A la leña, mozzarella y masa madre", gradient: "linear-gradient(135deg, #fdcb6e, #e17055)" },
-  { id: "sushi", name: "Sushi & Asiática", emoji: "🍣", description: "Rolls, ramen, poke y gyozas", gradient: "linear-gradient(135deg, #e84393, #fd79a8)" },
-  { id: "alitas", name: "Pollo & Alitas", emoji: "🍗", description: "Crispy, BBQ y alitas picantes", gradient: "linear-gradient(135deg, #fab1a0, #e17055)" },
-  { id: "mexican", name: "Tacos & Mexicana", emoji: "🌮", description: "Burritos, tacos, nachos y guacamole", gradient: "linear-gradient(135deg, #00b894, #00cec9)" },
-  { id: "healthy", name: "Saludable & Fit", emoji: "🥗", description: "Bowls, ensaladas y opciones veggie", gradient: "linear-gradient(135deg, #55efc4, #00b894)" },
-  { id: "desserts", name: "Postres & Helados", emoji: "🍰", description: "Waffles, pasteles y delicias dulces", gradient: "linear-gradient(135deg, #fd79a8, #6c5ce7)" },
-  { id: "bbq", name: "Parrilladas & Asados", emoji: "🥩", description: "Cortes de carne, costillas y carbón", gradient: "linear-gradient(135deg, #636e72, #2d3436)" },
-  { id: "italian", name: "Pastas & Italiana", emoji: "🍝", description: "Lasaña, pastas frescas y risottos", gradient: "linear-gradient(135deg, #ffeaa7, #fdcb6e)" },
-  { id: "sandwiches", name: "Sándwiches & Cafés", emoji: "🥪", description: "Baguettes, tostadas y desayunos", gradient: "linear-gradient(135deg, #74b9ff, #0984e3)" },
-  { id: "tapioca", name: "Bebidas & Bubble Tea", emoji: "🧋", description: "Jugos naturales, batidos y tapioca", gradient: "linear-gradient(135deg, #a29bfe, #6c5ce7)" },
-  { id: "fastfood", name: "Comida Rápida & Snacks", emoji: "🍟", description: "Hot dogs, empanadas y piqueos", gradient: "linear-gradient(135deg, #fbc531, #e1b12c)" },
-];
 
 interface FoodPreferencesModalProps {
   isOpen: boolean;
@@ -40,7 +18,7 @@ export const FoodPreferencesModal: React.FC<FoodPreferencesModalProps> = ({
   onClose,
   onPreferencesUpdated,
   title = "Tus Preferencias Gastronómicas",
-  subtitle = "Elige tus comidas y antojitos favoritos para que GoEats te recomiende los mejores platos y locales.",
+  subtitle = "Selecciona las categorías que más te gustan y descubre restaurantes que coinciden con tus preferencias.",
 }) => {
   const { user, token, login } = useAuth();
   const [selected, setSelected] = useState<string[]>([]);
@@ -50,24 +28,29 @@ export const FoodPreferencesModal: React.FC<FoodPreferencesModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
 
-    if (user && (user as any).preferences && Array.isArray((user as any).preferences)) {
-      setSelected((user as any).preferences);
-      return;
-    }
-
-    try {
-      const stored = localStorage.getItem("goeats_food_preferences");
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          setSelected(parsed);
-          return;
-        }
+    const timer = window.setTimeout(() => {
+      if (user && user.preferences && Array.isArray(user.preferences)) {
+        setSelected(normalizeFoodPreferences(user.preferences));
+        return;
       }
-    } catch (e) {}
 
-    // Default: select 2 popular categories as suggestion
-    setSelected(["burgers", "pizza"]);
+      try {
+        const stored = localStorage.getItem("goeats_food_preferences");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            setSelected(normalizeFoodPreferences(parsed));
+            return;
+          }
+        }
+      } catch {
+        // Ignore malformed local storage data and fall back to an empty selection.
+      }
+
+      setSelected([]);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [isOpen, user]);
 
   if (!isOpen) return null;
@@ -90,28 +73,29 @@ export const FoodPreferencesModal: React.FC<FoodPreferencesModalProps> = ({
     setIsSaving(true);
     try {
       // 1. Guardar en localStorage inmediatamente
-      localStorage.setItem("goeats_food_preferences", JSON.stringify(selected));
+      const normalizedPreferences = normalizeFoodPreferences(selected);
+      localStorage.setItem("goeats_food_preferences", JSON.stringify(normalizedPreferences));
 
       // 2. Si el usuario está autenticado, sincronizar con backend
       if (user && token) {
         try {
           await apiRequest("/auth/preferences", {
             method: "POST",
-            body: JSON.stringify({ preferences: selected }),
+            body: JSON.stringify({ preferences: normalizedPreferences }),
           });
 
           // Actualizar contexto de usuario local
           login(token, {
             ...user,
-            preferences: selected,
-          } as any);
+            preferences: normalizedPreferences,
+          });
         } catch (err) {
           console.warn("No se pudo sincronizar preferencias con el servidor:", err);
         }
       }
 
       if (onPreferencesUpdated) {
-        onPreferencesUpdated(selected);
+        onPreferencesUpdated(normalizedPreferences);
       }
       onClose();
     } finally {
@@ -137,9 +121,9 @@ export const FoodPreferencesModal: React.FC<FoodPreferencesModalProps> = ({
     }}>
       <div style={{
         backgroundColor: "#ffffff",
-        borderRadius: "24px",
+        borderRadius: "20px",
         width: "100%",
-        maxWidth: "600px",
+        maxWidth: "720px",
         boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.35)",
         overflow: "hidden",
         position: "relative",
@@ -147,10 +131,10 @@ export const FoodPreferencesModal: React.FC<FoodPreferencesModalProps> = ({
         flexDirection: "column",
         maxHeight: "90vh",
         border: "1px solid rgba(226, 232, 240, 0.8)",
-      }}>
+      }} role="dialog" aria-modal="true" aria-labelledby="food-preferences-title">
         {/* Top Header */}
         <div style={{
-          padding: "20px 22px 14px",
+          padding: "22px 24px 18px",
           borderBottom: "1px solid #f1f5f9",
           display: "flex",
           justifyContent: "space-between",
@@ -164,8 +148,8 @@ export const FoodPreferencesModal: React.FC<FoodPreferencesModalProps> = ({
               gap: "6px",
               padding: "4px 10px",
               borderRadius: "20px",
-              backgroundColor: "rgba(255, 71, 87, 0.1)",
-              color: "#ff4757",
+              backgroundColor: "#f1f1f1",
+              color: "#111111",
               fontSize: "12px",
               fontWeight: 700,
               marginBottom: "8px",
@@ -174,13 +158,13 @@ export const FoodPreferencesModal: React.FC<FoodPreferencesModalProps> = ({
               Recomendaciones Inteligentes
             </div>
             <h2 style={{
-              fontSize: "22px",
+              fontSize: "24px",
               fontWeight: 800,
               color: "#0f172a",
               margin: "0 0 6px 0",
               letterSpacing: "-0.4px"
             }}>
-              {title}
+              <span id="food-preferences-title">{title}</span>
             </h2>
             <p style={{
               fontSize: "13px",
@@ -225,7 +209,9 @@ export const FoodPreferencesModal: React.FC<FoodPreferencesModalProps> = ({
           fontSize: "13px",
         }}>
           <span style={{ color: "#475569", fontWeight: 600 }}>
-            {selected.length === 0 ? "Selecciona al menos una categoría" : `${selected.length} seleccionada${selected.length > 1 ? "s" : ""}`}
+            {selected.length === 0
+              ? "Sin preferencias seleccionadas: verás todos los restaurantes."
+              : `${selected.length} categoría${selected.length > 1 ? "s" : ""} seleccionada${selected.length > 1 ? "s" : ""}`}
           </span>
           <button
             type="button"
@@ -233,7 +219,7 @@ export const FoodPreferencesModal: React.FC<FoodPreferencesModalProps> = ({
             style={{
               background: "none",
               border: "none",
-              color: "#ff4757",
+              color: "#111111",
               fontWeight: 700,
               cursor: "pointer",
               fontSize: "12px",
@@ -245,46 +231,60 @@ export const FoodPreferencesModal: React.FC<FoodPreferencesModalProps> = ({
 
         {/* Category Grid */}
         <div style={{
-          padding: "16px 20px",
+          padding: "18px 22px",
           overflowY: "auto",
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))",
-          gap: "10px",
+          gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))",
+          gap: "12px",
           flex: 1,
         }}>
           {FOOD_PREFERENCE_CATEGORIES.map((cat) => {
             const isSelected = selected.includes(cat.id);
+            const CategoryIcon = cat.icon;
             return (
-              <div
+              <button
                 key={cat.id}
+                type="button"
                 onClick={() => toggleCategory(cat.id)}
+                aria-pressed={isSelected}
                 style={{
-                  borderRadius: "14px",
-                  padding: "12px",
+                  minHeight: "142px",
+                  borderRadius: "16px",
+                  padding: "15px",
                   cursor: "pointer",
-                  border: isSelected ? "2px solid #ff4757" : "1px solid #e2e8f0",
-                  backgroundColor: isSelected ? "rgba(255, 71, 87, 0.04)" : "#ffffff",
-                  boxShadow: isSelected ? "0 4px 12px rgba(255, 71, 87, 0.12)" : "0 2px 4px rgba(0, 0, 0, 0.02)",
-                  transition: "all 0.18s ease-in-out",
-                  position: "relative",
+                  border: isSelected ? "1px solid #111111" : "1px solid #e2e2e2",
+                  backgroundColor: isSelected ? "#f5f5f5" : "#ffffff",
+                  boxShadow: isSelected ? "0 3px 10px rgba(0, 0, 0, 0.08)" : "none",
+                  transition: "border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease",
                   display: "flex",
                   flexDirection: "column",
+                  alignItems: "stretch",
+                  textAlign: "left",
                   userSelect: "none",
                 }}
               >
-                {/* Header row with emoji & check badge */}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-                  <span style={{ fontSize: "24px" }}>{cat.emoji}</span>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                  <span style={{
+                    width: "38px",
+                    height: "38px",
+                    borderRadius: "12px",
+                    display: "grid",
+                    placeItems: "center",
+                    backgroundColor: isSelected ? "#111111" : "#f1f1f1",
+                    color: isSelected ? "#ffffff" : "#333333",
+                  }}>
+                    <CategoryIcon size={19} strokeWidth={1.8} />
+                  </span>
                   <div style={{
-                    width: "20px",
-                    height: "20px",
-                    borderRadius: "50%",
+                    width: "22px",
+                    height: "22px",
+                    borderRadius: "7px",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    backgroundColor: isSelected ? "#ff4757" : "#e2e8f0",
+                    border: isSelected ? "1px solid #111111" : "1px solid #cbd5e1",
+                    backgroundColor: isSelected ? "#111111" : "#ffffff",
                     color: "#ffffff",
-                    transition: "all 0.18s ease",
                   }}>
                     {isSelected ? <Check size={12} strokeWidth={3} /> : null}
                   </div>
@@ -293,20 +293,21 @@ export const FoodPreferencesModal: React.FC<FoodPreferencesModalProps> = ({
                 <div style={{
                   fontSize: "13px",
                   fontWeight: 700,
-                  color: isSelected ? "#ff4757" : "#1e293b",
-                  marginBottom: "2px",
+                  color: "#1e293b",
+                  lineHeight: 1.35,
+                  marginBottom: "5px",
                 }}>
                   {cat.name}
                 </div>
 
                 <div style={{
-                  fontSize: "10.5px",
+                  fontSize: "11px",
                   color: "#64748b",
-                  lineHeight: "1.25"
+                  lineHeight: 1.4
                 }}>
                   {cat.description}
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -348,12 +349,12 @@ export const FoodPreferencesModal: React.FC<FoodPreferencesModalProps> = ({
               padding: "11px 20px",
               borderRadius: "10px",
               border: "none",
-              background: "linear-gradient(135deg, #ff4757, #ff6b81)",
+              background: "#111111",
               color: "#ffffff",
               fontWeight: 700,
               fontSize: "13px",
               cursor: "pointer",
-              boxShadow: "0 4px 12px rgba(255, 71, 87, 0.3)",
+              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.18)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -362,7 +363,7 @@ export const FoodPreferencesModal: React.FC<FoodPreferencesModalProps> = ({
             }}
           >
             <Sparkles size={15} />
-            {isSaving ? "Guardando..." : "Guardar y Personalizar"}
+            {isSaving ? "Guardando..." : "Guardar preferencias"}
           </button>
         </div>
       </div>

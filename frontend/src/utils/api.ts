@@ -73,11 +73,11 @@ export async function apiRequest(endpoint: string, options: RequestOptions = {})
         return {
           success: true,
           restaurants: [
-            { id: 1, name: "Burger King Express", slug: "burger-king", address: "Av. Amazonas y Colón", phone: "0991234567", logo: "/logos/burger-king.svg", coverImage: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800", isActive: true },
-            { id: 2, name: "KFC Coronel", slug: "kfc", address: "Mall del Sol, Local 12", phone: "0992345678", logo: "/logos/kfc.svg", coverImage: "https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=800", isActive: true },
-            { id: 3, name: "El Artesanal Burger", slug: "el-artesanal", address: "Calle Larga y Borrero", phone: "0993456789", logo: "/logos/el-artesanal.svg", coverImage: "https://images.unsplash.com/photo-1550547660-d9450f859349?w=800", isActive: true },
-            { id: 4, name: "Papa John's Pizza", slug: "papa-johns", address: "Av. 12 de Octubre", phone: "0994567890", logo: "/logos/papa-johns.svg", coverImage: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=800", isActive: true },
-            { id: 5, name: "Maku Sushi Bar", slug: "maku-sushi", address: "Plaza Mayor, Local 4", phone: "0995678901", logo: "/logos/maku-sushi.svg", coverImage: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=800", isActive: true }
+            { id: 1, name: "Burger King Express", slug: "burger-king", address: "Av. Amazonas y Colón", phone: "0991234567", logo: "/logos/burger-king.svg", coverImage: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800", categories: [{ id: 1, name: "Hamburguesas" }], isActive: true },
+            { id: 2, name: "KFC Coronel", slug: "kfc", address: "Mall del Sol, Local 12", phone: "0992345678", logo: "/logos/kfc.svg", coverImage: "https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=800", categories: [{ id: 3, name: "Pollo" }], isActive: true },
+            { id: 3, name: "El Artesanal Burger", slug: "el-artesanal", address: "Calle Larga y Borrero", phone: "0993456789", logo: "/logos/el-artesanal.svg", coverImage: "https://images.unsplash.com/photo-1550547660-d9450f859349?w=800", categories: [{ id: 1, name: "Hamburguesas" }, { id: 7, name: "BBQ" }], isActive: true },
+            { id: 4, name: "Papa John's Pizza", slug: "papa-johns", address: "Av. 12 de Octubre", phone: "0994567890", logo: "/logos/papa-johns.svg", coverImage: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=800", categories: [{ id: 2, name: "Pizza" }], isActive: true },
+            { id: 5, name: "Maku Sushi Bar", slug: "maku-sushi", address: "Plaza Mayor, Local 4", phone: "0995678901", logo: "/logos/maku-sushi.svg", coverImage: "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=800", categories: [{ id: 4, name: "Sushi" }], isActive: true }
           ]
         };
       }

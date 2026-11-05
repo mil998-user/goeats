@@ -558,3 +558,17 @@ SISTEMA ACTUAL (Single-Tenant)          SISTEMA NUEVO (Multi-Tenant SaaS)
 ---
 
 > **Nota**: Este documento debe ser actualizado cada vez que se implemente una nueva funcionalidad, se corrija un bug, o se modifique la arquitectura del sistema.
+
+### sugerencias
+- En la pagian de cliente los filtros de mis pedidos y mi perfil al mmomento de cambiarse no muestran lo correspondiente
+- datos incorrectos en lo que es la parte de iniciar sesion en restaurante
+- falta de diseño para los mensajes de confirmacion 
+- falta alerta de que es obligatorio que se escriba el motivo de rechazo del restaurant
+- falta actualizacion automaticamente de las acciones que se hacen en super admin
+- al momento de querer editar que se envie a la parte de donde se esta editando para que le sea mas facil al usuario 
+- revisar el envio de correos por parte del admin
+- iconos un poco mas realistas
+- diseñar un pequeño icono correspondiente a la app
+- agregar un limite de caracteres al campo de usuario
+- agregar un filtro para que la contraseña sea segura
+- restriccion de caracteres en los campos

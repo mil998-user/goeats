@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Store, Navigation, Loader2, Search, MapPin, X } from "lucide-react";
+import { systemIconForEmoji, systemTextWithIcons } from "../utils/systemIcons";
+
 
 interface RestaurantLocationPickerProps {
   initialLat?: number;
@@ -367,7 +369,7 @@ export const RestaurantLocationPicker: React.FC<RestaurantLocationPickerProps> =
       const restPinHtml = `
         <div style="position: relative; display: flex; flex-direction: column; align-items: center; cursor: grab; transform: translate(-50%, -100%);">
           <div style="background: rgba(20, 24, 33, 0.95); color: #ffd700; padding: 4px 10px; border-radius: 14px; font-weight: 800; font-size: 11px; box-shadow: 0 4px 14px rgba(0,0,0,0.5); white-space: nowrap; margin-bottom: 3px; border: 1px solid rgba(255,215,0,0.4); backdrop-filter: blur(6px);">
-            🏪 ${restaurantName}
+            ${restaurantName}
           </div>
           <div style="width: 28px; height: 28px; background: #ff9f43; border: 3px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(255,159,67,0.6);">
             <div style="width: 9px; height: 9px; background: #ffffff; border-radius: 50%;"></div>
@@ -443,7 +445,7 @@ export const RestaurantLocationPicker: React.FC<RestaurantLocationPickerProps> =
           }} />
           <input
             type="text"
-            placeholder="🔍 Escribe la calle, intersección o barrio (ej. Marianita de Jesús y Rocafuerte, Loja)..."
+            placeholder="Escribe la calle, intersección o barrio (ej. Marianita de Jesús y Rocafuerte, Loja)..."
             value={searchQuery}
             onChange={handleSearchInputChange}
             onFocus={() => {
@@ -602,7 +604,7 @@ export const RestaurantLocationPicker: React.FC<RestaurantLocationPickerProps> =
             ) : (
               <Navigation size={13} fill="#ff9f43" color="#ff9f43" />
             )}
-            <span>{locating ? "Detectando..." : "📍 Mi GPS Actual"}</span>
+            <span>{locating ? "Detectando..." : systemTextWithIcons("📍 Mi GPS Actual")}</span>
           </button>
         </div>
       </div>
@@ -638,7 +640,7 @@ export const RestaurantLocationPicker: React.FC<RestaurantLocationPickerProps> =
           gap: "4px",
           border: "1px solid rgba(255, 159, 67, 0.25)"
         }}>
-          <span>🏪 Ubicación Oficial del Restaurante</span>
+          <span>{systemIconForEmoji("🏪")} Ubicación Oficial del Restaurante</span>
         </div>
       </div>
     </div>

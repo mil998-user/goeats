@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { apiRequest } from "../utils/api";
 import { 
@@ -11,10 +11,13 @@ import {
   CheckCircle,
   Clock
 } from "lucide-react";
+import { systemIconForEmoji } from "../utils/systemIcons";
+
 
 export const PlusPromo: React.FC = () => {
   const { user, token, login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [plans, setPlans] = useState<any[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
@@ -34,6 +37,14 @@ export const PlusPromo: React.FC = () => {
     };
     fetchPlans();
   }, []);
+
+  React.useEffect(() => {
+    if (location.hash !== "#pricing-plans") return;
+    const timer = window.setTimeout(() => {
+      document.getElementById("pricing-plans")?.scrollIntoView({ behavior: "smooth" });
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [location.hash]);
 
   // Scroll to plans
   const scrollToPlans = () => {
@@ -210,12 +221,12 @@ export const PlusPromo: React.FC = () => {
         margin: "0 auto",
         borderBottom: "1px solid var(--border-light)"
       }}>
-        <Link to="/" style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--text-primary)", textDecoration: "none", fontWeight: 800, fontSize: "20px" }}>
-          <span style={{ color: "#ff4757" }}>GoEats</span> <span style={{ color: "#fbbf24" }}>Plus ✨</span>
+        <Link to="/restaurants" style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--text-primary)", textDecoration: "none", fontWeight: 800, fontSize: "20px" }}>
+          <span style={{ color: "#ff4757" }}>GoEats</span> <span style={{ color: "#fbbf24" }}>Plus {systemIconForEmoji("✨")}</span>
         </Link>
         <div style={{ display: "flex", gap: "20px", alignItems: "center" }}>
-          <Link to="/" style={{ color: "var(--text-secondary)", textDecoration: "none", fontSize: "14px", fontWeight: 500 }}>
-            Volver a Locales
+          <Link to="/restaurants" style={{ color: "var(--text-secondary)", textDecoration: "none", fontSize: "14px", fontWeight: 500 }}>
+            Inicio
           </Link>
           {isAuthenticated && user ? (
             <Link to="/customer/dashboard" style={{ 
@@ -231,7 +242,7 @@ export const PlusPromo: React.FC = () => {
               Mi Panel
             </Link>
           ) : (
-            <Link to="/login" style={{ 
+            <Link to="/login?role=customer&mode=register" style={{ 
               backgroundColor: "var(--text-primary)", 
               color: "var(--bg-primary)", 
               border: "none", 
@@ -241,7 +252,7 @@ export const PlusPromo: React.FC = () => {
               fontSize: "14px", 
               textDecoration: "none"
             }}>
-              Iniciar Sesión
+              Crear cuenta
             </Link>
           )}
         </div>
@@ -307,7 +318,7 @@ export const PlusPromo: React.FC = () => {
           onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-2px)"}
           onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
         >
-          Únete al Club Plus ✨
+          Únete al Club Plus {systemIconForEmoji("✨")}
         </button>
       </section>
 
@@ -354,7 +365,7 @@ export const PlusPromo: React.FC = () => {
           </div>
           <h3 style={{ fontSize: "20px", fontWeight: "bold", margin: 0, color: "var(--text-primary)" }}>Apoyo e Incentivo al Repartidor</h3>
           <p style={{ color: "var(--text-secondary)", fontSize: "14px", lineHeight: "1.5", margin: 0 }}>
-            ¡Tus envíos gratis no afectan al conductor! Al contrario: los repartidores no pagan comisión por tu pedido y reciben un <strong>bono adicional de $0.50</strong> pagado directamente por GoEats. Tus pedidos vuelan 🛵.
+            ¡Tus envíos gratis no afectan al conductor! Al contrario: los repartidores no pagan comisión por tu pedido y reciben un <strong>bono adicional de $0.50</strong> pagado directamente por GoEats. Tus pedidos vuelan {systemIconForEmoji("🛵")}.
           </p>
         </div>
 
@@ -388,7 +399,21 @@ export const PlusPromo: React.FC = () => {
           <h2 style={{ fontSize: "clamp(24px, 5vw, 36px)", fontWeight: 800, margin: "0 0 10px 0", color: "var(--text-primary)" }}>Planes Flexibles para Todos</h2>
           <p style={{ color: "var(--text-secondary)", margin: "0 0 40px 0", fontSize: "14px" }}>Elige la suscripción que mejor se adapte a tus necesidades de consumo.</p>
 
-          <div style={{ 
+          {!isAuthenticated ? (
+            <div style={{ maxWidth: "560px", margin: "0 auto", padding: "30px 24px", border: "1px solid var(--border-light)", borderRadius: "16px", backgroundColor: "var(--bg-primary)" }}>
+              <h3 style={{ margin: "0 0 10px", color: "var(--text-primary)" }}>Regístrate para ver los planes</h3>
+              <p style={{ color: "var(--text-secondary)", margin: "0 0 20px", fontSize: "14px", lineHeight: 1.5 }}>
+                Para consultar los planes de suscripción de GoEats Plus, primero necesitas crear una cuenta.
+              </p>
+              <Link
+                to="/login?role=customer&mode=register&returnTo=%2Fplus%23pricing-plans"
+                className="glow-btn"
+                style={{ display: "inline-flex", padding: "12px 22px", borderRadius: "24px", textDecoration: "none", fontWeight: 700 }}
+              >
+                Crear cuenta
+              </Link>
+            </div>
+          ) : <div style={{ 
             display: "grid", 
             gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))", 
             gap: "24px",
@@ -464,7 +489,7 @@ export const PlusPromo: React.FC = () => {
                 );
               })
             )}
-          </div>
+          </div>}
         </div>
       </section>
 
@@ -709,7 +734,7 @@ export const PlusPromo: React.FC = () => {
                           color: "var(--text-primary)"
                         }}
                       >
-                        💳 Tarjeta
+                        {systemIconForEmoji("💳")} Tarjeta
                       </button>
                       <button
                         type="button"
@@ -728,7 +753,7 @@ export const PlusPromo: React.FC = () => {
                           color: "var(--text-primary)"
                         }}
                       >
-                        🏦 Transferencia
+                        {systemIconForEmoji("🏦")} Transferencia
                       </button>
                     </div>
                   </div>
@@ -834,7 +859,7 @@ export const PlusPromo: React.FC = () => {
                 {paymentMethod === "CARD" ? (
                   <>
                     <CheckCircle size={56} color="var(--success)" style={{ margin: "0 auto 15px auto" }} />
-                    <h3 style={{ fontSize: "22px", fontWeight: "800", marginBottom: "8px" }}>¡Bienvenido al Club! 🎉</h3>
+                    <h3 style={{ fontSize: "22px", fontWeight: "800", marginBottom: "8px" }}>¡Bienvenido al Club! {systemIconForEmoji("🎉")}</h3>
                     <p style={{ fontSize: "14px", color: "var(--text-secondary)", lineHeight: "1.5", marginBottom: "25px" }}>
                       Tu suscripción <strong>{selectedPlan.name}</strong> ha sido activada de inmediato. Ya puedes disfrutar de envíos 100% gratis en todos tus pedidos delivery.
                     </p>
@@ -849,16 +874,16 @@ export const PlusPromo: React.FC = () => {
                 ) : (
                   <>
                     <Clock size={56} color="#d97706" style={{ margin: "0 auto 15px auto" }} />
-                    <h3 style={{ fontSize: "20px", fontWeight: "800", marginBottom: "8px" }}>Comprobante Recibido ⏳</h3>
+                    <h3 style={{ fontSize: "20px", fontWeight: "800", marginBottom: "8px" }}>Comprobante Recibido {systemIconForEmoji("⏳")}</h3>
                     <p style={{ fontSize: "14px", color: "var(--text-secondary)", lineHeight: "1.5", marginBottom: "25px" }}>
                       Hemos enviado tu comprobante al SuperAdministrador. Tan pronto sea verificado y aprobado, se activará tu membresía Club GoEats Plus.
                     </p>
                     <button
-                      onClick={() => { setShowModal(false); navigate("/"); }}
+                      onClick={() => { setShowModal(false); navigate("/restaurants"); }}
                       className="glow-btn"
                       style={{ padding: "12px 24px" }}
                     >
-                      Volver a Locales
+                      Inicio
                     </button>
                   </>
                 )}

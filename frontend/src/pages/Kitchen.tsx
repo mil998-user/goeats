@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useSocket } from "../context/SocketContext";
 import { apiRequest } from "../utils/api";
 import { Play, CheckCircle, Loader2, Sparkles, ChefHat, BellRing, CheckCircle2 } from "lucide-react";
+import { systemIconForEmoji, systemTextWithIcons } from "../utils/systemIcons";
+
 
 interface OrderItem {
   id: number;
@@ -305,8 +307,8 @@ export const Kitchen: React.FC = () => {
                         {group.order.type === "DINE_IN" && group.order.table
                           ? `Mesa ${group.order.table.number}`
                           : group.order.type === "DELIVERY"
-                          ? "🚚 Delivery"
-                          : "🛍️ Para Llevar"}
+                          ? systemTextWithIcons("🚚 Delivery")
+                          : systemTextWithIcons("🛍️ Para Llevar")}
                       </h3>
                       <div style={{ marginTop: "4px", fontSize: "13px", color: "var(--text-secondary)" }}>
                         Cliente: <strong>{group.order.customerName}</strong>
@@ -344,7 +346,7 @@ export const Kitchen: React.FC = () => {
                           : "var(--text-secondary)",
                         border: `1px solid ${isAllReady ? "var(--success)" : isAlmostReady ? "var(--warning)" : "var(--border-light)"}`
                       }}>
-                        {isAllReady ? "🟢 ¡Todos listos!" : isAlmostReady ? "🟡 Casi listo" : "⏳ En preparación"} ({readyCount}/{totalCount})
+                        {isAllReady ? systemTextWithIcons("🟢 ¡Todos listos!") : isAlmostReady ? systemTextWithIcons("🟡 Casi listo") : systemTextWithIcons("⏳ En preparación")} ({readyCount}/{totalCount})
                       </span>
                       <span style={{ fontSize: "11px", color: "var(--text-secondary)", fontWeight: 600 }}>
                         {percent}%
@@ -526,17 +528,17 @@ export const Kitchen: React.FC = () => {
                     ) : isCalled ? (
                       <>
                         <CheckCircle2 size={16} />
-                        ¡Mesero notificado! 🛎️
+                        ¡Mesero notificado! {systemIconForEmoji("🛎️")}
                       </>
                     ) : isAllReady ? (
                       <>
                         <BellRing size={16} />
-                        🛎️ ¡Llamar al Mesero (Mesa Lista)!
+                        {systemIconForEmoji("🛎️")} ¡Llamar al Mesero (Mesa Lista)!
                       </>
                     ) : (
                       <>
                         <BellRing size={16} />
-                        🛎️ Llamar al Mesero
+                        {systemIconForEmoji("🛎️")} Llamar al Mesero
                       </>
                     )}
                   </button>

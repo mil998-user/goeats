@@ -110,6 +110,13 @@ export async function login(req: Request, res: Response, next: NextFunction) {
         restaurantSlug: user.restaurant?.slug || null,
         isPlus: user.isPlus,
         preferences,
+        phone: user.phone,
+        deliveryAddress: user.deliveryAddress,
+        deliveryLatitude: user.deliveryLatitude,
+        deliveryLongitude: user.deliveryLongitude,
+        deliveryFloorApartment: user.deliveryFloorApartment,
+        deliverySecondaryStreet: user.deliverySecondaryStreet,
+        deliveryReferences: user.deliveryReferences,
       },
     });
   } catch (error) {
@@ -342,6 +349,12 @@ export async function getProfile(req: Request, res: Response, next: NextFunction
         isPlus: user.isPlus,
         createdAt: user.createdAt,
         preferences,
+        deliveryAddress: user.deliveryAddress,
+        deliveryLatitude: user.deliveryLatitude,
+        deliveryLongitude: user.deliveryLongitude,
+        deliveryFloorApartment: user.deliveryFloorApartment,
+        deliverySecondaryStreet: user.deliverySecondaryStreet,
+        deliveryReferences: user.deliveryReferences,
       },
     });
   } catch (error) {
@@ -356,7 +369,18 @@ export async function updateProfile(req: Request, res: Response, next: NextFunct
     }
 
     const userId = req.user.userId;
-    const { name, phone, cedula, password } = req.body;
+    const {
+      name,
+      phone,
+      cedula,
+      password,
+      deliveryAddress,
+      deliveryLatitude,
+      deliveryLongitude,
+      deliveryFloorApartment,
+      deliverySecondaryStreet,
+      deliveryReferences,
+    } = req.body;
 
     const existingUser = await prisma.user.findUnique({
       where: { id: userId },
@@ -396,6 +420,28 @@ export async function updateProfile(req: Request, res: Response, next: NextFunct
     if (password && password.trim() !== "") {
       dataToUpdate.password = await bcrypt.hash(password.trim(), SALT_ROUNDS);
     }
+    if (deliveryAddress !== undefined) {
+      if (typeof deliveryAddress !== "string" || !deliveryAddress.trim()) {
+        return res.status(400).json({ success: false, message: "La dirección de entrega es requerida." });
+      }
+      dataToUpdate.deliveryAddress = deliveryAddress.trim();
+    }
+    if (deliveryLatitude !== undefined || deliveryLongitude !== undefined) {
+      if (!Number.isFinite(deliveryLatitude) || !Number.isFinite(deliveryLongitude)) {
+        return res.status(400).json({ success: false, message: "La ubicación del domicilio no es válida." });
+      }
+      dataToUpdate.deliveryLatitude = deliveryLatitude;
+      dataToUpdate.deliveryLongitude = deliveryLongitude;
+    }
+    if (deliveryFloorApartment !== undefined) {
+      dataToUpdate.deliveryFloorApartment = deliveryFloorApartment?.trim() || null;
+    }
+    if (deliverySecondaryStreet !== undefined) {
+      dataToUpdate.deliverySecondaryStreet = deliverySecondaryStreet?.trim() || null;
+    }
+    if (deliveryReferences !== undefined) {
+      dataToUpdate.deliveryReferences = deliveryReferences?.trim() || null;
+    }
 
     const updatedUser = await prisma.user.update({
       where: { id: userId },
@@ -431,6 +477,12 @@ export async function updateProfile(req: Request, res: Response, next: NextFunct
         isPlus: updatedUser.isPlus,
         createdAt: updatedUser.createdAt,
         preferences,
+        deliveryAddress: updatedUser.deliveryAddress,
+        deliveryLatitude: updatedUser.deliveryLatitude,
+        deliveryLongitude: updatedUser.deliveryLongitude,
+        deliveryFloorApartment: updatedUser.deliveryFloorApartment,
+        deliverySecondaryStreet: updatedUser.deliverySecondaryStreet,
+        deliveryReferences: updatedUser.deliveryReferences,
       },
     });
   } catch (error) {
@@ -488,6 +540,17 @@ export async function registerCustomer(req: Request, res: Response, next: NextFu
       },
     });
 
+    const token = jwt.sign(
+      {
+        userId: user.id,
+        username: user.username,
+        role: user.role,
+        restaurantId: user.restaurantId,
+      },
+      env.JWT_SECRET,
+      { expiresIn: "24h" }
+    );
+
     if (user.email) {
       NotificationService.notifyCustomerWelcome({ id: user.id, name: user.name, email: user.email })
         .catch((err) => console.warn("[Notification] Error bienvenida cliente:", err));
@@ -496,6 +559,7 @@ export async function registerCustomer(req: Request, res: Response, next: NextFu
     return res.status(201).json({
       success: true,
       message: "Cliente registrado exitosamente",
+      token,
       user: {
         id: user.id,
         username: user.username,
@@ -503,6 +567,12 @@ export async function registerCustomer(req: Request, res: Response, next: NextFu
         role: user.role,
         cedula: user.cedula,
         phone: user.phone,
+        deliveryAddress: user.deliveryAddress,
+        deliveryLatitude: user.deliveryLatitude,
+        deliveryLongitude: user.deliveryLongitude,
+        deliveryFloorApartment: user.deliveryFloorApartment,
+        deliverySecondaryStreet: user.deliverySecondaryStreet,
+        deliveryReferences: user.deliveryReferences,
       },
     });
   } catch (error) {
@@ -849,6 +919,7 @@ export async function socialLogin(req: Request, res: Response, next: NextFunctio
 
     return res.status(200).json({
       success: true,
+      isNewUser,
       token,
       user: {
         id: user.id,
@@ -862,6 +933,13 @@ export async function socialLogin(req: Request, res: Response, next: NextFunctio
         avatar: avatar || null,
         provider: finalProvider,
         preferences,
+        phone: user.phone,
+        deliveryAddress: user.deliveryAddress,
+        deliveryLatitude: user.deliveryLatitude,
+        deliveryLongitude: user.deliveryLongitude,
+        deliveryFloorApartment: user.deliveryFloorApartment,
+        deliverySecondaryStreet: user.deliverySecondaryStreet,
+        deliveryReferences: user.deliveryReferences,
       },
     });
   } catch (error: any) {

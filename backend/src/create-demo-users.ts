@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 const SALT_ROUNDS = 10;
 
 async function main() {
-  console.log("🚀 Creando usuario Tienda / Restaurante y usuario Repartidor / Motorizado...");
+  console.log(" Creando usuario Tienda / Restaurante y usuario Repartidor / Motorizado...");
 
   // ==========================================
   // 1. CREACIÓN DE USUARIO TIENDA / RESTAURANTE
@@ -149,16 +149,16 @@ async function main() {
   });
 
   console.log("\n=======================================================");
-  console.log("✅ USUARIOS CREADOS Y APROBADOS SATISFACTORIAMENTE");
+  console.log(" USUARIOS CREADOS Y APROBADOS SATISFACTORIAMENTE");
   console.log("=======================================================");
-  console.log("🏪 1. TIENDA / RESTAURANTE:");
+  console.log(" 1. TIENDA / RESTAURANTE:");
   console.log(`   - Usuario:    ${ownerUser.username}`);
   console.log(`   - Contraseña: ${storePassword}`);
   console.log(`   - Rol:        ${ownerUser.role}`);
   console.log(`   - Local:      ${restaurant.name} (/r/${restaurant.slug})`);
   console.log(`   - Estado:     APROBADO Y ACTIVO (Acceso a POS, Cocina, Reportes)`);
   console.log("-------------------------------------------------------");
-  console.log("🛵 2. REPARTIDOR / MOTORIZADO:");
+  console.log(" 2. REPARTIDOR / MOTORIZADO:");
   console.log(`   - Usuario:    ${driverUser.username}`);
   console.log(`   - Contraseña: ${driverPassword}`);
   console.log(`   - Rol:        ${driverUser.role}`);
@@ -170,7 +170,7 @@ async function main() {
 
 main()
   .catch((e) => {
-    console.error("❌ Error creando usuarios:", e);
+    console.error(" Error creando usuarios:", e);
     process.exit(1);
   })
   .finally(async () => {

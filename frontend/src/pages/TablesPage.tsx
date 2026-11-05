@@ -280,7 +280,7 @@ export const TablesPage: React.FC = () => {
                     borderRadius: "var(--radius-md)",
                     fontSize: "14px",
                     fontWeight: 600,
-                    fontFamily: "var(--font-title)",
+                    fontFamily: "var(--font-body)",
                     cursor: "pointer",
                     transition: "var(--transition-fast)",
                     display: "flex",

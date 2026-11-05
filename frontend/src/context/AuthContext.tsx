@@ -17,6 +17,12 @@ export interface User {
   walletBalance?: number;
   createdAt?: string;
   preferences?: string[];
+  deliveryAddress?: string | null;
+  deliveryLatitude?: number | null;
+  deliveryLongitude?: number | null;
+  deliveryFloorApartment?: string | null;
+  deliverySecondaryStreet?: string | null;
+  deliveryReferences?: string | null;
 }
 
 interface AuthContextType {
