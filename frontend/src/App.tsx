@@ -17,11 +17,13 @@ import { CustomerDashboard } from "./pages/CustomerDashboard";
 import { PlusPromo } from "./pages/PlusPromo";
 import { Orders } from "./pages/Orders";
 import { TablesPage } from "./pages/TablesPage";
+import { Reservations } from "./pages/Reservations";
 import { KitchenNotificationManager } from "./components/KitchenNotificationManager";
 import { SupportPage } from "./pages/SupportPage";
 import { CustomerLocationSetup } from "./pages/CustomerLocationSetup";
 import { LandingExperience } from "./components/LandingExperience";
-import { ShoppingBag, ChefHat, Wallet, Settings, TrendingUp, LogOut, Shield, Truck, BookOpen, Menu as MenuIcon, Utensils, ClipboardList, User, HelpCircle } from "lucide-react";
+import { MobileTableLabels } from "./components/MobileTableLabels";
+import { ShoppingBag, ChefHat, Wallet, Settings, TrendingUp, LogOut, Shield, Truck, BookOpen, Menu as MenuIcon, Utensils, ClipboardList, User, HelpCircle, CalendarDays } from "lucide-react";
 
 // Protected Route Guard
 interface ProtectedRouteProps {
@@ -90,6 +92,12 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       to: "/tables",
       label: "Servicios de Mesa",
       icon: Utensils,
+      visible: user.role === "RESTAURANT_OWNER" || user.role === "CAJERO" || user.role === "MOZO",
+    },
+    {
+      to: "/reservations",
+      label: "Reservas",
+      icon: CalendarDays,
       visible: user.role === "RESTAURANT_OWNER" || user.role === "CAJERO" || user.role === "MOZO",
     },
     {
@@ -323,7 +331,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               alignItems: "center",
               justifyContent: "center",
               fontWeight: "bold",
-              fontSize: "12px",
+              fontSize: "13px",
               cursor: "pointer",
               flexShrink: 0
             }}
@@ -331,6 +339,10 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             {initials}
           </div>
         </div>
+
+        {/* Notices above the page (push permission): they push the page down, never cover it */}
+        <div id="layout-notices" style={{ flexShrink: 0 }} />
+        <MobileTableLabels />
 
         {/* Page Content Viewport */}
         <div style={{ flex: 1, overflowY: "auto", position: "relative" }}>
@@ -384,6 +396,13 @@ function App() {
               <ProtectedRoute allowedRoles={["RESTAURANT_OWNER", "PRODUCCION"]}>
                 <AppLayout>
                   <Kitchen />
+                </AppLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/reservations" element={
+              <ProtectedRoute allowedRoles={["RESTAURANT_OWNER", "CAJERO", "MOZO"]}>
+                <AppLayout>
+                  <Reservations />
                 </AppLayout>
               </ProtectedRoute>
             } />

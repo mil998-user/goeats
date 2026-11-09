@@ -1,0 +1,16 @@
+{
+  "name": "GoEats Loja",
+  "short_name": "GoEats",
+  "description": "Pide comida de restaurantes de Loja, a domicilio o en la mesa.",
+  "lang": "es-EC",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#111111",
+  "icons": [
+    { "src": "/icons/goeats-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/goeats-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/goeats-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

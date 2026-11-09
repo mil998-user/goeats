@@ -21,8 +21,8 @@ self.addEventListener('push', (event) => {
   const title = data.title || '🛎️ GoEats - Notificación de Cocina';
   const options = {
     body: data.body || 'Nuevo aviso de la cocina',
-    icon: '/favicon.svg',
-    badge: '/favicon.svg',
+    icon: '/icons/goeats-192.png',
+    badge: '/icons/goeats-192.png',
     tag: data.tag || 'goeats-notification',
     renotify: true,
     requireInteraction: true,

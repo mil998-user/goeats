@@ -31,32 +31,17 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
     const newSocket = io(socketUrl, {
       transports: ["websocket", "polling"],
+      auth: (cb) => cb({ token: localStorage.getItem("goeats_token") }),
       autoConnect: true,
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
     });
 
-    const joinRooms = () => {
-      if (user?.restaurantId) {
-        newSocket.emit("join-restaurant", user.restaurantId.toString());
-        console.log(`[Socket] Joined restaurant room: restaurant-${user.restaurantId}`);
-      }
-      if (user?.id) {
-        newSocket.emit("join-user", user.id.toString());
-      }
-    };
-
     newSocket.on("connect", () => {
       console.log("[Socket] Connected to server:", newSocket.id);
       setIsConnected(true);
-      joinRooms();
     });
-
-    if (newSocket.connected) {
-      setIsConnected(true);
-      joinRooms();
-    }
 
     newSocket.on("disconnect", (reason) => {
       console.log("[Socket] Disconnected from server:", reason);
@@ -68,7 +53,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return () => {
       newSocket.disconnect();
     };
-  }, [isAuthenticated, user?.id, user?.restaurantId]);
+  }, [isAuthenticated, user?.id]);
 
   return (
     <SocketContext.Provider value={{ socket, isConnected }}>

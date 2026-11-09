@@ -6,10 +6,10 @@
   --bg-secondary: #ffffff;     /* Pure white for cards, headers, containers */
   --bg-tertiary: #f1f3f4;      /* Light grey for buttons, hovers, inputs */
   
-  --accent-primary: #00A543;     /* Vibrant green (Chili POS) */
-  --accent-secondary: #00b847;   /* Lighter green */
-  --accent-gradient: linear-gradient(135deg, #00A543 0%, #00b847 100%);
-  --accent-glow: rgba(0, 165, 67, 0.08);
+  --accent-primary: #111111;     /* Black: GoEats black-and-white base */
+  --accent-secondary: #333333;   /* Dark grey */
+  --accent-gradient: linear-gradient(135deg, #111111 0%, #333333 100%);
+  --accent-glow: rgba(17, 17, 17, 0.08);
 
   --success: #2ed573;
   --success-glow: rgba(46, 213, 115, 0.1);
@@ -349,7 +349,7 @@ button, input, select, textarea {
   }
 
   .pos-dish-card-title {
-    font-size: 12px !important;
+    font-size: 13px !important;
     height: 30px !important;
     line-height: 1.25 !important;
   }
@@ -364,7 +364,7 @@ button, input, select, textarea {
 
   .pos-dish-card-btn {
     padding: 7px 6px !important;
-    font-size: 11.5px !important;
+    font-size: 13px !important;
     margin-top: 4px !important;
   }
 
@@ -379,7 +379,7 @@ button, input, select, textarea {
   }
 
   .pos-dish-counter-value {
-    font-size: 12px !important;
+    font-size: 13px !important;
   }
 
   .pos-categories-slider {
@@ -422,7 +422,7 @@ button, input, select, textarea {
   }
 
   .pos-category-card-title {
-    font-size: 11px !important;
+    font-size: 13px !important;
     font-weight: 700 !important;
     white-space: nowrap !important;
     line-height: 1.2 !important;
@@ -439,14 +439,14 @@ button, input, select, textarea {
     bottom: 14px !important;
     left: 14px !important;
     right: 14px !important;
-    background: linear-gradient(135deg, #00A543 0%, #008a38 100%) !important;
+    background: linear-gradient(135deg, #111111 0%, #333333 100%) !important;
     color: #ffffff !important;
     border-radius: var(--radius-lg) !important;
     padding: 12px 18px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    box-shadow: 0 10px 30px rgba(0, 165, 67, 0.45) !important;
+    box-shadow: 0 10px 30px rgba(17, 17, 17, 0.45) !important;
     z-index: 9999 !important;
     cursor: pointer !important;
     animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
@@ -495,14 +495,14 @@ button, input, select, textarea {
     background-color: var(--accent-primary) !important;
     color: #ffffff !important;
     border-color: var(--accent-primary) !important;
-    box-shadow: 0 2px 8px rgba(0, 165, 67, 0.3) !important;
+    box-shadow: 0 2px 8px rgba(17, 17, 17, 0.3) !important;
   }
 
   .mobile-tab-badge {
-    font-size: 10px;
+    font-size: 13px;
     padding: 1px 6px;
     border-radius: 6px;
-    background-color: rgba(0, 165, 67, 0.15);
+    background-color: rgba(17, 17, 17, 0.15);
     color: var(--accent-primary);
     font-weight: 800;
   }
@@ -513,7 +513,7 @@ button, input, select, textarea {
   }
 
   .mobile-tab-badge-cart {
-    font-size: 10px;
+    font-size: 13px;
     padding: 1px 6px;
     border-radius: 10px;
     background-color: var(--accent-primary);
@@ -802,7 +802,7 @@ button, input, select, textarea {
 }
 
 .pos-sidebar-profile-role {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--text-muted);
 }
 
@@ -853,7 +853,7 @@ button, input, select, textarea {
 }
 
 .pos-category-card.active {
-  background-color: rgba(0, 165, 67, 0.1);
+  background-color: rgba(17, 17, 17, 0.1);
   border-color: var(--accent-primary);
   color: var(--accent-primary);
 }
@@ -863,12 +863,12 @@ button, input, select, textarea {
 }
 
 .pos-category-card-title {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
 }
 
 .pos-category-card-count {
-  font-size: 10px;
+  font-size: 13px;
   color: var(--text-muted);
 }
 
@@ -893,7 +893,7 @@ button, input, select, textarea {
 
 .pos-dish-card.active {
   border-color: var(--accent-primary);
-  box-shadow: 0 0 0 1px var(--accent-primary), 0 4px 12px rgba(0, 165, 67, 0.08);
+  box-shadow: 0 0 0 1px var(--accent-primary), 0 4px 12px rgba(17, 17, 17, 0.08);
 }
 
 .pos-dish-card-img-container {
@@ -916,7 +916,7 @@ button, input, select, textarea {
   background-color: #fff9db;
   color: #f59f00;
   font-weight: 700;
-  font-size: 11px;
+  font-size: 13px;
   padding: 4px 8px;
   border-radius: var(--radius-sm);
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
@@ -957,7 +957,7 @@ button, input, select, textarea {
 }
 
 .pos-dish-card-diet {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -973,7 +973,7 @@ button, input, select, textarea {
 }
 
 .pos-dish-card-btn {
-  background-color: rgba(0, 165, 67, 0.1);
+  background-color: rgba(17, 17, 17, 0.1);
   color: var(--accent-primary);
   width: 100%;
   border-radius: var(--radius-sm);
@@ -1059,7 +1059,7 @@ button, input, select, textarea {
 
 .pos-table-pill.active {
   border-color: var(--accent-primary);
-  background-color: rgba(0, 165, 67, 0.05);
+  background-color: rgba(17, 17, 17, 0.05);
 }
 
 .pos-table-pill-avatar {
@@ -1069,7 +1069,7 @@ button, input, select, textarea {
   background-color: #ffa502;
   color: #ffffff;
   font-weight: 700;
-  font-size: 12px;
+  font-size: 13px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1082,20 +1082,20 @@ button, input, select, textarea {
 }
 
 .pos-table-pill-name {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--text-primary);
 }
 
 .pos-table-pill-status {
-  font-size: 10px;
+  font-size: 13px;
   color: var(--text-secondary);
 }
 
 .pos-table-pill-process {
-  font-size: 9px;
+  font-size: 13px;
   font-weight: bold;
-  background-color: rgba(0, 165, 67, 0.1);
+  background-color: rgba(17, 17, 17, 0.1);
   color: var(--accent-primary);
   padding: 1px 6px;
   border-radius: 4px;
@@ -1118,7 +1118,7 @@ button, input, select, textarea {
 }
 
 .pos-service-tab.active {
-  background-color: rgba(0, 165, 67, 0.15);
+  background-color: rgba(17, 17, 17, 0.15);
   color: var(--accent-primary);
 }
 
@@ -1143,7 +1143,7 @@ button, input, select, textarea {
 }
 
 .pos-payment-card.active {
-  background-color: rgba(0, 165, 67, 0.15);
+  background-color: rgba(17, 17, 17, 0.15);
   border-color: var(--accent-primary);
   color: var(--accent-primary);
 }
@@ -1153,7 +1153,7 @@ button, input, select, textarea {
 }
 
 .pos-payment-card-label {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   text-align: center;
 }
@@ -1206,7 +1206,7 @@ button, input, select, textarea {
   display: flex;
   align-items: center;
   padding: 6px 12px;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
@@ -1425,7 +1425,7 @@ button, input, select, textarea {
   border-radius: 11px;
   background: #218547;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
 }
 
@@ -1465,7 +1465,7 @@ button, input, select, textarea {
   align-items: center;
   gap: 7px;
   color: #d2f3cf;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1543,7 +1543,7 @@ button, input, select, textarea {
   gap: 7px;
   margin-top: 22px;
   color: rgba(255, 255, 255, 0.68);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .landing-hero-art {
@@ -1594,20 +1594,20 @@ button, input, select, textarea {
 }
 
 .landing-floating-card strong {
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .landing-floating-card small {
   margin-top: 3px;
   color: #718076;
-  font-size: 10px;
+  font-size: 13px;
 }
 
 .landing-rating {
   align-self: flex-start;
   margin-left: 8px;
   color: #b87500;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 800;
 }
 
@@ -1661,7 +1661,7 @@ button, input, select, textarea {
   border: 1px solid #f3d9a8;
   border-radius: 999px;
   background: #fff8e8;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
 }
 
@@ -1704,7 +1704,7 @@ button, input, select, textarea {
 .landing-promo-card > span:not(.landing-promo-icon) {
   margin-top: 4px;
   color: #6a756c;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .landing-code-button {
@@ -1719,14 +1719,14 @@ button, input, select, textarea {
   border-radius: 10px;
   background: #fff;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.08em;
 }
 
 .landing-copy-label {
   color: #78877b;
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: 0;
 }
@@ -1734,13 +1734,13 @@ button, input, select, textarea {
 .landing-copy-error {
   margin-top: 10px;
   color: #a33d2c;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .landing-promo-disclaimer {
   margin-top: 12px;
   color: #7d887e;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.5;
 }
 
@@ -1853,7 +1853,7 @@ button, input, select, textarea {
 .landing-local-note p {
   flex: 1;
   color: #69766b;
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.5;
 }
 
@@ -1869,7 +1869,7 @@ button, input, select, textarea {
   color: #218547;
   background: transparent;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
 }
 
@@ -1952,7 +1952,7 @@ button, input, select, textarea {
   border-radius: 12px;
   background: #f7fbf5;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
 }
 
@@ -1969,7 +1969,7 @@ button, input, select, textarea {
 .landing-promo-modal > small {
   margin-top: 14px;
   color: #879087;
-  font-size: 10px;
+  font-size: 13px;
   line-height: 1.45;
 }
 
@@ -2218,7 +2218,7 @@ button, input, select, textarea {
   .landing-nav-button {
     min-height: 37px;
     padding: 0 11px;
-    font-size: 11px;
+    font-size: 13px;
   }
 
   .landing-hero,
@@ -2272,7 +2272,7 @@ button, input, select, textarea {
   justify-content: space-between;
   margin: 0 auto;
   color: #647267;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
 }
 
@@ -2316,7 +2316,7 @@ button, input, select, textarea {
   border: 1px solid #dce4db;
   border-radius: 50%;
   background: #f6f8f5;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
 }
 
@@ -2362,7 +2362,7 @@ button, input, select, textarea {
   border: 1px solid #dcebd8;
   border-radius: 12px;
   background: #f6fbf3;
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.5;
 }
 
@@ -2381,7 +2381,7 @@ button, input, select, textarea {
 
 .location-selected-address strong {
   color: #258547;
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .location-setup-next {
@@ -2404,7 +2404,7 @@ button, input, select, textarea {
   color: #5e6d60;
   background: transparent;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
 }
 
@@ -2414,7 +2414,7 @@ button, input, select, textarea {
   gap: 7px;
   margin-top: 15px;
   color: #405345;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
 }
 
@@ -2440,7 +2440,7 @@ button, input, select, textarea {
 .location-setup-error {
   margin-top: 12px;
   color: #b33e37;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 @media (max-width: 640px) {
@@ -2614,7 +2614,7 @@ button, input, select, textarea {
   color: var(--ge-red-dark);
   border-radius: 999px;
   background: #f1f1f1;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.04em;
 }
@@ -2705,7 +2705,7 @@ button, input, select, textarea {
   border: 0;
   border-bottom: 1px solid currentColor;
   background: transparent;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 800;
 }
 
@@ -2730,13 +2730,13 @@ button, input, select, textarea {
 .ge-hero-proof p {
   margin: 0;
   color: var(--ge-muted);
-  font-size: 10px;
+  font-size: 13px;
   line-height: 1.5;
 }
 
 .ge-hero-proof strong {
   color: var(--ge-ink);
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .ge-hero-visual {
@@ -2821,12 +2821,12 @@ button, input, select, textarea {
 .ge-floating-card strong {
   color: var(--ge-ink);
   font-family: var(--font-body);
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .ge-floating-card small {
   color: var(--ge-muted);
-  font-size: 9px;
+  font-size: 13px;
 }
 
 .ge-live-dot {
@@ -2855,7 +2855,7 @@ button, input, select, textarea {
   color: var(--ge-red-dark);
   border-radius: 999px;
   background: #f1f1f1;
-  font-size: 9px;
+  font-size: 13px;
   font-weight: 800;
 }
 
@@ -2867,7 +2867,7 @@ button, input, select, textarea {
   align-items: center;
   gap: 9px;
   color: var(--ge-muted);
-  font-size: 9px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -2902,7 +2902,7 @@ button, input, select, textarea {
 .ge-eyebrow {
   margin: 0 0 13px;
   color: var(--ge-red);
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.17em;
   text-transform: uppercase;
@@ -2986,7 +2986,7 @@ button, input, select, textarea {
 .ge-discover-card p {
   margin: 10px 0 0;
   color: var(--ge-muted);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.6;
 }
 
@@ -3053,7 +3053,7 @@ button, input, select, textarea {
 .ge-promo-heading > p {
   margin: 0 0 3px;
   color: rgba(255, 255, 255, 0.68);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.6;
 }
 
@@ -3093,7 +3093,7 @@ button, input, select, textarea {
   border: 1px dashed #bdbdbd;
   border-radius: 10px;
   background: white;
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 800;
 }
 
@@ -3106,7 +3106,7 @@ button, input, select, textarea {
 
 .ge-coupon-code small {
   color: var(--ge-muted);
-  font-size: 8px;
+  font-size: 13px;
   font-weight: 500;
   letter-spacing: 0;
 }
@@ -3114,7 +3114,7 @@ button, input, select, textarea {
 .ge-copy-error,
 .ge-promo-disclaimer {
   color: #d0d0d0;
-  font-size: 10px;
+  font-size: 13px;
   line-height: 1.5;
 }
 
@@ -3162,7 +3162,7 @@ button, input, select, textarea {
   border-radius: 14px;
   background: white;
   box-shadow: 0 16px 35px rgba(43, 20, 23, 0.13);
-  font-size: 10px;
+  font-size: 13px;
 }
 
 .ge-metric-card {
@@ -3215,12 +3215,12 @@ button, input, select, textarea {
 }
 
 .ge-benefit-list strong {
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .ge-benefit-list small {
   color: var(--ge-muted);
-  font-size: 10px;
+  font-size: 13px;
 }
 
 .ge-rider-section {
@@ -3263,12 +3263,12 @@ button, input, select, textarea {
 }
 
 .ge-rider-benefits strong {
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .ge-rider-benefits span {
   color: rgba(255, 255, 255, 0.6);
-  font-size: 9px;
+  font-size: 13px;
 }
 
 .ge-action-light {
@@ -3361,7 +3361,7 @@ button, input, select, textarea {
   border: 1px solid rgba(255, 255, 255, 0.6);
   border-radius: 999px;
   background: transparent;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 800;
 }
 
@@ -3386,7 +3386,7 @@ button, input, select, textarea {
 .ge-footer-brand p {
   margin: 8px 0 0;
   color: var(--ge-muted);
-  font-size: 10px;
+  font-size: 13px;
 }
 
 .ge-footer-links {
@@ -3396,7 +3396,7 @@ button, input, select, textarea {
 }
 
 .ge-footer-links a {
-  font-size: 10px;
+  font-size: 13px;
 }
 
 .ge-copyright {
@@ -3405,7 +3405,7 @@ button, input, select, textarea {
   padding-top: 20px;
   color: var(--ge-muted);
   border-top: 1px solid #e2e2e2;
-  font-size: 10px;
+  font-size: 13px;
 }
 
 .ge-landing section[id] {
@@ -3427,7 +3427,7 @@ button, input, select, textarea {
     border: 0;
     border-radius: 999px;
     background: var(--ge-red-dark);
-    font-size: 10px;
+    font-size: 13px;
     font-weight: 800;
   }
 
@@ -3568,7 +3568,7 @@ button, input, select, textarea {
   .ge-nav-cta {
     gap: 5px;
     padding: 10px;
-    font-size: 9px;
+    font-size: 13px;
   }
 
   .ge-nav-cta svg {
@@ -3640,17 +3640,17 @@ button, input, select, textarea {
   }
 
   .ge-floating-card strong {
-    font-size: 9px;
+    font-size: 13px;
   }
 
   .ge-floating-card small {
-    font-size: 8px;
+    font-size: 13px;
   }
 
   .ge-card-rating {
     margin-left: 0;
     padding: 5px;
-    font-size: 8px;
+    font-size: 13px;
   }
 
   .ge-scroll-note {
@@ -3803,7 +3803,7 @@ button, input, select, textarea {
   padding: 6px 9px;
   border: 1px solid currentColor;
   border-radius: 999px;
-  font-size: 9px;
+  font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.1em;
   opacity: 0.8;
@@ -3822,7 +3822,7 @@ button, input, select, textarea {
 .ge-coupon-top p {
   max-width: 210px;
   margin: 10px 0 0;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.5;
   opacity: 0.8;
 }
@@ -3866,7 +3866,7 @@ button, input, select, textarea {
   border: 0;
   border-radius: 999px;
   background: white;
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 800;
 }
 
@@ -3886,7 +3886,7 @@ button, input, select, textarea {
   color: var(--ge-red);
   border-radius: 999px;
   background: var(--ge-red-light);
-  font-size: 8px;
+  font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -3902,7 +3902,7 @@ button, input, select, textarea {
 .ge-signup-card p {
   margin: 10px 0 18px;
   color: var(--ge-muted);
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.55;
 }
 
@@ -3913,7 +3913,7 @@ button, input, select, textarea {
   padding-left: 15px;
   color: white;
   background: var(--ge-red-dark);
-  font-size: 10px;
+  font-size: 13px;
 }
 
 .ge-signup-card .ge-action-link > span {
@@ -3924,7 +3924,7 @@ button, input, select, textarea {
 .ge-signup-card > small {
   margin-top: 11px;
   color: var(--ge-muted);
-  font-size: 8px;
+  font-size: 13px;
 }
 
 .ge-reviews-section {
@@ -3959,7 +3959,7 @@ button, input, select, textarea {
 
 .ge-reviews-score span {
   color: var(--ge-muted);
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .ge-reviews-grid {
@@ -4038,7 +4038,7 @@ button, input, select, textarea {
   color: white;
   border-radius: 50%;
   background: var(--ge-red);
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 800;
 }
 
@@ -4051,12 +4051,12 @@ button, input, select, textarea {
 .ge-review-author strong {
   color: var(--ge-ink);
   font-family: var(--font-body);
-  font-size: 10px;
+  font-size: 13px;
 }
 
 .ge-review-author small {
   color: var(--ge-muted);
-  font-size: 8px;
+  font-size: 13px;
 }
 
 .ge-review-featured .ge-review-author strong {
@@ -4070,7 +4070,7 @@ button, input, select, textarea {
 .ge-reviews-note {
   margin: 22px 0 0;
   color: var(--ge-muted);
-  font-size: 11px;
+  font-size: 13px;
   text-align: center;
 }
 
@@ -4090,7 +4090,7 @@ button, input, select, textarea {
 
 .ge-earnings-card small {
   color: var(--ge-muted);
-  font-size: 9px;
+  font-size: 13px;
 }
 
 .ge-earnings-card > strong {
@@ -4202,7 +4202,7 @@ button, input, select, textarea {
 
 .ge-promo-label {
   color: var(--ge-red);
-  font-size: 8px;
+  font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -4220,7 +4220,7 @@ button, input, select, textarea {
 .ge-promo-popup-content > p {
   margin: 5px 0 12px;
   color: var(--ge-muted);
-  font-size: 10px;
+  font-size: 13px;
 }
 
 .ge-promo-copy {
@@ -4240,7 +4240,7 @@ button, input, select, textarea {
   align-items: center;
   gap: 6px;
   font-family: var(--font-body);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.04em;
 }
@@ -4248,7 +4248,7 @@ button, input, select, textarea {
 .ge-promo-copy small {
   color: var(--ge-muted);
   font-family: var(--font-body);
-  font-size: 8px;
+  font-size: 13px;
   font-weight: 500;
   letter-spacing: 0;
 }
@@ -4258,7 +4258,7 @@ button, input, select, textarea {
   color: white;
   border-radius: 999px;
   background: var(--ge-red-dark);
-  font-size: 8px;
+  font-size: 13px;
 }
 
 .ge-promo-progress {
@@ -4369,5 +4369,117 @@ button, input, select, textarea {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* Phones: fields at 16px are easy to read and the browser doesn't zoom in on its own */
+@media (max-width: 768px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+    max-width: 100%;
+  }
+}
+
+/* Admin on phones: less padding and tables shown as cards, so every button stays on screen */
+@media (max-width: 768px) {
+  .superadmin-page {
+    padding: 16px !important;
+  }
+  .superadmin-page h1 {
+    font-size: 22px !important;
+  }
+  table.mobile-cards {
+    min-width: 0 !important;
+  }
+  table.mobile-cards thead {
+    display: none;
+  }
+  table.mobile-cards,
+  table.mobile-cards tbody,
+  table.mobile-cards tr,
+  table.mobile-cards td {
+    display: block;
+    width: 100%;
+  }
+  table.mobile-cards tr {
+    border: 1px solid var(--border-light) !important;
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 12px;
+    background: var(--bg-secondary);
+  }
+  table.mobile-cards td {
+    padding: 6px 0 !important;
+    text-align: left !important;
+    border: none !important;
+    overflow-wrap: anywhere;
+  }
+  table.mobile-cards td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-bottom: 2px;
+  }
+  table.mobile-cards td > div,
+  table.mobile-cards td > span {
+    justify-content: flex-start !important;
+    flex-wrap: wrap;
+  }
+}
+
+/* Owner menu on phones: categories above the dishes, buttons easy to touch */
+@media (max-width: 768px) {
+  .menu-layout {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+  .menu-layout .glass-card {
+    padding: 16px !important;
+  }
+  .menu-layout button {
+    min-height: 40px;
+    min-width: 40px;
+    justify-content: center;
+  }
+}
+
+/* Report panels stack in one column on phones and small tablets */
+@media (max-width: 900px) {
+  .reports-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Tabs on phones wrap onto a second line instead of hiding off screen */
+@media (max-width: 768px) {
+  .scrollable-tabs {
+    flex-wrap: wrap !important;
+    overflow-x: visible !important;
+  }
+  .customer-dashboard-tabs {
+    flex-wrap: wrap !important;
+    overflow-x: visible !important;
+  }
+  .scrollable-tabs button,
+  .scrollable-tabs a {
+    flex-shrink: 1 !important;
+    white-space: normal !important;
+  }
+}
+
+/* Touch screens: every button and select is at least 40px so it can be tapped with a finger */
+@media (max-width: 1024px) and (pointer: coarse) {
+  button:not(.leaflet-container button),
+  [role="button"],
+  select,
+  .glow-btn {
+    min-height: 40px;
+  }
+  button:not(.leaflet-container button) {
+    min-width: 40px;
   }
 }

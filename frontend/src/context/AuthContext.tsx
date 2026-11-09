@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useCallback, useContext, useState, useEffect } from "react";
+import { SESSION_EXPIRED_EVENT } from "../utils/api";
 
 export type Role = "SUPER_ADMIN" | "RESTAURANT_OWNER" | "CAJERO" | "PRODUCCION" | "MOZO" | "CUSTOMER" | "MOTORIZADO";
 
@@ -38,41 +39,65 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [token, setToken] = useState<string | null>(localStorage.getItem("goeats_token"));
-  const [user, setUser] = useState<User | null>(null);
-
-  useEffect(() => {
+  // Read the saved session before the first render, so pages never start with an empty user
+  const [user, setUser] = useState<User | null>(() => {
     const storedUser = localStorage.getItem("goeats_user");
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        localStorage.removeItem("goeats_user");
-      }
+    if (!storedUser) return null;
+    try {
+      return JSON.parse(storedUser);
+    } catch {
+      localStorage.removeItem("goeats_user");
+      return null;
     }
+  });
+
+  // Any request rejected with 401 closes the session and sends the person to log in again
+  useEffect(() => {
+    const handleExpired = () => {
+      localStorage.removeItem("goeats_token");
+      localStorage.removeItem("goeats_user");
+      setToken(null);
+      setUser(null);
+      if (window.location.pathname !== "/login") {
+        const back = window.location.pathname + window.location.search;
+        window.location.assign(`/login?expired=1&returnTo=${encodeURIComponent(back)}`);
+      }
+    };
+    window.addEventListener(SESSION_EXPIRED_EVENT, handleExpired);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handleExpired);
   }, []);
 
-  const login = (newToken: string, newUser: User) => {
+  // Stable functions, so pages that depend on them don't run their effects again on every render
+  const login = useCallback((newToken: string, newUser: User) => {
     localStorage.setItem("goeats_token", newToken);
     localStorage.setItem("goeats_user", JSON.stringify(newUser));
     setToken(newToken);
     setUser(newUser);
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem("goeats_token");
     localStorage.removeItem("goeats_user");
+    // On a shared device the next person must not see the previous customer's cart
+    try {
+      Object.keys(sessionStorage)
+        .filter((key) => key.startsWith("goeats_cart_"))
+        .forEach((key) => sessionStorage.removeItem(key));
+    } catch {
+      // Storage can be blocked; nothing was saved then
+    }
     setToken(null);
     setUser(null);
-  };
+  }, []);
 
-  const updateUser = (updatedFields: Partial<User>) => {
+  const updateUser = useCallback((updatedFields: Partial<User>) => {
     setUser(prev => {
       if (!prev) return null;
       const updated = { ...prev, ...updatedFields };
       localStorage.setItem("goeats_user", JSON.stringify(updated));
       return updated;
     });
-  };
+  }, []);
 
   const isAuthenticated = !!token;
 
