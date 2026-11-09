@@ -1,8 +1,24 @@
 import { PrismaClient, Role } from "@prisma/client";
 import bcrypt from "bcrypt";
+import "dotenv/config";
+import { isLocalDatabase } from "../../src/config/databaseUrl";
 
 const prisma = new PrismaClient();
 const SALT_ROUNDS = 10;
+
+// Demo account passwords. On a local copy they keep the known demo values;
+// in production or on a shared remote database the seed stops unless each one comes from the environment
+function demoPassword(envName: string, localDefault: string): string {
+  const fromEnv = process.env[envName];
+  if (fromEnv) {
+    if (fromEnv.length < 8) throw new Error(`${envName} debe tener al menos 8 caracteres.`);
+    return fromEnv;
+  }
+  if (process.env.NODE_ENV === "production" || !isLocalDatabase(process.env.DATABASE_URL)) {
+    throw new Error(`Define ${envName} en el .env: contra una base remota o en producción el seed no crea cuentas con contraseñas conocidas.`);
+  }
+  return localDefault;
+}
 
 interface RestaurantSeedData {
   name: string;
@@ -208,7 +224,7 @@ const RESTAURANTS_DATA: RestaurantSeedData[] = [
           },
           {
             name: "Gaseosa 350ml",
-            description: "Coca Cola Clásica, Coca Cola Zero, Sprite o Fanta",
+            description: "Cola, cola sin azúcar, limón o naranja",
             variants: [
               { name: "Lata 350ml", price: 1.50 }
             ]
@@ -334,7 +350,7 @@ const RESTAURANTS_DATA: RestaurantSeedData[] = [
         description: "Bebidas frías y refrescos",
         items: [
           {
-            name: "Coca Cola",
+            name: "Gaseosa Cola",
             description: "Lata fría de 350ml",
             variants: [{ name: "Lata 350ml", price: 1.50 }],
           },
@@ -343,11 +359,11 @@ const RESTAURANTS_DATA: RestaurantSeedData[] = [
     ],
   },
   {
-    name: "KFC",
-    slug: "kfc",
-    logo: "/logos/kfc.svg",
+    name: "Pollo Dorado Express",
+    slug: "pollo-dorado",
+    logo: "/logos/pollo-dorado.svg",
     coverImage: "https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=800&auto=format&fit=crop&q=80",
-    description: "El mejor y más crujiente pollo frito con receta secreta de 11 hierbas y especias.",
+    description: "Pollo frito crujiente con la receta de la casa.",
     address: "Av. Orellana y Amazonas, Quito",
     phone: "02-224488",
     lat: -0.1834,
@@ -365,7 +381,7 @@ const RESTAURANTS_DATA: RestaurantSeedData[] = [
             variants: [{ name: "Combo Completo", price: 14.99 }],
           },
           {
-            name: "Combo Twister Clásico",
+            name: "Combo Wrap Clásico",
             description: "Wrap de tiras de pechuga crujiente, lechuga, tomate y salsa especial + papas + gaseosa",
             variants: [{ name: "Combo Normal", price: 5.99 }],
           },
@@ -395,9 +411,9 @@ const RESTAURANTS_DATA: RestaurantSeedData[] = [
     ],
   },
   {
-    name: "Burger King® Orellana",
-    slug: "burger-king",
-    logo: "/logos/burger-king.svg",
+    name: "Brasa Burger Orellana",
+    slug: "brasa-burger",
+    logo: "/logos/brasa-burger.svg",
     coverImage: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&auto=format&fit=crop&q=80",
     description: "Hamburguesas 100% hechas a la parrilla con sabor inigualable.",
     address: "Av. Francisco de Orellana 123, Quito",
@@ -412,7 +428,7 @@ const RESTAURANTS_DATA: RestaurantSeedData[] = [
         description: "Carne 100% de res asada al fuego",
         items: [
           {
-            name: "Whopper Doble con Queso",
+            name: "Brasa Doble con Queso",
             description: "Dos carnes a la parrilla, queso americano, lechuga, tomate, mayonesa y pepinillos",
             variants: [
               { name: "Solo Hamburguesa", price: 7.50 },
@@ -428,7 +444,7 @@ const RESTAURANTS_DATA: RestaurantSeedData[] = [
             ],
           },
           {
-            name: "King de Pollo Crujiente",
+            name: "Sándwich de Pollo Crujiente",
             description: "Pechuga de pollo empanizada en pan con ajonjolí y lechuga fresca",
             variants: [{ name: "Individual", price: 5.25 }],
           },
@@ -439,7 +455,7 @@ const RESTAURANTS_DATA: RestaurantSeedData[] = [
         description: "Complementa tu combo favorito",
         items: [
           {
-            name: "Aros de Cebolla King",
+            name: "Aros de Cebolla",
             description: "Aros de cebolla dorados y crocantes con salsa especial",
             variants: [{ name: "Medianos", price: 2.50 }],
           },
@@ -453,9 +469,9 @@ const RESTAURANTS_DATA: RestaurantSeedData[] = [
     ],
   },
   {
-    name: "Pollo Campero",
-    slug: "pollo-campero",
-    logo: "/logos/pollo-campero.svg",
+    name: "La Granja Pollos",
+    slug: "la-granja",
+    logo: "/logos/la-granja.svg",
     coverImage: "https://images.unsplash.com/photo-1569058242253-92a9c755a0ec?w=800&auto=format&fit=crop&q=80",
     description: "Sabor tierno, jugoso y crujiente que une a la familia.",
     address: "Centro Comercial El Recreo, Quito",
@@ -470,12 +486,12 @@ const RESTAURANTS_DATA: RestaurantSeedData[] = [
         description: "Pollo tradicional y extra crujiente",
         items: [
           {
-            name: "Banquete Campero 10 Piezas",
+            name: "Banquete Familiar 10 Piezas",
             description: "10 piezas de pollo tierno y crujiente + 3 guarniciones familiares",
             variants: [{ name: "Familiar", price: 16.50 }],
           },
           {
-            name: "Sándwich Campero Crujiente",
+            name: "Sándwich Crujiente de la Granja",
             description: "Pechuga empanizada, pepinillos y aderezo especial en pan brioche",
             variants: [{ name: "Individual", price: 4.99 }],
           },
@@ -491,8 +507,8 @@ const RESTAURANTS_DATA: RestaurantSeedData[] = [
             variants: [{ name: "Orden de 3", price: 3.25 }],
           },
           {
-            name: "Papas Camperas",
-            description: "Papas sazonadas con especias exclusivas Campero",
+            name: "Papas de la Granja",
+            description: "Papas sazonadas con especias de la casa",
             variants: [{ name: "Porción", price: 2.00 }],
           },
         ],
@@ -500,9 +516,9 @@ const RESTAURANTS_DATA: RestaurantSeedData[] = [
     ],
   },
   {
-    name: "TropiBurger",
-    slug: "tropiburger",
-    logo: "/logos/tropiburger.svg",
+    name: "Burger Costeña",
+    slug: "burger-costena",
+    logo: "/logos/burger-costena.svg",
     coverImage: "https://images.unsplash.com/photo-1550547660-d9450f859349?w=800&auto=format&fit=crop&q=80",
     description: "Las hamburguesas ecuatorianas con más tradición, piña asada y salsas caseras.",
     address: "Av. de los Shyris y Naciones Unidas, Quito",
@@ -517,7 +533,7 @@ const RESTAURANTS_DATA: RestaurantSeedData[] = [
         description: "Sabor tropical tradicional",
         items: [
           {
-            name: "TropiEspecial con Piña y Tocineta",
+            name: "Costeña Especial con Piña y Tocineta",
             description: "Carne de res, rodaja de piña asada, queso derretido, tocino y salsa golf",
             variants: [
               { name: "Simple", price: 5.50 },
@@ -525,7 +541,7 @@ const RESTAURANTS_DATA: RestaurantSeedData[] = [
             ],
           },
           {
-            name: "TropiBurger Clásica",
+            name: "Costeña Clásica",
             description: "Carne jugosa, lechuga, tomate, cebolla caramelizada y papas hilo",
             variants: [{ name: "Clásica", price: 4.80 }],
           },
@@ -550,11 +566,11 @@ const RESTAURANTS_DATA: RestaurantSeedData[] = [
     ],
   },
   {
-    name: "Papa John's Pizza",
-    slug: "papa-johns",
-    logo: "/logos/papa-johns.svg",
+    name: "Pizzería La Nonna",
+    slug: "la-nonna",
+    logo: "/logos/la-nonna.svg",
     coverImage: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=800&auto=format&fit=crop&q=80",
-    description: "Mejores Ingredientes. Mejor Pizza. Masa fresca nunca congelada.",
+    description: "Pizza artesanal con masa fresca del día.",
     address: "Av. Interoceánica, Cumbayá",
     phone: "02-887766",
     lat: -0.2015,
@@ -590,7 +606,7 @@ const RESTAURANTS_DATA: RestaurantSeedData[] = [
         items: [
           {
             name: "Palitos de Ajo con Salsa Especial",
-            description: "Palitos horneados bañados en mantequilla de ajo con salsa Garlic Dipping",
+            description: "Palitos horneados bañados en mantequilla de ajo con salsa de ajo",
             variants: [{ name: "Orden 8u", price: 3.99 }],
           },
           {
@@ -918,6 +934,11 @@ const RESTAURANTS_DATA: RestaurantSeedData[] = [
 ];
 
 async function main() {
+  // Antes de escribir nada: si faltan las contraseñas requeridas, el seed se detiene aquí.
+  demoPassword("SEED_ADMIN_PASSWORD", "admin");
+  demoPassword("SEED_DRIVER_PASSWORD", "motorizado");
+  demoPassword("SEED_OWNER_PASSWORD", "owner123");
+
   console.log("🌱 Starting complete GoEats database seeding with all active restaurants...");
 
   // 1. Document Types (Ecuador SRI)
@@ -956,7 +977,7 @@ async function main() {
   }
 
   // 4. SuperAdmin user
-  const adminPassword = await bcrypt.hash("admin", SALT_ROUNDS);
+  const adminPassword = await bcrypt.hash(demoPassword("SEED_ADMIN_PASSWORD", "admin"), SALT_ROUNDS);
   await prisma.user.upsert({
     where: { username: "admin" },
     update: {
@@ -975,7 +996,7 @@ async function main() {
   });
 
   // 5. Motorizado demo user
-  const driverPassword = await bcrypt.hash("motorizado", SALT_ROUNDS);
+  const driverPassword = await bcrypt.hash(demoPassword("SEED_DRIVER_PASSWORD", "motorizado"), SALT_ROUNDS);
   await prisma.user.upsert({
     where: { username: "motorizado" },
     update: {
@@ -1079,7 +1100,7 @@ async function main() {
     // Create staff owner user
     const sanitizedSlug = restData.slug.replace(/[^a-z0-9]/g, "_");
     const ownerUsername = `${sanitizedSlug}_owner`;
-    const ownerPassword = await bcrypt.hash("owner123", SALT_ROUNDS);
+    const ownerPassword = await bcrypt.hash(demoPassword("SEED_OWNER_PASSWORD", "owner123"), SALT_ROUNDS);
     await prisma.user.upsert({
       where: { username: ownerUsername },
       update: {

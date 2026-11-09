@@ -7,12 +7,12 @@ async function main() {
 
   const restaurantsData = [
     {
-      name: "KFC",
-      slug: "kfc",
+      name: "Pollo Dorado Express",
+      slug: "pollo-dorado",
       logo: "https://images.unsplash.com/photo-1513639776629-7b61b0ac2313?w=120&auto=format&fit=crop&q=80",
       address: "Av. Orellana y Amazonas",
       phone: "02-224488",
-      description: "El mejor pollo frito del mundo. ¡Receta Secreta y Crujiente!",
+      description: "Pollo frito crujiente con la receta de la casa.",
       coverImage: "https://images.unsplash.com/photo-1513639776629-7b61b0ac2313?w=600&auto=format&fit=crop&q=80",
       categories: [
         {
@@ -38,13 +38,13 @@ async function main() {
           description: "La especialidad en pan o tortilla",
           items: [
             {
-              name: "Kentucky Deluxe",
+              name: "Pollo Deluxe",
               description: "Filete de pechuga extra crujiente, queso cheddar, tocino, lechuga y mayonesa.",
               price: 5.50,
               variants: [{ name: "Simple", price: 5.50 }, { name: "En Combo", price: 7.50 }]
             },
             {
-              name: "Twister Clásico",
+              name: "Wrap Clásico",
               description: "Filetes de pechuga de pollo, lechuga, tomate y salsa especial envueltos en tortilla de trigo.",
               price: 4.50,
               variants: [{ name: "Simple", price: 4.50 }, { name: "En Combo", price: 6.50 }]
@@ -54,20 +54,20 @@ async function main() {
       ]
     },
     {
-      name: "Burger King® Orellana",
-      slug: "burger-king",
+      name: "Brasa Burger Orellana",
+      slug: "brasa-burger",
       logo: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=120&auto=format&fit=crop&q=80",
       address: "Av. Francisco de Orellana 123",
       phone: "02-998877",
-      description: "A la parrilla sabe mejor. Hamburguesas 100% de res.",
+      description: "Hamburguesas 100% de res hechas a la brasa.",
       coverImage: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&auto=format&fit=crop&q=80",
       categories: [
         {
-          name: "Whopper Family",
+          name: "Clásicas a la Brasa",
           description: "Nuestras icónicas hamburguesas a la parrilla",
           items: [
             {
-              name: "Whopper con Queso",
+              name: "Brasa con Queso",
               description: "Carne de res a la parrilla, queso derretido, jugosos tomates, lechuga fresca, mayonesa, kétchup y pepinillos.",
               price: 6.50,
               variants: [{ name: "Simple", price: 6.50 }, { name: "Doble", price: 8.50 }, { name: "En Combo", price: 9.00 }]
@@ -83,20 +83,20 @@ async function main() {
       ]
     },
     {
-      name: "Pollo Campero",
-      slug: "pollo-campero",
+      name: "La Granja Pollos",
+      slug: "la-granja",
       logo: "https://images.unsplash.com/photo-1569058242253-92a9c755a0ec?w=120&auto=format&fit=crop&q=80",
       address: "Centro Comercial El Recreo",
       phone: "02-556677",
-      description: "Tierno, jugoso y crujiente. El sabor del pollo campero.",
+      description: "Tierno, jugoso y crujiente. El sabor del pollo de granja.",
       coverImage: "https://images.unsplash.com/photo-1569058242253-92a9c755a0ec?w=600&auto=format&fit=crop&q=80",
       categories: [
         {
           name: "Pollo Frito Tradicional",
-          description: "El auténtico pollo campero",
+          description: "Pollo de granja tradicional",
           items: [
             {
-              name: "Combo Campero de 3 Presas",
+              name: "Combo de 3 Presas",
               description: "3 presas de pollo, papas fritas, pan de ajo o tortilla y refresco.",
               price: 6.25,
               variants: [{ name: "Tradicional", price: 6.25 }, { name: "Extra Crujiente", price: 6.25 }]
@@ -106,8 +106,8 @@ async function main() {
       ]
     },
     {
-      name: "TropiBurger",
-      slug: "tropiburger",
+      name: "Burger Costeña",
+      slug: "burger-costena",
       logo: "https://images.unsplash.com/photo-1550547660-d9450f859349?w=120&auto=format&fit=crop&q=80",
       address: "Av. de los Shyris y Naciones Unidas",
       phone: "02-334455",
@@ -116,11 +116,11 @@ async function main() {
       categories: [
         {
           name: "Hamburguesas Clásicas",
-          description: "La tradición de TropiBurger",
+          description: "La tradición de la casa",
           items: [
             {
-              name: "Tropi Queso",
-              description: "Carne de res, queso cheddar derretido, lechuga, tomate y salsa Tropi.",
+              name: "Costeña con Queso",
+              description: "Carne de res, queso cheddar derretido, lechuga, tomate y salsa de la casa.",
               price: 4.99,
               variants: [{ name: "Simple", price: 4.99 }, { name: "Combo", price: 6.99 }]
             }
@@ -129,12 +129,12 @@ async function main() {
       ]
     },
     {
-      name: "Papa John's Pizza",
-      slug: "papa-johns",
+      name: "Pizzería La Nonna",
+      slug: "la-nonna",
       logo: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=120&auto=format&fit=crop&q=80",
       address: "Av. Interoceánica, Cumbayá",
       phone: "02-887766",
-      description: "Mejores Ingredientes. Mejor Pizza.",
+      description: "Pizza artesanal con ingredientes frescos.",
       coverImage: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&auto=format&fit=crop&q=80",
       categories: [
         {

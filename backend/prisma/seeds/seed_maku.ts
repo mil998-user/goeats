@@ -1,4 +1,9 @@
+import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
+import { assertLocalDatabase } from "../../src/config/databaseUrl";
+
+// Reconstruye el menú de Maku borrando el anterior y sus pedidos: solo en una base local.
+assertLocalDatabase("El seed de Maku");
 
 const prisma = new PrismaClient();
 
@@ -283,7 +288,7 @@ async function main() {
         },
         {
           name: "Gaseosa 350ml",
-          description: "Coca Cola Clásica, Coca Cola Zero, Sprite o Fanta",
+          description: "Cola, cola sin azúcar, limón o naranja",
           image: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=600&auto=format&fit=crop&q=80",
           variants: [
             { name: "Lata 350ml", price: 1.50 }

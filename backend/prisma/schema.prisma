@@ -56,120 +56,135 @@ enum EmailStatus {
 }
 
 model Restaurant {
-  id                 Int              @id @default(autoincrement())
-  name               String
-  slug               String           @unique
-  logo               String?          @db.LongText
-  address            String?
-  phone              String?
-  status             RestaurantStatus @default(ACTIVE)
-  wifiSsid           String?
-  wifiPassword       String?
-  qrOrderingEnabled  Boolean          @default(true)
-  isActive           Boolean          @default(true)
-  payphoneToken      String?          @db.LongText
-  bankAccountsJson   String?          @db.LongText
-  coverImage         String?          @db.LongText
-  description        String?          @db.LongText
-  mapLatitude        Float?
-  mapLongitude       Float?
-  mapIframe          String?          @db.LongText
-  reference          String?          @db.LongText
-  openingHours       String?          @db.LongText
-  faqsJson           String?          @db.LongText
-  samePriceAsLocal   Boolean          @default(false)
-  promoText          String?          @db.VarChar(191)
-  deliveryCommissionPercentage Float  @default(10.0) // % de comisión pactado con el local
-  createdAt          DateTime         @default(now())
-  updatedAt          DateTime         @updatedAt
+  id                           Int              @id @default(autoincrement())
+  name                         String
+  slug                         String           @unique
+  logo                         String?          @db.LongText
+  address                      String?
+  phone                        String?
+  status                       RestaurantStatus @default(ACTIVE)
+  wifiSsid                     String?
+  wifiPassword                 String?
+  qrOrderingEnabled            Boolean          @default(true)
+  isActive                     Boolean          @default(true)
+  payphoneToken                String?          @db.LongText
+  bankAccountsJson             String?          @db.LongText
+  coverImage                   String?          @db.LongText
+  description                  String?          @db.LongText
+  mapLatitude                  Float?
+  mapLongitude                 Float?
+  mapIframe                    String?          @db.LongText
+  reference                    String?          @db.LongText
+  openingHours                 String?          @db.LongText
+  faqsJson                     String?          @db.LongText
+  samePriceAsLocal             Boolean          @default(false)
+  promoText                    String?          @db.VarChar(191)
+  deliveryCommissionPercentage Float            @default(10.0) // % de comisión pactado con el local
+  taxRate                      Float            @default(15.0) // IVA que cobra el local; los precios del menú ya lo incluyen
+  waiterCallEnabled            Boolean          @default(true) // La mesa puede llamar al mesero desde el QR
+  waiterCallWaitMin            Int              @default(10) // Minutos entre dos llamados desde la misma mesa
+  payBeforeEating              Boolean          @default(false) // true: el pedido de mesa se paga en caja antes de cocinarse
+  reservationsEnabled          Boolean          @default(true)
+  createdAt                    DateTime         @default(now())
+  updatedAt                    DateTime         @updatedAt
 
-  users              User[]
-  diningAreas        DiningArea[]
-  menuCategories     MenuCategory[]
-  supplies           Supply[]
-  cashRegisters      CashRegister[]
-  clients            Client[]
-  orders             Order[]
-  sales              Sale[]
-  expenses           Expense[]
-  incomes            Income[]
-  purchases          Purchase[]
-  suppliers          Supplier[]
-  salesTargets       SalesTarget[]
-  productionAreas    ProductionArea[]
-  printers           Printer[]
-  categories         SaaSCategory[]   @relation("RestaurantToSaaSCategory")
-  subcategories      SaaSSubcategory[] @relation("RestaurantToSaaSSubcategory")
+  users           User[]
+  diningAreas     DiningArea[]
+  menuCategories  MenuCategory[]
+  supplies        Supply[]
+  cashRegisters   CashRegister[]
+  clients         Client[]
+  orders          Order[]
+  sales           Sale[]
+  expenses        Expense[]
+  incomes         Income[]
+  purchases       Purchase[]
+  suppliers       Supplier[]
+  salesTargets    SalesTarget[]
+  productionAreas ProductionArea[]
+  printers        Printer[]
+  categories      SaaSCategory[]    @relation("RestaurantToSaaSCategory")
+  subcategories   SaaSSubcategory[] @relation("RestaurantToSaaSSubcategory")
+  ratings         OrderRating[]
+  reservations    Reservation[]
 
-  issuerId           Int?             @unique
-  issuer             Issuer?          @relation(fields: [issuerId], references: [id])
+  issuerId Int?    @unique
+  issuer   Issuer? @relation(fields: [issuerId], references: [id])
 }
 
 model Issuer {
-  id                  Int          @id @default(autoincrement())
-  ruc                 String       @unique
-  nombres             String
-  apellidos           String
-  nombreEmpresa       String
-  razonSocial         String
-  direccion           String
-  email               String
-  celular             String
-  establecimiento     String       @default("001")
-  puntoEmision        String       @default("001")
-  obligadoContabilidad Boolean      @default(false)
-  regimen             String       @default("REGIMEN GENERAL")
-  ambiente            Int          @default(1) // 1 = Pruebas, 2 = Producción
-  firmaElectronica    String?      @db.LongText // Base64 de firma p12
-  codigoSri           String?      // Clave de firma .p12
-  startSecuencial     String       @default("000000001")
-  logo                String?      @db.LongText
-  createdAt           DateTime     @default(now())
-  updatedAt           DateTime     @updatedAt
+  id                   Int      @id @default(autoincrement())
+  ruc                  String   @unique
+  nombres              String
+  apellidos            String
+  nombreEmpresa        String
+  razonSocial          String
+  direccion            String
+  email                String
+  celular              String
+  establecimiento      String   @default("001")
+  puntoEmision         String   @default("001")
+  obligadoContabilidad Boolean  @default(false)
+  regimen              String   @default("REGIMEN GENERAL")
+  ambiente             Int      @default(1) // 1 = Pruebas, 2 = Producción
+  firmaElectronica     String?  @db.LongText // Base64 de firma p12
+  codigoSri            String? // Clave de firma .p12
+  startSecuencial      String   @default("000000001")
+  logo                 String?  @db.LongText
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
-  invoices            Invoice[]
-  restaurant          Restaurant?
+  invoices   Invoice[]
+  restaurant Restaurant?
 }
 
 model User {
-  id           Int          @id @default(autoincrement())
-  username     String       @unique
-  password     String
-  name         String
-  email        String?
-  role         Role         @default(MOZO)
-  isActive     Boolean      @default(true)
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  password  String
+  name      String
+  email     String?
+  role      Role     @default(MOZO)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  cedula             String?              @unique
-  phone              String?
-  vehicleType        String?              // "MOTO", "BICI", "AUTO"
-  vehiclePlate       String?
-  preferencesJson    String?              @db.Text // Array JSON de categorías favoritas para recomendación
-  deliveryAddress    String?              @db.Text
-  deliveryLatitude   Float?
-  deliveryLongitude  Float?
-  deliveryFloorApartment String?
+  cedula                  String?             @unique
+  phone                   String?
+  vehicleType             String? // "MOTO", "BICI", "AUTO"
+  vehiclePlate            String?
+  preferencesJson         String?             @db.Text // Array JSON de categorías favoritas para recomendación
+  deliveryAddress         String?             @db.Text
+  deliveryLatitude        Float?
+  deliveryLongitude       Float?
+  deliveryFloorApartment  String?
   deliverySecondaryStreet String?
-  deliveryReferences String?              @db.Text
-  isPlus             Boolean              @default(false)
-  walletBalance      Float                @default(0.0)
-  maxDebtLimit       Float                @default(50.0) // Límite de deuda en balance antes de pausar pedidos en efectivo
-  walletTransactions WalletTransaction[]
-  driverOrders       Order[]              @relation("DriverOrders")
-  customerOrders     Order[]              @relation("CustomerOrders")
-  saasOrders         SaaSOrder[]          @relation("SaaSUserOrders")
-
+  deliveryReferences      String?             @db.Text
+  isPlus                  Boolean             @default(false)
+  lastLat                 Float? // Última ubicación del motorizado, para ofrecerle los pedidos cercanos
+  lastLng                 Float?
+  lastLocationAt          DateTime?
+  ratingsGiven            OrderRating[]       @relation("RatingCustomer")
+  ratingsAsDriver         OrderRating[]       @relation("RatingDriver")
+  reservations            Reservation[]
+  walletBalance           Float               @default(0.0)
+  maxDebtLimit            Float               @default(50.0) // Límite de deuda en balance antes de pausar pedidos en efectivo
+  walletTransactions      WalletTransaction[]
+  addresses               CustomerAddress[]
+  driverOrders            Order[]             @relation("DriverOrders")
+  deliveryIncidents       DeliveryIncident[]
+  preparedItems           OrderItem[]         @relation("PreparedItems")
+  customerOrders          Order[]             @relation("CustomerOrders")
+  saasOrders              SaaSOrder[]         @relation("SaaSUserOrders")
 
   restaurantId Int?
-  restaurant   Restaurant?  @relation(fields: [restaurantId], references: [id])
+  restaurant   Restaurant? @relation(fields: [restaurantId], references: [id])
 
-  cashSessions CashSession[]
-  orders       Order[]
-  expenses     Expense[]
-  incomes      Income[]
-  purchases    Purchase[]
+  cashSessions      CashSession[]
+  orders            Order[]
+  expenses          Expense[]
+  incomes           Income[]
+  purchases         Purchase[]
   assignedRegisters CashRegister[] @relation("AssignedUser")
 }
 
@@ -182,13 +197,17 @@ model DiningArea {
 }
 
 model Table {
-  id           Int        @id @default(autoincrement())
+  id           Int           @id @default(autoincrement())
   number       String
-  capacity     Int        @default(4)
-  status       String     @default("FREE") // FREE, OCCUPIED
+  capacity     Int           @default(4)
+  status       String        @default("FREE") // FREE, OCCUPIED
   diningAreaId Int
-  diningArea   DiningArea @relation(fields: [diningAreaId], references: [id], onDelete: Cascade)
+  diningArea   DiningArea    @relation(fields: [diningAreaId], references: [id], onDelete: Cascade)
+  joinedToId   Int? // Mesa principal cuando se unen mesas para un grupo
+  joinedTo     Table?        @relation("JoinedTables", fields: [joinedToId], references: [id], onDelete: SetNull)
+  joinedTables Table[]       @relation("JoinedTables")
   orders       Order[]
+  reservations Reservation[]
 }
 
 model MenuCategory {
@@ -201,38 +220,41 @@ model MenuCategory {
 }
 
 model MenuItem {
-  id               Int             @id @default(autoincrement())
+  id               Int               @id @default(autoincrement())
   name             String
   description      String?
-  image            String?         @db.LongText
+  image            String?           @db.LongText
   categoryId       Int
-  category         MenuCategory    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  category         MenuCategory      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   productionAreaId Int?
-  productionArea   ProductionArea? @relation(fields: [productionAreaId], references: [id])
+  productionArea   ProductionArea?   @relation(fields: [productionAreaId], references: [id])
+  isActive         Boolean           @default(true) // false: hidden from the menu, kept for past orders
   variants         MenuItemVariant[]
 }
 
 model MenuItemVariant {
-  id          Int                @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   name        String // e.g. "Personal", "Familiar", "Unidad"
   code        String? // SKU
   price       Float
   stockLimit  Int? // Límite diario, null = sin límite
-  options     String?            @db.Text // JSON de opciones / modificadores
+  options     String?   @db.Text // JSON de opciones / modificadores
+  promoPrice  Float? // Precio de promoción, menor que price
+  promoEndsAt DateTime? // Hasta cuándo vale la promoción
   menuItemId  Int
-  menuItem    MenuItem           @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
-  
+  menuItem    MenuItem  @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+
   recipeIngredients RecipeIngredient[]
   orderItems        OrderItem[]
 }
 
 model RecipeIngredient {
-  id         Int             @id @default(autoincrement())
-  variantId  Int
-  variant    MenuItemVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
-  supplyId   Int
-  supply     Supply          @relation(fields: [supplyId], references: [id], onDelete: Cascade)
-  quantity   Float
+  id        Int             @id @default(autoincrement())
+  variantId Int
+  variant   MenuItemVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  supplyId  Int
+  supply    Supply          @relation(fields: [supplyId], references: [id], onDelete: Cascade)
+  quantity  Float
 }
 
 model SupplyCategory {
@@ -242,18 +264,18 @@ model SupplyCategory {
 }
 
 model Supply {
-  id                 Int                @id @default(autoincrement())
-  name               String
-  code               String?
-  categoryId         Int
-  category           SupplyCategory     @relation(fields: [categoryId], references: [id])
-  unitId             Int
-  unit               UnitOfMeasure      @relation(fields: [unitId], references: [id])
-  stock              Float              @default(0.0)
-  minStock           Float              @default(0.0)
-  cost               Float              @default(0.0)
-  restaurantId       Int
-  restaurant         Restaurant         @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  id           Int            @id @default(autoincrement())
+  name         String
+  code         String?
+  categoryId   Int
+  category     SupplyCategory @relation(fields: [categoryId], references: [id])
+  unitId       Int
+  unit         UnitOfMeasure  @relation(fields: [unitId], references: [id])
+  stock        Float          @default(0.0)
+  minStock     Float          @default(0.0)
+  cost         Float          @default(0.0)
+  restaurantId Int
+  restaurant   Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
 
   recipeIngredients  RecipeIngredient[]
   inventoryMovements InventoryMovement[]
@@ -287,60 +309,88 @@ model Printer {
 }
 
 model Order {
-  id                  Int         @id @default(autoincrement())
-  type                OrderType
-  status              OrderStatus @default(PENDING)
-  tableId             Int?
-  table               Table?      @relation(fields: [tableId], references: [id])
-  mozoId              Int?
-  mozo                User?       @relation(fields: [mozoId], references: [id])
-  customerId          Int?
-  customer            User?       @relation("CustomerOrders", fields: [customerId], references: [id])
-  customerName        String
-  comments            String?
-  total               Float
-  deliveryAddress     String?
-  deliveryPhone       String?
-  deliveryLat         Float?      // Coordenada latitud de entrega cliente
-  deliveryLng         Float?      // Coordenada longitud de entrega cliente
-  driverLat           Float?      // Ubicación en vivo latitud del repartidor
-  driverLng           Float?      // Ubicación en vivo longitud del repartidor
-  deliveryDriverName  String? // Legacy / optional
-  shippingCost        Float       @default(0.0)
-  deliveryObservation String?
-  deliveryPin         String?     // Código PIN de 4 dígitos para entrega segura (tipo PedidosYa)
-  deliveryDriverId    Int?
-  deliveryDriver      User?       @relation("DriverOrders", fields: [deliveryDriverId], references: [id])
-  paymentMethodString String?
-  paymentReceipt      String?     @db.LongText
-  paymentStatus       String      @default("PENDING")
+  id                    Int                @id @default(autoincrement())
+  type                  OrderType
+  status                OrderStatus        @default(PENDING)
+  tableId               Int?
+  table                 Table?             @relation(fields: [tableId], references: [id])
+  mozoId                Int?
+  mozo                  User?              @relation(fields: [mozoId], references: [id])
+  customerId            Int?
+  customer              User?              @relation("CustomerOrders", fields: [customerId], references: [id])
+  customerName          String
+  comments              String?
+  total                 Float
+  deliveryAddress       String?
+  deliveryPhone         String?
+  deliveryLat           Float? // Coordenada latitud de entrega cliente
+  deliveryLng           Float? // Coordenada longitud de entrega cliente
+  driverLat             Float? // Ubicación en vivo latitud del repartidor
+  driverLng             Float? // Ubicación en vivo longitud del repartidor
+  deliveryDriverName    String? // Legacy / optional
+  shippingCost          Float              @default(0.0)
+  deliveryObservation   String?
+  deliveryPin           String? // Código PIN de 4 dígitos para entrega segura (tipo PedidosYa)
+  deliveryDriverId      Int?
+  deliveryDriver        User?              @relation("DriverOrders", fields: [deliveryDriverId], references: [id])
+  pickedUpAt            DateTime? // Cuando el motorizado retira la comida y empieza el traslado
+  deliveryIncidents     DeliveryIncident[]
+  paymentMethodString   String?
+  paymentReceipt        String?            @db.LongText
+  paymentStatus         String             @default("PENDING")
   payphoneTransactionId String?
+  tipAmount             Float              @default(0) // Propina opcional; no suma al total ni al IVA
+  readyAt               DateTime? // Cuando cocina lo dejó listo; arranca el temporizador del motorizado
+  dispatchAlertAt       DateTime? // Cuando se avisó al administrador que nadie lo tomó
+  rating                OrderRating?
 
   // Desglose financiero para repartidor y restaurante (Modelo Zaymi)
-  providerPayAmount          Float?   // Monto que el repartidor paga al restaurante (subtotal platos - comisión)
-  driverEarnings             Float?   // Ganancia neta total para el motorizado (flete + incentivo)
-  appCommissionFromProvider  Float?   // Comisión retenida por GoEats al restaurante
+  providerPayAmount         Float? // Monto que el repartidor paga al restaurante (subtotal platos - comisión)
+  driverEarnings            Float? // Ganancia neta total para el motorizado (flete + incentivo)
+  appCommissionFromProvider Float? // Comisión retenida por GoEats al restaurante
 
-  restaurantId    Int
-  restaurant      Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  items           OrderItem[]
-  sale            Sale?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  restaurantId Int
+  restaurant   Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  items        OrderItem[]
+  sale         Sale?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
 }
 
 model OrderItem {
-  id         Int             @id @default(autoincrement())
-  orderId    Int
-  order      Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  variantId  Int
-  variant    MenuItemVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
-  quantity   Float
-  price      Float
-  comments   String?
-  status     OrderItemStatus @default(PENDING)
-  code       String?
-  createdAt  DateTime        @default(now())
+  id           Int             @id @default(autoincrement())
+  orderId      Int
+  order        Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variantId    Int
+  variant      MenuItemVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+  quantity     Float
+  price        Float
+  comments     String?
+  status       OrderItemStatus @default(PENDING)
+  code         String?
+  preparedById Int? // Quién lo preparó en cocina
+  preparedBy   User?           @relation("PreparedItems", fields: [preparedById], references: [id], onDelete: SetNull)
+  readyAt      DateTime? // Para el historial y los tiempos de cocina
+  createdAt    DateTime        @default(now())
+}
+
+// Saved delivery places of a customer (home, work...). The default one is copied to User
+model CustomerAddress {
+  id              Int      @id @default(autoincrement())
+  userId          Int
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label           String   @db.VarChar(40)
+  address         String   @db.Text
+  latitude        Float?
+  longitude       Float?
+  floorApartment  String?  @db.VarChar(120)
+  secondaryStreet String?  @db.VarChar(160)
+  references      String?  @db.Text
+  isDefault       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model Client {
@@ -353,9 +403,9 @@ model Client {
   phone          String
   restaurantId   Int
   restaurant     Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  
-  invoices       Invoice[]
-  sales          Sale[]
+
+  invoices Invoice[]
+  sales    Sale[]
 
   @@unique([identification, restaurantId])
 }
@@ -375,7 +425,7 @@ model Sale {
   paymentCash   Float        @default(0.0)
   paymentCard   Float        @default(0.0)
   discount      Float        @default(0.0)
-  taxRate       Float        @default(12.0) // IVA e.g. 12.0, 15.0
+  taxRate       Float        @default(15.0) // IVA del local al momento de cobrar
   subtotal0     Float        @default(0.0)
   subtotalTax   Float        @default(0.0)
   taxValue      Float        @default(0.0)
@@ -384,8 +434,8 @@ model Sale {
   restaurantId  Int
   restaurant    Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
 
-  invoice       Invoice?
-  createdAt     DateTime     @default(now())
+  invoice   Invoice?
+  createdAt DateTime @default(now())
 }
 
 model DocumentType {
@@ -419,9 +469,9 @@ model CashSession {
   systemAmount   Float?
   status         String       @default("OPEN") // OPEN, CLOSED
 
-  sales          Sale[]
-  expenses       Expense[]
-  incomes        Income[]
+  sales    Sale[]
+  expenses Expense[]
+  incomes  Income[]
 }
 
 model Expense {
@@ -525,31 +575,31 @@ model SalesTarget {
 }
 
 model Invoice {
-  id            Int           @id @default(autoincrement())
+  id            Int      @id @default(autoincrement())
   secuencial    String // Ej: "000000001" (9 dígitos)
-  claveAcceso   String?       @unique // 49 dígitos
-  xmlNoFirmado  String?       @db.LongText
-  xmlAutorizado String?       @db.LongText
-  pdfRIDE       String?       @db.LongText
-  estado        String        @default("CREADA") // CREADA, FIRMADA, RECIBIDA, AUTORIZADA, DEVUELTA, RECHAZADA
+  claveAcceso   String?  @unique // 49 dígitos
+  xmlNoFirmado  String?  @db.LongText
+  xmlAutorizado String?  @db.LongText
+  pdfRIDE       String?  @db.LongText
+  estado        String   @default("CREADA") // CREADA, FIRMADA, RECIBIDA, AUTORIZADA, DEVUELTA, RECHAZADA
   fechaEmision  DateTime
-  tipoAmbiente  Int           @default(1) // 1 = Pruebas, 2 = Producción
-  subtotal0     Float         @default(0.0)
-  subtotalIva   Float         @default(0.0)
-  valorIva      Float         @default(0.0)
+  tipoAmbiente  Int      @default(1) // 1 = Pruebas, 2 = Producción
+  subtotal0     Float    @default(0.0)
+  subtotalIva   Float    @default(0.0)
+  valorIva      Float    @default(0.0)
   total         Float
-  formaPago     String        @default("01") // "01" (Sin utilización del sistema financiero), "20" (Otros con utilización del sistema financiero)
+  formaPago     String   @default("01") // "01" (Sin utilización del sistema financiero), "20" (Otros con utilización del sistema financiero)
   observaciones String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  
-  clientId      Int
-  client        Client        @relation(fields: [clientId], references: [id])
-  issuerId      Int
-  issuer        Issuer        @relation(fields: [issuerId], references: [id])
-  saleId        Int?          @unique
-  sale          Sale?         @relation(fields: [saleId], references: [id])
-  items         InvoiceItem[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  clientId Int
+  client   Client        @relation(fields: [clientId], references: [id])
+  issuerId Int
+  issuer   Issuer        @relation(fields: [issuerId], references: [id])
+  saleId   Int?          @unique
+  sale     Sale?         @relation(fields: [saleId], references: [id])
+  items    InvoiceItem[]
 }
 
 model InvoiceItem {
@@ -563,22 +613,47 @@ model InvoiceItem {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  invoiceId      Int
-  invoice        Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  name           String
-  codePrincipal  String
+  invoiceId     Int
+  invoice       Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  name          String
+  codePrincipal String
 }
 
 model DeliveryRate {
-  id              Int      @id @default(autoincrement())
-  name            String
-  basePrice       Float    @default(1.0)
-  pricePerKm      Float    @default(0.5)
-  costPerOrder    Float    @default(0.5)
-  plusDriverBonus Float    @default(0.50)
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id               Int      @id @default(autoincrement())
+  name             String
+  basePrice        Float    @default(1.0)
+  pricePerKm       Float    @default(0.5)
+  costPerOrder     Float    @default(0.5)
+  plusDriverBonus  Float    @default(0.50)
+  // PREPAID: el motorizado necesita saldo para pagar la comisión al tomar.
+  // DEBT_LIMIT: puede quedar en negativo hasta su maxDebtLimit.
+  balanceRule      String   @default("PREPAID") @db.VarChar(20)
+  // Primero se ofrece el pedido a los motorizados dentro del radio; pasado el tiempo, a todos y se avisa al administrador
+  dispatchRadiusKm Float    @default(5.0)
+  dispatchWaitMin  Int      @default(3)
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+// Pasar orden, cancelar orden o cliente que no salió. El administrador las revisa
+model DeliveryIncident {
+  id           Int       @id @default(autoincrement())
+  orderId      Int
+  order        Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  driverId     Int
+  driver       User      @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  type         String    @db.VarChar(20) // PASS, CANCEL, NO_SHOW
+  reason       String    @db.Text
+  reviewedAt   DateTime?
+  reviewedById Int?
+  reviewNote   String?   @db.Text
+  createdAt    DateTime  @default(now())
+
+  @@index([orderId])
+  @@index([driverId])
+  @@index([reviewedAt])
 }
 
 model WalletTransaction {
@@ -586,7 +661,7 @@ model WalletTransaction {
   userId      Int
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   amount      Float
-  type        String   // RECHARGE, COMMISSION_DEDUCTION
+  type        String // RECHARGE, COMMISSION_DEDUCTION
   description String
   createdAt   DateTime @default(now())
 }
@@ -595,13 +670,13 @@ model SaaSOrder {
   id                    Int      @id @default(autoincrement())
   userId                Int
   user                  User     @relation("SaaSUserOrders", fields: [userId], references: [id], onDelete: Cascade)
-  type                  String   // "RECHARGE" or "PLUS_SUBSCRIPTION"
-  planName              String   // e.g. "Tarjeta Recarga $10", "Plan Plus Mensual"
+  type                  String // "RECHARGE" or "PLUS_SUBSCRIPTION"
+  planName              String // e.g. "Tarjeta Recarga $10", "Plan Plus Mensual"
   amount                Float
-  paymentMethod         String   // "CARD" or "TRANSFER"
+  paymentMethod         String // "CARD" or "TRANSFER"
   paymentReceipt        String?  @db.LongText // Imagen base64 del comprobante
   payphoneTransactionId String?
-  status                String   // "PENDING", "APPROVED", "REJECTED"
+  status                String // "PENDING", "APPROVED", "REJECTED"
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 }
@@ -617,13 +692,13 @@ model SaaSCategory {
 }
 
 model SaaSSubcategory {
-  id            Int               @id @default(autoincrement())
-  name          String
-  categoryId    Int
-  category      SaaSCategory      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  restaurants   Restaurant[]      @relation("RestaurantToSaaSSubcategory")
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  id          Int          @id @default(autoincrement())
+  name        String
+  categoryId  Int
+  category    SaaSCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  restaurants Restaurant[] @relation("RestaurantToSaaSSubcategory")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
   @@unique([name, categoryId])
 }
@@ -631,10 +706,10 @@ model SaaSSubcategory {
 model SaaSPlan {
   id          Int      @id @default(autoincrement())
   name        String   @unique
-  type        String   // "RECHARGE" or "PLUS_SUBSCRIPTION"
+  type        String // "RECHARGE" or "PLUS_SUBSCRIPTION"
   amount      Float
-  period      String?  // "mes", "6 meses", "año" or null
-  discount    String?  // "Sin descuento", "Ahorra 15%", "Ahorra 33%" or null
+  period      String? // "mes", "6 meses", "año" or null
+  discount    String? // "Sin descuento", "Ahorra 15%", "Ahorra 33%" or null
   description String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -644,8 +719,8 @@ model EmailNotification {
   id                Int         @id @default(autoincrement())
   userId            Int?
   recipientEmail    String
-  type              String      // e.g. "CUSTOMER_WELCOME", "ORDER_ACCEPTED", "RESTAURANT_APPROVED"
-  template          String      // e.g. "customer/welcome", "restaurant/approved"
+  type              String // e.g. "CUSTOMER_WELCOME", "ORDER_ACCEPTED", "RESTAURANT_APPROVED"
+  template          String // e.g. "customer/welcome", "restaurant/approved"
   subject           String
   status            EmailStatus @default(PENDING)
   providerMessageId String?
@@ -659,4 +734,50 @@ model EmailNotification {
   @@index([recipientEmail])
   @@index([type])
   @@index([status])
+}
+
+// Bloque 10: el cliente califica al local y al motorizado; el motorizado califica al cliente
+model OrderRating {
+  id              Int        @id @default(autoincrement())
+  orderId         Int        @unique
+  order           Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  restaurantId    Int
+  restaurant      Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  customerId      Int?
+  customer        User?      @relation("RatingCustomer", fields: [customerId], references: [id], onDelete: SetNull)
+  driverId        Int?
+  driver          User?      @relation("RatingDriver", fields: [driverId], references: [id], onDelete: SetNull)
+  restaurantStars Int?
+  driverStars     Int?
+  comment         String?    @db.VarChar(500)
+  customerStars   Int? // Lo pone el motorizado al entregar
+  customerRatedAt DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  @@index([restaurantId])
+  @@index([driverId])
+  @@index([customerId])
+}
+
+// Bloque 10: reservas de mesa. El teléfono se guarda cifrado
+model Reservation {
+  id           Int        @id @default(autoincrement())
+  restaurantId Int
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  customerId   Int?
+  customer     User?      @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  tableId      Int?
+  table        Table?     @relation(fields: [tableId], references: [id], onDelete: SetNull)
+  name         String     @db.VarChar(120)
+  phone        String     @db.Text
+  people       Int
+  reservedAt   DateTime
+  notes        String?    @db.VarChar(300)
+  status       String     @default("PENDING") @db.VarChar(20) // PENDING, CONFIRMED, SEATED, CANCELLED, NO_SHOW
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([restaurantId, reservedAt])
+  @@index([customerId])
 }
