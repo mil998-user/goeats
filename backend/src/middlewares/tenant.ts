@@ -1,38 +1,39 @@
 import { Request, Response, NextFunction } from "express";
+import { Role } from "@prisma/client";
 
 export function tenantMiddleware(req: Request, res: Response, next: NextFunction) {
-  let restaurantIdStr: string | undefined;
-
-  // 1. Check x-restaurant-id header
-  if (req.headers["x-restaurant-id"]) {
-    restaurantIdStr = req.headers["x-restaurant-id"] as string;
-  }
-  // 2. Check token payload if authenticated
-  else if (req.user && req.user.restaurantId) {
-    restaurantIdStr = req.user.restaurantId.toString();
+  const user = req.user;
+  if (!user) {
+    return res.status(401).json({ success: false, message: "Unauthorized" });
   }
 
-  if (!restaurantIdStr) {
-    // If it's a SuperAdmin, they are allowed to operate without a specific tenant context on some endpoints,
-    // but on tenant-specific routes they must specify it.
-    if (req.user && req.user.role === "SUPER_ADMIN") {
+  const requestedTenant = req.headers["x-restaurant-id"];
+
+  // Only SuperAdmin can choose a restaurant; it may also operate without one on some endpoints
+  if (user.role === Role.SUPER_ADMIN) {
+    if (!requestedTenant) {
       return next();
     }
-    return res.status(400).json({
-      success: false,
-      message: "x-restaurant-id header or user tenant context is required",
-    });
+
+    const restaurantId = Number(requestedTenant);
+    if (!Number.isInteger(restaurantId) || restaurantId <= 0) {
+      return res.status(400).json({ success: false, message: "Invalid x-restaurant-id header value" });
+    }
+
+    req.restaurantId = restaurantId;
+    return next();
   }
 
-  const restaurantId = parseInt(restaurantIdStr, 10);
-  if (isNaN(restaurantId)) {
-    return res.status(400).json({
-      success: false,
-      message: "Invalid x-restaurant-id header value",
-    });
+  // Customers and drivers don't belong to a restaurant, so these routes are not for them
+  if (user.role === Role.CUSTOMER || user.role === Role.MOTORIZADO || !user.restaurantId) {
+    return res.status(403).json({ success: false, message: "Forbidden: Restaurant access required" });
   }
 
-  // Set the tenant ID on request
-  req.restaurantId = restaurantId;
+  // The restaurant always comes from the signed token, the header can't change it
+  if (requestedTenant && requestedTenant !== user.restaurantId.toString()) {
+    return res.status(403).json({ success: false, message: "Forbidden: Access denied to this restaurant" });
+  }
+
+  req.restaurantId = user.restaurantId;
   next();
 }

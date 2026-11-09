@@ -7,6 +7,7 @@ import { generateClaveAcceso } from "./sri-utils";
 import { generateInvoiceXml } from "./xml-generator";
 import { generateRidePdf } from "./ride-generator";
 import { sendInvoiceEmail } from "../email";
+import { decryptSecret } from "../../utils/secrets";
 
 export interface EmitBillingResult {
   success: boolean;
@@ -51,7 +52,7 @@ export async function emitElectronicInvoice(saleId: number): Promise<EmitBilling
     const issuer = restaurant.issuer;
 
     if (!issuer) {
-      return { success: false, error: "Restaurant does not have an active SRI Issuer configuration" };
+      return { success: false, error: "Falta configurar los datos de facturación del restaurante" };
     }
 
     // 2. Map items for XML generator
@@ -154,7 +155,7 @@ export async function emitElectronicInvoice(saleId: number): Promise<EmitBilling
     // 6. Sign XML
     let signedXml: string;
     try {
-      signedXml = await signXml(xmlContent, issuer.firmaElectronica, issuer.codigoSri);
+      signedXml = await signXml(xmlContent, decryptSecret(issuer.firmaElectronica), decryptSecret(issuer.codigoSri));
       await prisma.invoice.update({
         where: { id: invoice.id },
         data: { estado: "FIRMADA" },

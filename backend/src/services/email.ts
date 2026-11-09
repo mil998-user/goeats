@@ -13,12 +13,12 @@ interface SendInvoiceEmailParams {
  * Envía un correo electrónico al cliente con la factura (PDF RIDE y XML Autorizado) adjuntos.
  */
 export async function sendInvoiceEmail(params: SendInvoiceEmailParams): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  // Configuración SMTP desde variables de entorno con valores por defecto del sistema anterior
-  const host = process.env.SMTP_HOST || "server3651.hostingsupremo.net";
+  // Configuración SMTP desde variables de entorno
+  const host = process.env.SMTP_HOST || "";
   const port = parseInt(process.env.SMTP_PORT || "465", 10);
   const secure = process.env.SMTP_SECURE !== "false"; // Default true (SSL)
-  const user = process.env.SMTP_USER || "gerencia@guibis.com";
-  const pass = process.env.SMTP_PASS || "MACAra666_";
+  const user = process.env.SMTP_USER || "";
+  const pass = process.env.SMTP_PASS || "";
   const fromName = process.env.SMTP_FROM_NAME || params.businessName;
 
   try {
@@ -99,11 +99,11 @@ export async function sendWelcomeEmail(params: {
   to: string;
   name: string;
 }): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  const host = process.env.SMTP_HOST || "server3651.hostingsupremo.net";
+  const host = process.env.SMTP_HOST || "";
   const port = parseInt(process.env.SMTP_PORT || "465", 10);
   const secure = process.env.SMTP_SECURE !== "false";
-  const user = process.env.SMTP_USER || "gerencia@guibis.com";
-  const pass = process.env.SMTP_PASS || "MACAra666_";
+  const user = process.env.SMTP_USER || "";
+  const pass = process.env.SMTP_PASS || "";
   const fromName = process.env.SMTP_FROM_NAME || "GoEats Notificaciones";
 
   try {

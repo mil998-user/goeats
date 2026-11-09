@@ -9,8 +9,14 @@ import { env } from "./config/env";
 import { corsOptions } from "./config/cors";
 import { errorHandler } from "./middlewares/errorHandler";
 import { prisma } from "./config/database";
+import { setupSocket } from "./config/socket";
+import { startDispatchWatcher } from "./modules/delivery/dispatch";
 
 const app = express();
+app.disable("x-powered-by");
+if (process.env.TRUST_PROXY) {
+  app.set("trust proxy", Number(process.env.TRUST_PROXY));
+}
 const server = http.createServer(app);
 
 // Initialize Socket.io
@@ -19,30 +25,32 @@ const io = new Server(server, {
 });
 
 // Middlewares
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  next();
+});
 app.use(cors(corsOptions));
+
+// Public routes take small bodies, the 50mb limit below is for image uploads with a session
+const PUBLIC_FORM_ROUTES = [
+  "/api/support",
+  "/api/auth/login",
+  "/api/auth/social-login",
+  "/api/auth/register-owner",
+  "/api/auth/register-customer",
+  "/api/auth/register-driver",
+];
+app.use(PUBLIC_FORM_ROUTES, express.json({ limit: "100kb" }));
+app.use("/api/restaurants/public", express.json({ limit: "10mb" })); // Carries the transfer receipt
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 // Socket.io connection handling
-io.on("connection", (socket) => {
-  console.log(`[Socket] Client connected: ${socket.id}`);
-
-  // Join a room for a specific restaurant to isolate real-time events (POS, kitchen)
-  socket.on("join-restaurant", (restaurantId: string) => {
-    socket.join(`restaurant-${restaurantId}`);
-    console.log(`[Socket] Client ${socket.id} joined room restaurant-${restaurantId}`);
-  });
-
-  // Join a room for a specific order to track real-time delivery GPS
-  socket.on("join-order", (orderId: string | number) => {
-    socket.join(`order-${orderId}`);
-    console.log(`[Socket] Client ${socket.id} joined room order-${orderId}`);
-  });
-
-  socket.on("disconnect", () => {
-    console.log(`[Socket] Client disconnected: ${socket.id}`);
-  });
-});
+setupSocket(io);
+// Warns the administrator when a ready delivery waits longer than the configured time
+startDispatchWatcher(io);
 
 // Share socket io instance with routers/controllers
 app.set("io", io);
@@ -85,6 +93,8 @@ import saasRouter from "./modules/saas/saas.routes";
 import saasCategoriesRouter from "./modules/saas-categories/saas-categories.routes";
 import notificationsRouter from "./modules/notifications/notification.routes";
 import supportRouter from "./modules/support/support.routes";
+import ratingsRouter from "./modules/ratings/ratings.routes";
+import reservationsRouter from "./modules/reservations/reservations.routes";
 
 // API routes
 app.use("/api/auth", authRouter);
@@ -105,6 +115,8 @@ app.use("/api/saas", saasRouter);
 app.use("/api/saas-categories", saasCategoriesRouter);
 app.use("/api/notifications", notificationsRouter);
 app.use("/api/support", supportRouter);
+app.use("/api/ratings", ratingsRouter);
+app.use("/api/reservations", reservationsRouter);
 
 
 // Global Error Handler
