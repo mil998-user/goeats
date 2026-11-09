@@ -31,7 +31,9 @@ Pasos:
    npm install
    ```
 3. Si aún no tienes `backend/.env`, copia `backend/.env.example` como `backend/.env`.
-4. Guarda `ca.pem` en `backend/certs/ca.pem`.
+4. Guarda el certificado en `backend/certs/ca.pem`. Es público: descárgalo de https://letsencrypt.org/certs/isrgrootx1.pem y cámbiale el nombre a `ca.pem`.
+   - En tu `.env` pon el mismo `DATA_ENCRYPTION_KEY` que Deyvi te pasa. Los tres deben usar la misma clave: con otra, el backend no puede leer lo que otro cifró, por ejemplo los teléfonos de las reservas.
+   - Deja vacíos `SMTP_HOST`, `SMTP_USER` y `SMTP_PASS` para no enviar correos reales.
 5. En `backend/.env`, deja así la línea de la base, con tus datos (la de la base local queda comentada con `#`):
    ```
    DATABASE_URL="mysql://TU_USUARIO:TU_CONTRASENA@gateway01.us-east-1.prod.aws.tidbcloud.com:4000/goeats?sslaccept=strict&sslcert=../certs/ca.pem"
