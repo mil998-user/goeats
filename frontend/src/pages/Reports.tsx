@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { apiRequest } from "../utils/api";
+import { RestaurantRatings } from "../components/RestaurantRatings";
 import {
   TrendingUp,
   Award,
@@ -43,11 +44,18 @@ interface DashboardData {
   }>;
 }
 
+interface CookStat {
+  id: number;
+  name: string;
+  dishCount: number;
+}
+
 interface WaiterStat {
   id: number;
   name: string;
   orderCount: number;
   salesTotal: number;
+  tipsTotal?: number;
 }
 
 interface ProductStat {
@@ -60,6 +68,7 @@ interface ProductStat {
 export const Reports: React.FC = () => {
   const [data, setData] = useState<DashboardData | null>(null);
   const [waiters, setWaiters] = useState<WaiterStat[]>([]);
+  const [cooks, setCooks] = useState<CookStat[]>([]);
   const [products, setProducts] = useState<ProductStat[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -80,6 +89,7 @@ export const Reports: React.FC = () => {
       const params = { startDate, endDate };
       const wait = await apiRequest("/reports/waiters", { params });
       setWaiters(wait.waiters || []);
+      setCooks(wait.cooks || []);
 
       const prod = await apiRequest("/reports/products", { params });
       setProducts(prod.products || []);
@@ -128,15 +138,19 @@ export const Reports: React.FC = () => {
         <div className="glass-card" style={{
           display: "flex",
           alignItems: "center",
+          flexWrap: "wrap",
           gap: "10px",
           padding: "10px 15px",
-          borderRadius: "var(--radius-sm)"
+          borderRadius: "var(--radius-sm)",
+          maxWidth: "100%",
+          boxSizing: "border-box"
         }}>
           <Calendar size={16} style={{ color: "var(--text-muted)" }} />
           <input
             type="date"
             className="input-field"
-            style={{ width: "130px", padding: "4px 8px", fontSize: "12px", border: "none", background: "none" }}
+            aria-label="Desde"
+            style={{ flex: "1 1 130px", minWidth: 0, width: "auto", padding: "4px 8px", fontSize: "13px", border: "none", background: "none" }}
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
           />
@@ -144,7 +158,8 @@ export const Reports: React.FC = () => {
           <input
             type="date"
             className="input-field"
-            style={{ width: "130px", padding: "4px 8px", fontSize: "12px", border: "none", background: "none" }}
+            aria-label="Hasta"
+            style={{ flex: "1 1 130px", minWidth: 0, width: "auto", padding: "4px 8px", fontSize: "13px", border: "none", background: "none" }}
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
           />
@@ -167,7 +182,7 @@ export const Reports: React.FC = () => {
             </div>
           </div>
           <h2 style={{ fontSize: "28px", marginTop: "15px" }}>${indicators.todaySales.toFixed(2)}</h2>
-          <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "5px" }}>Efectivo + Tarjeta hoy</p>
+          <p style={{ fontSize: "13px", color: "var(--text-muted)", marginTop: "5px" }}>Efectivo + Tarjeta hoy</p>
         </div>
 
         {/* KPI 2 */}
@@ -179,7 +194,7 @@ export const Reports: React.FC = () => {
             </div>
           </div>
           <h2 style={{ fontSize: "28px", marginTop: "15px" }}>{indicators.activeTables}</h2>
-          <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "5px" }}>Clientes en mesa activos</p>
+          <p style={{ fontSize: "13px", color: "var(--text-muted)", marginTop: "5px" }}>Clientes en mesa activos</p>
         </div>
 
         {/* KPI 3 */}
@@ -191,12 +206,12 @@ export const Reports: React.FC = () => {
             </div>
           </div>
           <h2 style={{ fontSize: "28px", marginTop: "15px" }}>{indicators.pendingOrders}</h2>
-          <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "5px" }}>En espera en el KDS</p>
+          <p style={{ fontSize: "13px", color: "var(--text-muted)", marginTop: "5px" }}>En espera en el KDS</p>
         </div>
       </div>
 
       {/* Main Section: Sales History Chart */}
-      <div style={{
+      <div className="reports-grid" style={{
         display: "grid",
         gridTemplateColumns: "2fr 1fr",
         gap: "30px",
@@ -271,7 +286,7 @@ export const Reports: React.FC = () => {
                 >
                   <div>
                     <div style={{ fontSize: "13px", fontWeight: 600 }}>{item.name}</div>
-                    <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "2px" }}>
+                    <div style={{ fontSize: "13px", color: "var(--text-muted)", marginTop: "2px" }}>
                       Cant: {item.quantity} unidades
                     </div>
                   </div>
@@ -286,7 +301,7 @@ export const Reports: React.FC = () => {
       </div>
 
       {/* Waiters performance & Top products by range */}
-      <div style={{
+      <div className="reports-grid" style={{
         display: "grid",
         gridTemplateColumns: "1fr 1fr",
         gap: "30px",
@@ -301,18 +316,19 @@ export const Reports: React.FC = () => {
           </h3>
 
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "13px" }}>
+            <table className="mobile-cards" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "13px" }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--border-light)", color: "var(--text-muted)" }}>
                   <th style={{ padding: "10px" }}>Mesero</th>
                   <th style={{ padding: "10px", textAlign: "center" }}>Pedidos Servidos</th>
                   <th style={{ padding: "10px", textAlign: "right" }}>Total Ventas (USD)</th>
+                  <th style={{ padding: "10px", textAlign: "right" }}>Propinas (USD)</th>
                 </tr>
               </thead>
               <tbody>
                 {waiters.length === 0 ? (
                   <tr>
-                    <td colSpan={3} style={{ padding: "20px", textAlign: "center", color: "var(--text-muted)" }}>
+                    <td colSpan={4} style={{ padding: "20px", textAlign: "center", color: "var(--text-muted)" }}>
                       Sin datos en el rango seleccionado
                     </td>
                   </tr>
@@ -324,6 +340,37 @@ export const Reports: React.FC = () => {
                       <td style={{ padding: "10px", textAlign: "right", color: "var(--success)", fontWeight: 700 }}>
                         ${waiter.salesTotal.toFixed(2)}
                       </td>
+                      <td style={{ padding: "10px", textAlign: "right", fontWeight: 700 }}>
+                        ${(waiter.tipsTotal || 0).toFixed(2)}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <h3 style={{ fontSize: "16px", margin: "25px 0 12px" }}>Platos preparados en cocina</h3>
+          <div style={{ overflowX: "auto" }}>
+            <table data-testid="cooks-report" className="mobile-cards" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "13px" }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid var(--border-light)", color: "var(--text-muted)" }}>
+                  <th style={{ padding: "10px" }}>Cocinero</th>
+                  <th style={{ padding: "10px", textAlign: "right" }}>Platos preparados</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cooks.length === 0 ? (
+                  <tr>
+                    <td colSpan={2} style={{ padding: "20px", textAlign: "center", color: "var(--text-muted)" }}>
+                      Sin datos en el rango seleccionado
+                    </td>
+                  </tr>
+                ) : (
+                  cooks.map((cook) => (
+                    <tr key={cook.id} style={{ borderBottom: "1px solid var(--border-light)" }}>
+                      <td style={{ padding: "10px", fontWeight: 600 }}>{cook.name}</td>
+                      <td style={{ padding: "10px", textAlign: "right", fontWeight: 700 }}>{cook.dishCount}</td>
                     </tr>
                   ))
                 )}
@@ -340,7 +387,7 @@ export const Reports: React.FC = () => {
           </h3>
 
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "13px" }}>
+            <table className="mobile-cards" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "13px" }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--border-light)", color: "var(--text-muted)" }}>
                   <th style={{ padding: "10px" }}>Producto</th>
@@ -371,6 +418,8 @@ export const Reports: React.FC = () => {
           </div>
         </div>
       </div>
+
+      <RestaurantRatings />
     </div>
   );
 };

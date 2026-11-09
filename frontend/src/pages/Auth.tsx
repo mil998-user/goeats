@@ -12,6 +12,23 @@ declare global {
   }
 }
 
+// Only pages of this site, so a link can't send someone elsewhere after logging in
+function getSafeReturnTo() {
+  const params = new URLSearchParams(window.location.search);
+  const returnTo = params.get("returnTo");
+  if (!params.get("expired") || !returnTo) return null;
+  if (!returnTo.startsWith("/") || returnTo.startsWith("//") || returnTo.startsWith("/\\") || returnTo.startsWith("/login")) {
+    return null;
+  }
+  return returnTo;
+}
+
+// A customer who logs in from a restaurant page goes back to it (and to the cart kept there)
+function getRestaurantReturnTo() {
+  const returnTo = new URLSearchParams(window.location.search).get("returnTo");
+  return returnTo && /^\/r\/[a-z0-9-]+(\/mesa\/\d+)?$/.test(returnTo) ? returnTo : null;
+}
+
 export const Auth: React.FC = () => {
   const [selectedRole, setSelectedRole] = useState<"customer" | "driver" | "restaurant" | "superadmin" | null>(() => {
     const role = new URLSearchParams(window.location.search).get("role");
@@ -23,7 +40,11 @@ export const Auth: React.FC = () => {
     const params = new URLSearchParams(window.location.search);
     return params.get("role") === "superadmin" || params.get("mode") !== "register";
   });
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() =>
+    new URLSearchParams(window.location.search).get("expired")
+      ? "Tu sesión terminó. Vuelve a ingresar para continuar."
+      : null
+  );
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { login } = useAuth();
@@ -232,6 +253,11 @@ export const Auth: React.FC = () => {
           body: JSON.stringify({ username, password }),
         });
         login(res.token, res.user);
+        const backTo = getSafeReturnTo();
+        if (backTo) {
+          navigate(backTo);
+          return;
+        }
         if (res.user.role === "SUPER_ADMIN") {
           navigate("/admin/restaurants");
         } else if (res.user.role === "PRODUCCION") {
@@ -239,7 +265,7 @@ export const Auth: React.FC = () => {
         } else if (res.user.role === "MOTORIZADO") {
           navigate("/delivery");
         } else if (res.user.role === "CUSTOMER") {
-          navigate(res.user.deliveryAddress ? "/restaurants" : "/customer/location-setup");
+          navigate(res.user.deliveryAddress ? getRestaurantReturnTo() || "/restaurants" : "/customer/location-setup");
         } else if (res.user.role === "RESTAURANT_OWNER") {
           navigate("/reports");
         } else {
@@ -274,16 +300,10 @@ export const Auth: React.FC = () => {
         });
 
         if (currentRegType === "customer") {
-          login(res?.token || ("token-" + Date.now()), res?.user || {
-            id: Date.now(),
-            username,
-            name: name || username,
-            email: email || `${username}@gmail.com`,
-            role: "CUSTOMER",
-            cedula,
-            walletBalance: 0,
-            isPlus: false,
-          });
+          if (!res?.token || !res?.user) {
+            throw new Error("No se pudo crear la cuenta. Intenta de nuevo.");
+          }
+          login(res.token, res.user);
           setError(null);
           const returnTo = new URLSearchParams(window.location.search).get("returnTo");
           navigate(returnTo === "/plus#pricing-plans" ? returnTo : "/customer/location-setup");
@@ -592,7 +612,7 @@ export const Auth: React.FC = () => {
               Volver
             </button>
             <span style={{
-              fontSize: "11px",
+              fontSize: "13px",
               fontWeight: 700,
               textTransform: "uppercase",
               letterSpacing: "1px",
@@ -615,13 +635,13 @@ export const Auth: React.FC = () => {
                 : selectedRole === "superadmin"
                 ? "Administrador Global de la Plataforma"
                 : selectedRole === "customer" && !isLogin
-                ? "Regístrate al instante con tu cuenta de Google o Facebook"
+                ? "Crea tu cuenta con tu cédula o RUC"
                 : "Ingresa tus credenciales para continuar"}
             </p>
           </div>
 
-          {/* Tab Selector (only for Customer/Driver OR Restaurant (as owner register)) */}
-          {selectedRole !== "superadmin" && selectedRole !== "customer" && (
+          {/* Tab Selector: Ingresar / Registrarse */}
+          {selectedRole !== "superadmin" && (
             <div style={{
               display: "flex",
               background: "var(--bg-tertiary)",
@@ -787,7 +807,7 @@ export const Auth: React.FC = () => {
                 alignItems: "center",
                 margin: "24px 0 16px",
                 color: "#94a3b8",
-                fontSize: "12px",
+                fontSize: "13px",
                 fontWeight: "500"
               }}>
                 <div style={{ flex: 1, height: "1px", backgroundColor: "#e2e8f0" }} />
@@ -847,7 +867,7 @@ export const Auth: React.FC = () => {
                       required
                     />
                   </div>
-                  <small style={{ color: "var(--text-muted)", fontSize: "11px", marginTop: "2px", display: "block" }}>
+                  <small style={{ color: "var(--text-muted)", fontSize: "13px", marginTop: "2px", display: "block" }}>
                     Aquí recibirás la bienvenida y alertas de pedidos en tiempo real.
                   </small>
                 </div>
@@ -880,7 +900,7 @@ export const Auth: React.FC = () => {
                 {/* Cedula (Customer and Driver only) */}
                 {(selectedRole === "customer" || selectedRole === "driver") && (
                   <div className="input-group">
-                    <label>Cédula de Identidad (10 dígitos ecuatorianos)</label>
+                    <label>{selectedRole === "customer" ? "Cédula o RUC" : "Cédula de identidad"}</label>
                     <div style={{ position: "relative" }}>
                       <Shield size={18} style={{
                         position: "absolute",
@@ -893,9 +913,10 @@ export const Auth: React.FC = () => {
                         type="text"
                         className="input-field"
                         style={{ paddingLeft: "45px" }}
-                        placeholder="Ej. 1712345678"
+                        placeholder={selectedRole === "customer" ? "10 o 13 dígitos" : "10 dígitos"}
+                        inputMode="numeric"
                         value={cedula}
-                        maxLength={10}
+                        maxLength={selectedRole === "customer" ? 13 : 10}
                         onChange={(e) => setCedula(e.target.value.replace(/\D/g, ""))}
                         required
                       />
@@ -1018,7 +1039,7 @@ export const Auth: React.FC = () => {
                           required
                         />
                       </div>
-                      <small style={{ color: "var(--text-muted)", fontSize: "11px", marginTop: "2px", display: "block" }}>
+                      <small style={{ color: "var(--text-muted)", fontSize: "13px", marginTop: "2px", display: "block" }}>
                         Enlace de tu menú: http://localhost:5173/r/{slug || "slug"}
                       </small>
                     </div>
@@ -1105,8 +1126,8 @@ export const Auth: React.FC = () => {
               </button>
             </form>
 
-          {/* Sandbox Quick Access (Only when in Login tab) */}
-          {isLogin && (
+          {/* Sandbox Quick Access (Only when in Login tab, never in a published build) */}
+          {isLogin && import.meta.env.DEV && (
             <div style={{
               marginTop: "25px",
               paddingTop: "20px",
@@ -1114,7 +1135,7 @@ export const Auth: React.FC = () => {
               textAlign: "center"
             }}>
               <h3 style={{
-                fontSize: "11px",
+                fontSize: "13px",
                 color: "var(--accent-secondary)",
                 marginBottom: "10px",
                 textTransform: "uppercase",
@@ -1168,7 +1189,7 @@ export const Auth: React.FC = () => {
                     backgroundColor: "rgba(255, 71, 87, 0.05)",
                     border: "1px solid rgba(255, 71, 87, 0.15)",
                     color: "var(--accent-primary)",
-                    fontSize: "12px",
+                    fontSize: "13px",
                     fontWeight: 600,
                     cursor: "pointer"
                   }}
@@ -1221,7 +1242,7 @@ export const Auth: React.FC = () => {
                     backgroundColor: "rgba(46, 213, 115, 0.05)",
                     border: "1px solid rgba(46, 213, 115, 0.15)",
                     color: "var(--success)",
-                    fontSize: "12px",
+                    fontSize: "13px",
                     fontWeight: 600,
                     cursor: "pointer"
                   }}
@@ -1264,7 +1285,7 @@ export const Auth: React.FC = () => {
                         backgroundColor: "var(--bg-secondary)",
                         border: "1px solid var(--border-light)",
                         color: "var(--text-primary)",
-                        fontSize: "11px",
+                        fontSize: "13px",
                         fontWeight: 600,
                         cursor: "pointer"
                       }}
@@ -1301,7 +1322,7 @@ export const Auth: React.FC = () => {
                     backgroundColor: "rgba(139, 92, 246, 0.05)",
                     border: "1px solid rgba(139, 92, 246, 0.15)",
                     color: "#8b5cf6",
-                    fontSize: "12px",
+                    fontSize: "13px",
                     fontWeight: 600,
                     cursor: "pointer"
                   }}

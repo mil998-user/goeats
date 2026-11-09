@@ -4,15 +4,25 @@ import { apiRequest } from "../utils/api";
 import { ShoppingCart, Wifi, MapPin, Phone, Utensils, Check, Plus, Minus, AlertCircle, Clock, X, ArrowLeft, BellRing, Receipt, HelpCircle } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
+import { calculateShippingCost, getShippingDistanceKm } from "../utils/shipping";
 import { LocationPickerMap } from "../components/LocationPickerMap";
+import type { SavedAddress } from "../components/SavedAddresses";
 import { SupportModal } from "../components/SupportModal";
 import { systemIconForEmoji, systemTextWithIcons } from "../utils/systemIcons";
+import { getMapEmbedUrl } from "../utils/maps";
+import { StarAverage } from "../components/Stars";
+import { ReserveTable } from "../components/ReserveTable";
+
+// Fixed tip choices for the driver; 0 means no tip
+const TIP_CHOICES = [0, 0.5, 1, 2];
 
 
 interface Variant {
   id: number;
   name: string;
   price: number;
+  regularPrice?: number | null; // normal price while the dish is on promotion
+  promoEndsAt?: string | null;
   stockLimit: number | null;
   options: string | null;
 }
@@ -62,6 +72,11 @@ interface RestaurantDetails {
   reference: string | null;
   openingHours: string | null;
   faqsJson: string | null;
+  ratingAverage?: number | null;
+  ratingCount?: number;
+  waiterCallEnabled?: boolean;
+  reservationsEnabled?: boolean;
+  payBeforeEating?: boolean;
 }
 
 interface CartItem {
@@ -111,7 +126,34 @@ export const PublicCatalog: React.FC = () => {
   const [deliveryPhone, setDeliveryPhone] = useState(() => user?.phone || "");
   const [deliveryLat, setDeliveryLat] = useState<number | null>(() => user?.deliveryLatitude ?? null);
   const [deliveryLng, setDeliveryLng] = useState<number | null>(() => user?.deliveryLongitude ?? null);
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
+  // The cart survives going to the login page and back, only in this tab and for this restaurant
+  const cartKey = `goeats_cart_${slug}`;
+  // After logging in, come back to this restaurant instead of the general list
+  const loginPath = `/login?returnTo=${encodeURIComponent(urlTableId ? `/r/${slug}/mesa/${urlTableId}` : `/r/${slug}`)}`;
+  const [cart, setCart] = useState<CartItem[]>(() => {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(cartKey) || "[]");
+      return Array.isArray(saved) ? saved : [];
+    } catch {
+      return [];
+    }
+  });
+  // Logging out on this page also empties the cart shown on screen
+  const wasAuthenticated = React.useRef(isAuthenticated);
+  useEffect(() => {
+    if (wasAuthenticated.current && !isAuthenticated) setCart([]);
+    wasAuthenticated.current = isAuthenticated;
+  }, [isAuthenticated]);
+  useEffect(() => {
+    try {
+      if (cart.length) sessionStorage.setItem(cartKey, JSON.stringify(cart));
+      else sessionStorage.removeItem(cartKey);
+    } catch {
+      // Storage can be blocked; the cart still works in memory
+    }
+  }, [cart, cartKey]);
   const [orderSuccess, setOrderSuccess] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState(false);
   const [isCartMobileOpen, setIsCartMobileOpen] = useState(false);
@@ -119,12 +161,20 @@ export const PublicCatalog: React.FC = () => {
   // PedidosYa Tracking & Dine-In Table Call states
   const { socket } = useSocket();
   const [activeOrder, setActiveOrder] = useState<any>(null);
+  const activeOrderKey = `goeats_active_order_${slug}`;
+  const rememberActiveOrder = (orderId: number | null) => {
+    try {
+      if (orderId) sessionStorage.setItem(activeOrderKey, String(orderId));
+      else sessionStorage.removeItem(activeOrderKey);
+    } catch {
+      // Storage can be blocked; the order is still in "Mis pedidos"
+    }
+  };
   const [waiterCallStatus, setWaiterCallStatus] = useState<string | null>(null);
   const [waiterCallLoading, setWaiterCallLoading] = useState<boolean>(false);
 
   // Delivery estimation states
   const [deliveryRate, setDeliveryRate] = useState<any>(null);
-  const [simulatedDistance, setSimulatedDistance] = useState<number>(2.5); // Default 2.5 km
 
   // Payment states for DELIVERY/TAKEOUT
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "CARD" | "TRANSFER">("CASH");
@@ -135,52 +185,56 @@ export const PublicCatalog: React.FC = () => {
   const [selectedBankAccId, setSelectedBankAccId] = useState<string>("");
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const [supportModalOpen, setSupportModalOpen] = useState(false);
+  const [tipAmount, setTipAmount] = useState(0);
+  const [reserveOpen, setReserveOpen] = useState(false);
 
   const isPlusUser = isAuthenticated && user?.isPlus === true;
-  const currentShippingCost = (orderType === "DELIVERY" && !isPlusUser)
-    ? (deliveryRate ? deliveryRate.basePrice + (deliveryRate.pricePerKm * simulatedDistance) : 1.0 + (0.5 * simulatedDistance))
+  const shippingDistance = getShippingDistanceKm(restaurant?.mapLatitude, restaurant?.mapLongitude, deliveryLat, deliveryLng);
+  const currentShippingCost = (orderType === "DELIVERY" && !isPlusUser && deliveryRate)
+    ? calculateShippingCost(deliveryRate, shippingDistance)
     : 0;
+  // The tip only applies to deliveries and is paid together with the order
+  const currentTip = orderType === "DELIVERY" ? tipAmount : 0;
 
-  const defaultMockBankAccount = {
-    id: "mock-1",
-    bank: "Banco Pichincha (Demo)",
-    ownerName: "Goeats S.A. (Demo)",
-    accountType: "ahorros",
-    accountNumber: "2209876543",
-    ownerDoc: "1792345678001",
-    ownerEmail: "pagos@goeats.com.ec",
-    qrImage: "https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg"
-  };
-
-  const activeBankAccounts = bankAccounts.length > 0 ? bankAccounts : [defaultMockBankAccount];
+  // Only the restaurant's real accounts; without them, transfer is not offered
+  const activeBankAccounts = bankAccounts;
 
   useEffect(() => {
-    if (restaurant && (restaurant as any).bankAccountsJson) {
-      try {
-        const parsed = JSON.parse((restaurant as any).bankAccountsJson);
-        setBankAccounts(parsed || []);
-        if (parsed && parsed.length > 0) {
-          setSelectedBankAccId(parsed[0].id.toString());
-        } else {
-          setSelectedBankAccId("mock-1");
-        }
-      } catch (e) {
-        setBankAccounts([]);
-        setSelectedBankAccId("mock-1");
-      }
-    } else {
-      setSelectedBankAccId("mock-1");
+    let parsed: any[] = [];
+    try {
+      parsed = JSON.parse((restaurant as any)?.bankAccountsJson || "[]") || [];
+    } catch {
+      parsed = [];
     }
+    setBankAccounts(parsed);
+    setSelectedBankAccId(parsed.length > 0 ? parsed[0].id.toString() : "");
+    if (parsed.length === 0) setPaymentMethod((current) => (current === "TRANSFER" ? "CASH" : current));
   }, [restaurant]);
 
 
   useEffect(() => {
     async function loadCatalog() {
       try {
-        const res = await apiRequest(`/restaurants/public/catalog/${slug}`);
+        const res = await apiRequest(`/restaurants/public/catalog/${slug}`, {
+          params: activeTableId ? { tableId: activeTableId } : undefined,
+        });
         setRestaurant(res.restaurant);
+        setDeliveryRate(res.deliveryRate || null);
         setCategories(res.menuCategories || []);
         setDiningAreas(res.diningAreas || []);
+
+        // A saved cart may be outdated: drop dishes no longer offered and show current prices
+        const variants = new Map<number, Variant>(
+          ((res.menuCategories || []) as Category[])
+            .flatMap((c) => c.items)
+            .flatMap((i) => i.variants)
+            .map((v) => [v.id, v])
+        );
+        setCart((saved) =>
+          saved
+            .filter((line) => variants.has(line.variantId))
+            .map((line) => ({ ...line, price: Number(variants.get(line.variantId)!.price) }))
+        );
 
         // Auto-configure DINE_IN if table is provided via QR scan
         if (activeTableId) {
@@ -200,30 +254,83 @@ export const PublicCatalog: React.FC = () => {
   useEffect(() => {
     if (isAuthenticated && user) {
       setCustomerName(user.name);
+      // Same as above: the stored session arrives after the first render
+      setDeliveryPhone((current) => current || user.phone || "");
+      setDeliveryAddress((current) => current || user.deliveryAddress || "");
+      setDeliveryLat((current) => current ?? user.deliveryLatitude ?? null);
+      setDeliveryLng((current) => current ?? user.deliveryLongitude ?? null);
     }
   }, [isAuthenticated, user]);
 
-  // Load active delivery rates
+  // Saved addresses: the customer picks one instead of typing it again
   useEffect(() => {
-    async function fetchActiveRate() {
-      if (isAuthenticated && orderType === "DELIVERY") {
-        try {
-          const res = await apiRequest("/delivery/active-rate");
-          if (res.success) {
-            setDeliveryRate(res.rate);
-          }
-        } catch (err) {
-          console.error("Error fetching active rate config:", err);
-        }
-      }
+    if (!isAuthenticated || user?.role !== "CUSTOMER") return;
+    apiRequest("/orders/customer/addresses")
+      .then((res) => {
+        const list: SavedAddress[] = res.addresses || [];
+        setSavedAddresses(list);
+        const main = list.find((a) => a.isDefault);
+        if (!main) return;
+        // The session loads after the first render, so the form may still be empty: fill it unless the customer already typed
+        setSelectedAddressId(main.id);
+        setDeliveryAddress((current) => current || main.address);
+        setDeliveryLat((current) => current ?? main.latitude);
+        setDeliveryLng((current) => current ?? main.longitude);
+        setDeliveryReference(
+          (current) => current || [main.floorApartment, main.secondaryStreet, main.references].filter(Boolean).join(", ")
+        );
+      })
+      .catch(() => setSavedAddresses([]));
+  }, [isAuthenticated, user?.role]);
+
+  const chooseSavedAddress = (id: number) => {
+    const chosen = savedAddresses.find((a) => a.id === id);
+    if (!chosen) return;
+    setSelectedAddressId(id);
+    setDeliveryAddress(chosen.address);
+    setDeliveryLat(chosen.latitude);
+    setDeliveryLng(chosen.longitude);
+    setDeliveryReference(
+      [chosen.floorApartment, chosen.secondaryStreet, chosen.references].filter(Boolean).join(", ")
+    );
+  };
+
+  // After a reload, bring back the order the customer just placed, with its PIN
+  useEffect(() => {
+    if (!isAuthenticated || user?.role !== "CUSTOMER") return;
+    let savedId: number | null = null;
+    try {
+      savedId = Number(sessionStorage.getItem(activeOrderKey)) || null;
+    } catch {
+      savedId = null;
     }
-    fetchActiveRate();
-  }, [isAuthenticated, orderType]);
+    if (!savedId) return;
+
+    let cancelled = false;
+    apiRequest("/orders/customer/my-orders")
+      .then((res) => {
+        if (cancelled) return;
+        const saved = (res.orders || []).find((o: any) => o.id === savedId);
+        if (saved && saved.status !== "DELIVERED" && saved.status !== "CANCELLED") {
+          setActiveOrder(saved);
+          setOrderSuccess(true);
+        } else {
+          rememberActiveOrder(null);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, user?.role, activeOrderKey]);
 
   // Listen for real-time order updates for the customer (PedidosYa Live Tracker)
   useEffect(() => {
-    if (!socket || !restaurant?.id) return;
-    socket.emit("join-restaurant", restaurant.id);
+    if (!socket || !activeOrder?.id) return;
+
+    const joinOrder = () => socket.emit("join-order", activeOrder.id);
+    joinOrder();
+    socket.on("connect", joinOrder);
 
     const handleStatusUpdate = (data: any) => {
       if (activeOrder && Number(data.orderId) === Number(activeOrder.id)) {
@@ -237,9 +344,10 @@ export const PublicCatalog: React.FC = () => {
 
     socket.on("order-status-updated", handleStatusUpdate);
     return () => {
+      socket.off("connect", joinOrder);
       socket.off("order-status-updated", handleStatusUpdate);
     };
-  }, [socket, restaurant?.id, activeOrder?.id]);
+  }, [socket, activeOrder?.id]);
 
   // Handle Calling Waiter or Requesting Bill from Table
   const handleCallWaiter = async (action: "CALL" | "BILL") => {
@@ -256,7 +364,9 @@ export const PublicCatalog: React.FC = () => {
       setWaiterCallStatus(action === "BILL" ? "¡Cuenta solicitada a caja! Enseguida se acercan a cobrar." : "¡Mesero notificado! Enseguida se acerca a tu mesa.");
       setTimeout(() => setWaiterCallStatus(null), 8000);
     } catch (err: any) {
-      alert("Error: " + err.message);
+      // A repeated call answers with how long to wait; show it in the same banner
+      setWaiterCallStatus(err.message || "No se pudo avisar. Intenta de nuevo.");
+      setTimeout(() => setWaiterCallStatus(null), 8000);
     } finally {
       setWaiterCallLoading(false);
     }
@@ -305,7 +415,7 @@ export const PublicCatalog: React.FC = () => {
 
     if ((orderType === "DELIVERY" || orderType === "TAKEOUT") && !isAuthenticated) {
       alert("Debes iniciar sesión para realizar pedidos.");
-      navigate("/login");
+      navigate(loginPath);
       return;
     }
 
@@ -335,15 +445,16 @@ export const PublicCatalog: React.FC = () => {
       }
     }
 
-    const shippingCost = currentShippingCost;
-
     setSubmitting(true);
     try {
       const payload = {
         type: orderType,
         tableId: orderType === "DINE_IN" ? parseInt(selectedTable, 10) : null,
         customerName,
-        comments: `Pedido público web. ${orderType === "DELIVERY" ? "A Domicilio" : orderType === "TAKEOUT" ? "Para Llevar" : "En Mesa"}. Distancia: ${simulatedDistance.toFixed(1)} km. Pago: ${paymentMethod === "CASH" ? "Efectivo/Contraentrega" : paymentMethod === "CARD" ? "Tarjeta" : "Transferencia"}${deliveryReference ? ` • Referencia: ${deliveryReference}` : ""}`,
+        // Distance, payment on delivery and the home reference only make sense for deliveries
+        comments: orderType === "DINE_IN"
+          ? "Pedido público web. En Mesa. Pago en caja."
+          : `Pedido público web. ${orderType === "DELIVERY" ? "A Domicilio" : "Para Llevar"}.${orderType === "DELIVERY" ? ` Distancia: ${shippingDistance.toFixed(1)} km.` : ""} Pago: ${paymentMethod === "CASH" ? (orderType === "DELIVERY" ? "Efectivo/Contraentrega" : "Efectivo") : paymentMethod === "CARD" ? "Tarjeta" : "Transferencia"}${orderType === "DELIVERY" && deliveryReference ? ` • Referencia: ${deliveryReference}` : ""}`,
         deliveryAddress: orderType === "DELIVERY" 
           ? (deliveryReference ? `${deliveryAddress} (Ref: ${deliveryReference})` : deliveryAddress)
           : null,
@@ -352,7 +463,6 @@ export const PublicCatalog: React.FC = () => {
         deliveryPhone: orderType === "DELIVERY" ? deliveryPhone : null,
         deliveryLat: orderType === "DELIVERY" ? deliveryLat : null,
         deliveryLng: orderType === "DELIVERY" ? deliveryLng : null,
-        shippingCost,
         items: cart.map((i) => ({
           variantId: i.variantId,
           quantity: i.quantity,
@@ -362,6 +472,7 @@ export const PublicCatalog: React.FC = () => {
         paymentMethod,
         paymentReceipt: paymentMethod === "TRANSFER" ? paymentReceipt : undefined,
         payphoneTransactionId: paymentMethod === "CARD" ? payphoneTransactionId : undefined,
+        tipAmount: currentTip > 0 ? currentTip : undefined,
       };
 
       // Call public endpoint
@@ -370,7 +481,11 @@ export const PublicCatalog: React.FC = () => {
         body: JSON.stringify(payload),
       });
 
-      setActiveOrder(data.order || { ...payload, id: Date.now(), status: "PREPARING" });
+      if (!data.order?.id) {
+        throw new Error("El servidor no confirmó el pedido");
+      }
+      setActiveOrder(data.order);
+      rememberActiveOrder(data.order.type === "DINE_IN" ? null : data.order.id);
 
       setCart([]);
       setOrderSuccess(true);
@@ -482,13 +597,13 @@ export const PublicCatalog: React.FC = () => {
               {!isMobile && (
                 <div style={{ textAlign: "right" }}>
                   <div style={{ fontSize: "13px", fontWeight: 600, color: "#202124" }}>{user.name}</div>
-                  <div style={{ fontSize: "10px", color: "var(--text-muted)" }}>{user.role}</div>
+                  <div style={{ fontSize: "13px", color: "var(--text-muted)" }}>{user.role}</div>
                 </div>
               )}
 
               {user.role === "CUSTOMER" && (
                 <Link to="/customer/dashboard" style={{
-                  fontSize: isMobile ? "11px" : "13px",
+                  fontSize: isMobile ? "12px" : "13px",
                   fontWeight: "600",
                   color: "#ff4757",
                   padding: isMobile ? "6px 12px" : "8px 16px",
@@ -503,7 +618,7 @@ export const PublicCatalog: React.FC = () => {
 
               {user.role === "MOTORIZADO" && (
                 <Link to="/delivery" style={{
-                  fontSize: isMobile ? "11px" : "13px",
+                  fontSize: isMobile ? "12px" : "13px",
                   fontWeight: "600",
                   color: "#ff4757",
                   padding: isMobile ? "6px 12px" : "8px 16px",
@@ -518,7 +633,7 @@ export const PublicCatalog: React.FC = () => {
 
               {(user.role === "RESTAURANT_OWNER" || user.role === "CAJERO" || user.role === "MOZO" || user.role === "PRODUCCION") && (
                 <Link to="/pos" style={{
-                  fontSize: isMobile ? "11px" : "13px",
+                  fontSize: isMobile ? "12px" : "13px",
                   fontWeight: "600",
                   color: "#ff4757",
                   padding: isMobile ? "6px 12px" : "8px 16px",
@@ -533,7 +648,7 @@ export const PublicCatalog: React.FC = () => {
 
               {user.role === "SUPER_ADMIN" && (
                 <Link to="/admin/restaurants" style={{
-                  fontSize: isMobile ? "11px" : "13px",
+                  fontSize: isMobile ? "12px" : "13px",
                   fontWeight: "600",
                   color: "#ff4757",
                   padding: isMobile ? "6px 12px" : "8px 16px",
@@ -558,7 +673,7 @@ export const PublicCatalog: React.FC = () => {
                   border: "1px solid rgba(255, 71, 87, 0.2)",
                   color: "var(--accent-primary)",
                   cursor: "pointer",
-                  fontSize: isMobile ? "11px" : "12px",
+                  fontSize: isMobile ? "12px" : "12px",
                   fontWeight: 600,
                   transition: "all var(--transition-fast)"
                 }}
@@ -568,8 +683,8 @@ export const PublicCatalog: React.FC = () => {
             </div>
           ) : (
             <>
-              <Link to="/login" style={{
-                fontSize: isMobile ? "11px" : "13px",
+              <Link to={loginPath} style={{
+                fontSize: isMobile ? "12px" : "13px",
                 fontWeight: "600",
                 backgroundColor: "#000000",
                 color: "#ffffff",
@@ -649,6 +764,20 @@ export const PublicCatalog: React.FC = () => {
           
           <div style={{ textShadow: "0 2px 4px rgba(0,0,0,0.5)" }}>
             <h1 style={{ fontSize: "2.4rem", fontWeight: "800", margin: "0 0 5px 0", letterSpacing: "-0.5px" }}>{restaurant.name}</h1>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", marginBottom: "6px" }}>
+              <span style={{ background: "rgba(255,255,255,0.92)", borderRadius: "20px", padding: "3px 10px", textShadow: "none" }}>
+                <StarAverage average={restaurant.ratingAverage} count={restaurant.ratingCount} />
+              </span>
+              {restaurant.reservationsEnabled && !activeTableId && (
+                <button
+                  type="button"
+                  onClick={() => (isAuthenticated && user?.role === "CUSTOMER" ? setReserveOpen(true) : navigate(loginPath))}
+                  style={{ background: "#ffffff", color: "#000000", border: "none", borderRadius: "20px", padding: "6px 14px", minHeight: "36px", fontWeight: 700, cursor: "pointer", textShadow: "none" }}
+                >
+                  Reservar mesa
+                </button>
+              )}
+            </div>
             {restaurant.description && (
               <p style={{ fontSize: "1.1rem", fontStyle: "italic", margin: "0 0 10px 0", opacity: 0.9 }}>
                 {restaurant.description}
@@ -675,7 +804,7 @@ export const PublicCatalog: React.FC = () => {
       {/* Table-specific Info bar (SSID) if active */}
       {activeTableId && restaurant.wifiSsid && (
         <div style={{ backgroundColor: "#ffeef0", borderBottom: "1px solid #ffe2e5", padding: "10px 30px" }}>
-          <div style={{ maxWidth: "1200px", margin: "0 auto", display: "flex", alignItems: "center", gap: "10px", fontSize: "14px", color: "#d63031", fontWeight: "600" }}>
+          <div style={{ maxWidth: "1200px", margin: "0 auto", display: "flex", alignItems: "center", gap: "12px", fontSize: "14px", color: "#d63031", fontWeight: "600" }}>
             <Wifi size={16} />
             <span>Estás en la mesa. WiFi local: <strong>{restaurant.wifiSsid}</strong> {restaurant.wifiPassword ? `(Clave: ${restaurant.wifiPassword})` : "(Red libre)"}</span>
           </div>
@@ -703,7 +832,7 @@ export const PublicCatalog: React.FC = () => {
               boxShadow: "0 4px 15px rgba(0,0,0,0.03)"
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                <div style={{ width: "42px", height: "42px", borderRadius: "10px", background: "#ffa502", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "1.4rem" }}>
+                <div style={{ width: "42px", height: "42px", borderRadius: "12px", background: "#ffa502", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "1.4rem" }}>
                   {systemIconForEmoji("🪑")}
                 </div>
                 <div>
@@ -713,12 +842,17 @@ export const PublicCatalog: React.FC = () => {
                       : "Servicio en Mesa (Autoservicio QR)"}
                   </div>
                   <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-                    {selectedTable ? "Tus comandas van directo a la pantalla de cocina" : "Elige tu mesa en el carrito para ordenar"}
+                    {!selectedTable
+                      ? "Elige tu mesa en el carrito para ordenar"
+                      : restaurant.payBeforeEating
+                        ? "Este local cobra antes de preparar: tu pedido pasa a cocina cuando pagas en caja"
+                        : "Tus comandas van directo a la pantalla de cocina"}
                   </div>
                 </div>
               </div>
 
               <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                {restaurant.waiterCallEnabled !== false && (
                 <button
                   type="button"
                   onClick={() => handleCallWaiter("CALL")}
@@ -742,6 +876,7 @@ export const PublicCatalog: React.FC = () => {
                   <BellRing size={16} />
                   <span>{waiterCallLoading ? "Avisando..." : "Llamar Mesero"}</span>
                 </button>
+                )}
 
                 <button
                   type="button"
@@ -794,7 +929,7 @@ export const PublicCatalog: React.FC = () => {
               <div className="glass-card" style={{ padding: "30px", background: "var(--card-bg, #ffffff)", borderColor: "var(--border-light)", borderRadius: "18px", boxShadow: "0 8px 30px rgba(0,0,0,0.06)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border-light)", paddingBottom: "16px", marginBottom: "20px" }}>
                   <div>
-                    <span style={{ fontSize: "0.8rem", fontWeight: "800", color: "var(--accent-primary)", textTransform: "uppercase", letterSpacing: "1px" }}>
+                    <span style={{ fontSize: "0.85rem", fontWeight: "800", color: "var(--accent-primary)", textTransform: "uppercase", letterSpacing: "1px" }}>
                       {systemIconForEmoji("🛵")} Pedido a Domicilio en Curso
                     </span>
                     <h2 style={{ margin: "4px 0 0 0", fontSize: "1.5rem" }}>
@@ -813,8 +948,8 @@ export const PublicCatalog: React.FC = () => {
                   </div>
                 </div>
 
-                {/* PIN DE ENTREGA DESTACADO (PEDIDOSYA STYLE) */}
-                {activeOrder?.deliveryPin && activeOrder?.status !== "DELIVERED" && (
+                {/* PIN DE ENTREGA DESTACADO */}
+                {activeOrder?.deliveryPin && activeOrder?.status !== "DELIVERED" && activeOrder?.status !== "CANCELLED" && (
                   <div style={{
                     background: "linear-gradient(135deg, rgba(46, 213, 115, 0.12), rgba(30, 144, 255, 0.12))",
                     border: "2px dashed #2ed573",
@@ -824,13 +959,13 @@ export const PublicCatalog: React.FC = () => {
                     textAlign: "center"
                   }}>
                     <div style={{ fontSize: "0.85rem", fontWeight: "800", color: "#2ed573", letterSpacing: "1.5px", textTransform: "uppercase" }}>
-                      {systemIconForEmoji("🔑")} CÓDIGO PIN DE ENTREGA (PEDIDOSYA STYLE)
+                      {systemIconForEmoji("🔑")} CÓDIGO DE ENTREGA
                     </div>
                     <div style={{ fontSize: "3.2rem", fontWeight: "900", letterSpacing: "12px", color: "#2ed573", margin: "10px 0", fontFamily: "monospace" }}>
                       {activeOrder.deliveryPin}
                     </div>
                     <p style={{ margin: 0, fontSize: "0.92rem", color: "var(--text-secondary)" }}>
-                      Dicta este código de 4 dígitos al repartidor cuando llegue a tu puerta para validar y recibir tu comida.
+                      Dáselo al motorizado solo cuando recibas tu pedido. También lo encuentras en "Mis pedidos".
                     </p>
                   </div>
                 )}
@@ -872,16 +1007,19 @@ export const PublicCatalog: React.FC = () => {
                   {(activeOrder?.deliveryObservation || deliveryReference) && (
                     <div><strong>Referencia:</strong> {activeOrder?.deliveryObservation || deliveryReference}</div>
                   )}
-                  <div><strong>Total:</strong> ${Number(activeOrder?.total || 0).toFixed(2)} ({activeOrder?.paymentMethodString === "CASH" ? "Efectivo contraentrega" : "Pagado digitalmente"})</div>
+                  {Number(activeOrder?.tipAmount || 0) > 0 && (
+                    <div><strong>Propina al motorizado:</strong> ${Number(activeOrder.tipAmount).toFixed(2)}</div>
+                  )}
+                  <div><strong>Total a pagar:</strong> ${(Number(activeOrder?.total || 0) + Number(activeOrder?.tipAmount || 0)).toFixed(2)} ({activeOrder?.paymentMethodString === "CASH" ? "Efectivo contraentrega" : "Pagado digitalmente"})</div>
                   <div><strong>Repartidor:</strong> {activeOrder?.deliveryDriverName || "Buscando repartidor cercano..."}</div>
                 </div>
 
-                <div style={{ display: "flex", gap: "12px", justifyContent: "center" }}>
-                  <button className="secondary-btn" onClick={() => setOrderSuccess(false)} style={{ padding: "12px 24px" }}>
+                <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
+                  <button className="secondary-btn" onClick={() => { rememberActiveOrder(null); setOrderSuccess(false); }} style={{ padding: "12px 24px" }}>
                     Hacer otro pedido
                   </button>
-                  <button className="glow-btn" onClick={() => window.location.reload()} style={{ padding: "12px 24px" }}>
-                    Actualizar estado
+                  <button className="glow-btn" onClick={() => navigate("/customer/dashboard")} style={{ padding: "12px 24px" }}>
+                    Ver en Mis pedidos
                   </button>
                 </div>
               </div>
@@ -911,7 +1049,7 @@ export const PublicCatalog: React.FC = () => {
             <div style={{ display: "flex", flexDirection: "column", gap: "40px" }}>
               {categories.map((cat) => (
                 <section key={cat.id}>
-                  <h2 style={{ fontSize: "1.6rem", borderBottom: "1px solid var(--border-light)", paddingBottom: "10px", marginBottom: "20px" }}>{cat.name}</h2>
+                  <h2 style={{ fontSize: "1.6rem", borderBottom: "1px solid var(--border-light)", paddingBottom: "12px", marginBottom: "20px" }}>{cat.name}</h2>
                   {cat.description && <p style={{ color: "var(--text-secondary)", marginBottom: "20px", fontSize: "0.95rem" }}>{cat.description}</p>}
 
                   <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
@@ -927,6 +1065,12 @@ export const PublicCatalog: React.FC = () => {
                               <button key={v.id} className="secondary-btn" onClick={() => addToCart(v, item)} style={{ padding: "8px 14px", fontSize: "0.85rem" }}>
                                 <Plus size={14} color="var(--accent-primary)" />
                                 <span>{v.name}: <strong>${v.price.toFixed(2)}</strong></span>
+                                {v.regularPrice && (
+                                  <span data-testid="catalog-promo" style={{ fontSize: "0.85rem" }}>
+                                    <s style={{ opacity: 0.7 }}>${v.regularPrice.toFixed(2)}</s>{" "}
+                                    <span style={{ background: "#b91c1c", color: "#ffffff", borderRadius: "6px", padding: "1px 6px", fontWeight: 700 }}>Promo</span>
+                                  </span>
+                                )}
                               </button>
                             ))}
                           </div>
@@ -982,10 +1126,10 @@ export const PublicCatalog: React.FC = () => {
                 {/* Cart Items List */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "15px", marginBottom: "25px", maxHeight: "250px", overflowY: "auto", paddingRight: "5px" }}>
                   {cart.map((item) => (
-                    <div key={item.variantId} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px", fontSize: "0.9rem" }}>
+                    <div key={item.variantId} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px", fontSize: "0.9rem" }}>
                       <div>
                         <div style={{ fontWeight: "bold" }}>{item.itemName}</div>
-                        <div style={{ color: "var(--text-secondary)", fontSize: "0.8rem" }}>{item.name} - ${item.price.toFixed(2)}</div>
+                        <div style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>{item.name} - ${item.price.toFixed(2)}</div>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                         <button type="button" onClick={() => updateQuantity(item.variantId, -1)} style={{ padding: "4px", background: "var(--bg-tertiary)", borderRadius: "4px", cursor: "pointer" }}>
@@ -1013,10 +1157,16 @@ export const PublicCatalog: React.FC = () => {
                       </span>
                     </div>
                   )}
+                  {currentTip > 0 && (
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.95rem", color: "var(--text-secondary)" }}>
+                      <span>Propina motorizado:</span>
+                      <span>${currentTip.toFixed(2)}</span>
+                    </div>
+                  )}
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "1.1rem", fontWeight: "bold", borderTop: "1px solid var(--border-light)", paddingTop: "6px" }}>
                     <span>Total General:</span>
                     <span style={{ color: "var(--accent-primary)" }}>
-                      ${(getCartTotal() + currentShippingCost).toFixed(2)}
+                      ${(getCartTotal() + currentShippingCost + currentTip).toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -1081,7 +1231,7 @@ export const PublicCatalog: React.FC = () => {
                     <button
                       type="button"
                       className="glow-btn"
-                      onClick={() => navigate("/login")}
+                      onClick={() => navigate(loginPath)}
                       style={{ width: "100%", padding: "8px", fontSize: "13px" }}
                     >
                       Iniciar Sesión / Registrarse
@@ -1092,21 +1242,39 @@ export const PublicCatalog: React.FC = () => {
                     {/* Conditionally Render Fields */}
                     {orderType === "DELIVERY" && (
                       <>
+                        {savedAddresses.length > 1 && (
+                          <div className="input-group">
+                            <label htmlFor="saved-address">¿A dónde lo llevamos?</label>
+                            <select
+                              id="saved-address"
+                              className="input-field"
+                              style={{ fontSize: "16px" }}
+                              value={selectedAddressId ?? ""}
+                              onChange={(e) => chooseSavedAddress(Number(e.target.value))}
+                            >
+                              {savedAddresses.map((a) => (
+                                <option key={a.id} value={a.id}>
+                                  {a.label}: {a.address}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
                         <div style={{ marginBottom: "15px" }}>
-                          <label style={{ fontSize: "12px", fontWeight: "700", marginBottom: "8px", display: "block", color: "var(--text-primary)" }}>
+                          <label style={{ fontSize: "13px", fontWeight: "700", marginBottom: "8px", display: "block", color: "var(--text-primary)" }}>
                             {systemIconForEmoji("📍")} Ubicación de Entrega en el Mapa
                           </label>
                           <LocationPickerMap
+                            key={`entrega-${selectedAddressId ?? "manual"}`}
                             initialLat={deliveryLat || undefined}
                             initialLng={deliveryLng || undefined}
                             restaurantLat={restaurant?.mapLatitude || -3.9965}
                             restaurantLng={restaurant?.mapLongitude || -79.2030}
                             restaurantName={restaurant?.name || "Restaurante"}
-                            onLocationSelect={(lat, lng, addr, distKm) => {
+                            onLocationSelect={(lat, lng, addr) => {
                               setDeliveryLat(lat);
                               setDeliveryLng(lng);
                               if (addr) setDeliveryAddress(addr);
-                              if (distKm !== undefined && distKm > 0) setSimulatedDistance(distKm);
                             }}
                             height="280px"
                           />
@@ -1135,12 +1303,12 @@ export const PublicCatalog: React.FC = () => {
                           border: "1px solid var(--border-light)"
                         }}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                            <span style={{ fontSize: "12px", fontWeight: "700" }}>Distancia Calculada al Local:</span>
-                            <span style={{ backgroundColor: "rgba(255, 71, 87, 0.1)", color: "#ff4757", padding: "2px 8px", borderRadius: "12px", fontSize: "12px", fontWeight: "800" }}>
-                              {simulatedDistance.toFixed(1)} km
+                            <span style={{ fontSize: "13px", fontWeight: "700" }}>Distancia Calculada al Local:</span>
+                            <span style={{ backgroundColor: "rgba(255, 71, 87, 0.1)", color: "#ff4757", padding: "2px 8px", borderRadius: "12px", fontSize: "13px", fontWeight: "800" }}>
+                              {shippingDistance.toFixed(1)} km
                             </span>
                           </div>
-                          <div style={{ fontSize: "11px", color: "var(--text-secondary)", display: "flex", flexDirection: "column", gap: "4px" }}>
+                          <div style={{ fontSize: "13px", color: "var(--text-secondary)", display: "flex", flexDirection: "column", gap: "4px" }}>
                             <div style={{ display: "flex", justifyContent: "space-between" }}>
                               <span>Tarifa Base:</span>
                               <span>${(deliveryRate?.basePrice || 1.0).toFixed(2)}</span>
@@ -1157,6 +1325,28 @@ export const PublicCatalog: React.FC = () => {
                             </div>
                           </div>
                         </div>
+
+                        {/* Optional tip for the driver */}
+                        <fieldset style={{ border: "1px solid var(--border-light)", borderRadius: "var(--radius-md)", padding: "12px 14px", marginBottom: "20px" }}>
+                          <legend style={{ fontSize: "13px", fontWeight: 700, padding: "0 4px" }}>Propina para el motorizado (opcional)</legend>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: "8px" }}>
+                            {TIP_CHOICES.map((value) => (
+                              <button
+                                key={value}
+                                type="button"
+                                aria-pressed={tipAmount === value}
+                                className={tipAmount === value ? "glow-btn" : "secondary-btn"}
+                                onClick={() => setTipAmount(value)}
+                                style={{ minHeight: "44px", padding: "6px 4px" }}
+                              >
+                                {value === 0 ? "Sin propina" : `$${value.toFixed(2)}`}
+                              </button>
+                            ))}
+                          </div>
+                          <p style={{ fontSize: "12px", color: "var(--text-secondary)", margin: "8px 0 0" }}>
+                            Va completa al motorizado que te entrega.
+                          </p>
+                        </fieldset>
                       </>
                     )}
 
@@ -1170,7 +1360,7 @@ export const PublicCatalog: React.FC = () => {
                         borderRadius: "var(--radius-md)",
                         border: "1px solid var(--border-light)"
                       }}>
-                        <label style={{ fontSize: "12px", fontWeight: "600", marginBottom: "8px", display: "block" }}>
+                        <label style={{ fontSize: "13px", fontWeight: "600", marginBottom: "8px", display: "block" }}>
                           Método de Pago
                         </label>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px", marginBottom: "12px" }}>
@@ -1182,7 +1372,7 @@ export const PublicCatalog: React.FC = () => {
                               setPaymentReceipt("");
                               setPayphoneTransactionId("");
                             }}
-                            style={{ padding: "8px 4px", fontSize: "0.8rem" }}
+                            style={{ padding: "8px 4px", fontSize: "0.85rem" }}
                           >
                             Efectivo
                           </button>
@@ -1195,22 +1385,22 @@ export const PublicCatalog: React.FC = () => {
                               setPaymentReceipt("");
                               setPayphoneTransactionId("");
                             }}
-                            style={{ padding: "8px 4px", fontSize: "0.8rem" }}
+                            style={{ padding: "8px 4px", fontSize: "0.85rem" }}
                           >
                             Tarjeta
                           </button>
 
-                          <button
+                          {activeBankAccounts.length > 0 && <button
                             type="button"
                             className={paymentMethod === "TRANSFER" ? "glow-btn" : "secondary-btn"}
                             onClick={() => {
                               setPaymentMethod("TRANSFER");
                               setPayphoneTransactionId("");
                             }}
-                            style={{ padding: "8px 4px", fontSize: "0.8rem" }}
+                            style={{ padding: "8px 4px", fontSize: "0.85rem" }}
                           >
                             Transferencia
-                          </button>
+                          </button>}
                         </div>
 
                         {/* Payphone CARD flow */}
@@ -1231,7 +1421,7 @@ export const PublicCatalog: React.FC = () => {
                                 <Check size={16} />
                                 <div>
                                   <div style={{ fontWeight: "bold" }}>Pago Exitoso</div>
-                                  <div style={{ fontSize: "11px" }}>Transacción: {payphoneTransactionId}</div>
+                                  <div style={{ fontSize: "13px" }}>Transacción: {payphoneTransactionId}</div>
                                 </div>
                               </div>
                             ) : (
@@ -1250,7 +1440,7 @@ export const PublicCatalog: React.FC = () => {
                         {/* Bank TRANSFER flow */}
                         {paymentMethod === "TRANSFER" && activeBankAccounts.length > 0 && (
                           <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "10px" }}>
-                            <label style={{ fontSize: "11px", fontWeight: "600", color: "var(--text-secondary)" }}>
+                            <label style={{ fontSize: "13px", fontWeight: "600", color: "var(--text-secondary)" }}>
                               Seleccionar Cuenta Bancaria:
                             </label>
                             <select
@@ -1272,7 +1462,7 @@ export const PublicCatalog: React.FC = () => {
                               if (!acc) return null;
                               return (
                                 <div style={{
-                                  fontSize: "11px",
+                                  fontSize: "13px",
                                   backgroundColor: "var(--bg-tertiary)",
                                   padding: "10px",
                                   borderRadius: "var(--radius-sm)",
@@ -1304,7 +1494,7 @@ export const PublicCatalog: React.FC = () => {
 
                             {/* File Upload for receipt */}
                             <div className="input-group" style={{ marginBottom: 0 }}>
-                              <label style={{ fontSize: "11px", fontWeight: "600" }}>Subir Comprobante de Pago</label>
+                              <label style={{ fontSize: "13px", fontWeight: "600" }}>Subir Comprobante de Pago</label>
                               <input
                                 type="file"
                                 accept="image/*"
@@ -1322,7 +1512,7 @@ export const PublicCatalog: React.FC = () => {
                                 style={{ padding: "4px", fontSize: "0.85rem" }}
                               />
                               {paymentReceipt && (
-                                <div style={{ marginTop: "6px", fontSize: "11px", color: "var(--success)", display: "flex", alignItems: "center", gap: "4px" }}>
+                                <div style={{ marginTop: "6px", fontSize: "13px", color: "var(--success)", display: "flex", alignItems: "center", gap: "4px" }}>
                                   <Check size={12} /> Comprobante cargado correctamente.
                                 </div>
                               )}
@@ -1366,7 +1556,7 @@ export const PublicCatalog: React.FC = () => {
 
                     {/* QR Ordering Toggle Guard */}
                     {orderType === "DINE_IN" && !restaurant.qrOrderingEnabled ? (
-                      <div style={{ background: "rgba(255, 71, 87, 0.1)", border: "1px solid var(--accent-primary)", padding: "15px", borderRadius: "var(--radius-md)", display: "flex", gap: "10px", color: "var(--text-primary)", fontSize: "0.85rem", marginBottom: "20px" }}>
+                      <div style={{ background: "rgba(255, 71, 87, 0.1)", border: "1px solid var(--accent-primary)", padding: "15px", borderRadius: "var(--radius-md)", display: "flex", gap: "12px", color: "var(--text-primary)", fontSize: "0.85rem", marginBottom: "20px" }}>
                         <AlertCircle size={24} style={{ flexShrink: 0, color: "var(--accent-primary)" }} />
                         <p><strong>Pedidos QR Desactivados:</strong> El restaurante no tiene activo el autopendiente desde mesas. Por favor contacta a un mesero para realizar tu orden.</p>
                       </div>
@@ -1408,7 +1598,7 @@ export const PublicCatalog: React.FC = () => {
                   <MapPin size={15} />
                 </div>
                 <div>
-                  <span style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px", display: "block" }}>
+                  <span style={{ fontSize: "13px", fontWeight: "700", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px", display: "block" }}>
                     Dirección
                   </span>
                   <span style={{ fontSize: "13px", color: "var(--text-primary)", fontWeight: "500", lineHeight: 1.4 }}>
@@ -1436,7 +1626,7 @@ export const PublicCatalog: React.FC = () => {
                   <Phone size={15} />
                 </div>
                 <div>
-                  <span style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px", display: "block" }}>
+                  <span style={{ fontSize: "13px", fontWeight: "700", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px", display: "block" }}>
                     Teléfono / Contacto
                   </span>
                   <a
@@ -1467,10 +1657,10 @@ export const PublicCatalog: React.FC = () => {
                   <Wifi size={15} />
                 </div>
                 <div>
-                  <span style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px", display: "block" }}>
+                  <span style={{ fontSize: "13px", fontWeight: "700", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px", display: "block" }}>
                     Wi-Fi de Cortesía
                   </span>
-                  <span style={{ fontSize: "12px", color: "var(--text-primary)" }}>
+                  <span style={{ fontSize: "13px", color: "var(--text-primary)" }}>
                     Red: <strong>{restaurant.wifiSsid}</strong>
                     {restaurant.wifiPassword && (
                       <span style={{ marginLeft: "6px", color: "var(--text-secondary)" }}>
@@ -1500,10 +1690,10 @@ export const PublicCatalog: React.FC = () => {
                   <Clock size={15} />
                 </div>
                 <div>
-                  <span style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px", display: "block" }}>
+                  <span style={{ fontSize: "13px", fontWeight: "700", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px", display: "block" }}>
                     Horarios de Atención
                   </span>
-                  <span style={{ fontSize: "12px", color: "var(--text-primary)", fontWeight: "500" }}>
+                  <span style={{ fontSize: "13px", color: "var(--text-primary)", fontWeight: "500" }}>
                     {restaurant.openingHours}
                   </span>
                 </div>
@@ -1518,10 +1708,10 @@ export const PublicCatalog: React.FC = () => {
                 backgroundColor: "var(--bg-tertiary)",
                 border: "1px solid var(--border-light)"
               }}>
-                <span style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px", display: "block", marginBottom: "3px" }}>
+                <span style={{ fontSize: "13px", fontWeight: "700", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px", display: "block", marginBottom: "3px" }}>
                   Referencia de Ubicación
                 </span>
-                <p style={{ fontSize: "12px", margin: 0, color: "var(--text-primary)", lineHeight: 1.4 }}>
+                <p style={{ fontSize: "13px", margin: 0, color: "var(--text-primary)", lineHeight: 1.4 }}>
                   {restaurant.reference}
                 </p>
               </div>
@@ -1529,9 +1719,9 @@ export const PublicCatalog: React.FC = () => {
 
             {/* Google Map Embedded */}
             {(() => {
-              const hasIframe = Boolean(restaurant.mapIframe && restaurant.mapIframe.includes("<iframe"));
+              const embedUrl = getMapEmbedUrl(restaurant.mapIframe);
               const hasCoords = Boolean(restaurant.mapLatitude && restaurant.mapLongitude);
-              const directMapUrl = restaurant.mapIframe && restaurant.mapIframe.startsWith("http")
+              const directMapUrl = restaurant.mapIframe && restaurant.mapIframe.startsWith("https://")
                 ? restaurant.mapIframe
                 : hasCoords
                   ? `https://www.google.com/maps/search/?api=1&query=${restaurant.mapLatitude},${restaurant.mapLongitude}`
@@ -1539,28 +1729,28 @@ export const PublicCatalog: React.FC = () => {
                     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(restaurant.address)}`
                     : null;
 
-              if (!hasIframe && !hasCoords && !directMapUrl) return null;
+              if (!embedUrl && !hasCoords && !directMapUrl) return null;
 
               return (
                 <div style={{ marginTop: "4px" }}>
-                  <span style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px", display: "block", marginBottom: "8px" }}>
+                  <span style={{ fontSize: "13px", fontWeight: "700", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px", display: "block", marginBottom: "8px" }}>
                     Ubicación en el Mapa
                   </span>
 
-                  {hasIframe ? (
-                    <div
+                  {embedUrl ? (
+                    <iframe
+                      src={embedUrl}
+                      width="100%"
+                      height="190"
                       style={{
-                        borderRadius: "12px",
-                        overflow: "hidden",
                         border: "1px solid var(--border-light)",
-                        height: "190px",
+                        borderRadius: "12px",
+                        display: "block",
                         boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
                       }}
-                      dangerouslySetInnerHTML={{
-                        __html: restaurant.mapIframe!
-                          .replace(/width="[^"]*"/g, 'width="100%"')
-                          .replace(/height="[^"]*"/g, 'height="100%"')
-                      }}
+                      allowFullScreen
+                      loading="lazy"
+                      title="Ubicación del Local"
                     />
                   ) : hasCoords ? (
                     <iframe
@@ -1592,7 +1782,7 @@ export const PublicCatalog: React.FC = () => {
                         gap: "6px",
                         width: "100%",
                         padding: "8px 12px",
-                        fontSize: "12px",
+                        fontSize: "13px",
                         marginTop: "8px",
                         textDecoration: "none",
                         borderRadius: "8px"
@@ -1736,8 +1926,8 @@ export const PublicCatalog: React.FC = () => {
           <div className="global-modal-card" style={{ maxWidth: "380px", padding: "25px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px", borderBottom: "1px solid var(--border-light)", paddingBottom: "10px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#ff5a00", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: "bold" }}>P</div>
-                <h3 style={{ fontSize: "1.1rem", fontWeight: "bold", margin: 0, color: "#ff5a00" }}>Pasarela Payphone</h3>
+                <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#ff5a00", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", fontWeight: "bold" }}>P</div>
+                <h3 style={{ fontSize: "1.1rem", fontWeight: "bold", margin: 0, color: "#ff5a00" }}>Payphone: demostración, sin cobro real</h3>
               </div>
               <button
                 type="button"
@@ -1750,27 +1940,27 @@ export const PublicCatalog: React.FC = () => {
 
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "8px" }}>
-                Estás realizando un pago simulado por un total de <strong>${(getCartTotal() + currentShippingCost).toFixed(2)}</strong> a favor de {restaurant.name}.
+                Estás realizando un pago simulado por un total de <strong>${(getCartTotal() + currentShippingCost + currentTip).toFixed(2)}</strong> a favor de {restaurant.name}.
               </div>
 
               <div className="input-group">
-                <label style={{ fontSize: "11px" }}>Número de Tarjeta</label>
+                <label style={{ fontSize: "13px" }}>Número de Tarjeta</label>
                 <input type="text" className="input-field" placeholder="4111 1111 1111 1111" defaultValue="4111 1111 1111 1111" />
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                 <div className="input-group">
-                  <label style={{ fontSize: "11px" }}>Fecha Vencimiento</label>
+                  <label style={{ fontSize: "13px" }}>Fecha Vencimiento</label>
                   <input type="text" className="input-field" placeholder="12/28" defaultValue="12/28" />
                 </div>
                 <div className="input-group">
-                  <label style={{ fontSize: "11px" }}>CVV</label>
+                  <label style={{ fontSize: "13px" }}>CVV</label>
                   <input type="password" className="input-field" placeholder="123" defaultValue="123" />
                 </div>
               </div>
 
               <div className="input-group">
-                <label style={{ fontSize: "11px" }}>Titular de la Tarjeta</label>
+                <label style={{ fontSize: "13px" }}>Titular de la Tarjeta</label>
                 <input type="text" className="input-field" placeholder="Juan Pérez" defaultValue={customerName || "Juan Pérez"} />
               </div>
 
@@ -1831,7 +2021,7 @@ export const PublicCatalog: React.FC = () => {
               <ShoppingCart size={20} />
               Ver Pedido ({cart.reduce((sum, item) => sum + item.quantity, 0)} ítems)
             </span>
-            <strong>${(getCartTotal() + currentShippingCost).toFixed(2)}</strong>
+            <strong>${(getCartTotal() + currentShippingCost + currentTip).toFixed(2)}</strong>
           </button>
         </div>
       )}
@@ -1843,6 +2033,16 @@ export const PublicCatalog: React.FC = () => {
         defaultRole="CUSTOMER"
         restaurantName={restaurant.name}
       />
+
+      {reserveOpen && slug && (
+        <ReserveTable
+          slug={slug}
+          restaurantName={restaurant.name}
+          defaultName={user?.name || ""}
+          defaultPhone={user?.phone || ""}
+          onClose={() => setReserveOpen(false)}
+        />
+      )}
     </div>
   );
 };

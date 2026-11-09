@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { apiRequest } from "../utils/api";
 import {
   ArrowDown,
   ArrowRight,
@@ -26,18 +27,74 @@ const sections = [
   { id: "repartidores", label: "Repartidores" },
 ];
 
-const promos = [
-  { label: "Regalo de bienvenida", value: "30% OFF", code: "HOLA30", detail: "en tu primer pedido" },
-  { label: "Solo por registrarte", value: "ENVÍO GRATIS", code: "LOJALOVE", detail: "en tu primera entrega" },
-];
+interface Offer {
+  key: string;
+  label: string;
+  value: string;
+  detail: string;
+  place: string;
+  cta: string;
+  to: string;
+}
+
+// Real benefit that always exists: Plus customers pay no delivery fee
+const plusOffer: Offer = {
+  key: "plus",
+  label: "GoEats Plus",
+  value: "ENVÍO $0",
+  detail: "Con el plan Plus no pagas envío en tus pedidos a domicilio.",
+  place: "Plan opcional",
+  cta: "Ver Plus",
+  to: "/plus",
+};
+
+interface PublicRestaurant {
+  id: number;
+  name: string;
+  slug: string;
+  promoText?: string | null;
+}
 
 export const LandingExperience: React.FC = () => {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [copiedCode, setCopiedCode] = useState<string | null>(null);
-  const [copyError, setCopyError] = useState(false);
+  const [restaurantOffers, setRestaurantOffers] = useState<Offer[]>([]);
   const [promoVisible, setPromoVisible] = useState(false);
   const [promoIndex, setPromoIndex] = useState(0);
+
+  // Only promotions that exist in the system: restaurants with a promo text or a dish on promotion
+  useEffect(() => {
+    let active = true;
+    apiRequest("/restaurants/public/list")
+      .then((res) => {
+        if (!active) return;
+        const list: PublicRestaurant[] = res.restaurants || [];
+        setRestaurantOffers(
+          list
+            .filter((restaurant) => restaurant.promoText && restaurant.slug)
+            .slice(0, 2)
+            .map((restaurant) => ({
+              key: `r-${restaurant.id}`,
+              label: "Promoción",
+              // A long text goes in the detail so the big title stays short
+              value: String(restaurant.promoText).length <= 24 ? String(restaurant.promoText) : "PROMO",
+              detail: String(restaurant.promoText).length <= 24 ? "Por tiempo limitado." : String(restaurant.promoText),
+              place: restaurant.name,
+              cta: "Ver menú",
+              to: `/r/${encodeURIComponent(restaurant.slug)}`,
+            }))
+        );
+      })
+      .catch(() => {
+        if (active) setRestaurantOffers([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const promos: Offer[] = [...restaurantOffers, plusOffer];
+  const currentPromo = promos[promoIndex % promos.length];
 
   useEffect(() => {
     let hasOpened = false;
@@ -67,23 +124,11 @@ export const LandingExperience: React.FC = () => {
       setPromoIndex((current) => (current + 1) % promos.length);
     }, 9000);
     return () => window.clearInterval(rotationTimer);
-  }, [promoVisible]);
+  }, [promoVisible, promos.length]);
 
   const openRestaurants = () => navigate("/restaurants");
   const openRegistration = (role: "customer" | "restaurant" | "driver") => {
     navigate(`/login?role=${role}&mode=register`);
-  };
-
-  const copyCode = async (code: string) => {
-    setCopyError(false);
-    try {
-      await navigator.clipboard.writeText(code);
-      setCopiedCode(code);
-      window.setTimeout(() => setCopiedCode((current) => current === code ? null : current), 1800);
-    } catch {
-      setCopiedCode(null);
-      setCopyError(true);
-    }
   };
 
   const closeMenu = () => setMenuOpen(false);
@@ -202,53 +247,33 @@ export const LandingExperience: React.FC = () => {
                 <p className="ge-eyebrow">Beneficios GoEats</p>
                 <h2>Un buen pedido empieza ahorrando.</h2>
               </div>
-              <p>Explora los códigos de muestra y descubre ofertas para tus próximos pedidos.</p>
+              <p>Promociones vigentes de los restaurantes de Loja y beneficios para tus pedidos.</p>
             </div>
             <div className="ge-coupon-grid">
-              <article className="ge-coupon-card ge-coupon-1">
-                <div className="ge-coupon-top">
-                  <span>Primer pedido</span>
-                  <strong>30% OFF</strong>
-                  <p>Hasta $5 de descuento en tu primera orden.</p>
-                </div>
-                <div className="ge-coupon-code">
-                  <span><small>Usa el código</small><strong>HOLA30</strong></span>
-                  <button onClick={() => copyCode("HOLA30")} aria-label="Copiar código HOLA30">
-                    {copiedCode === "HOLA30" ? "¡Copiado!" : "Copiar"}
-                  </button>
-                </div>
-              </article>
-              <article className="ge-coupon-card ge-coupon-2">
-                <div className="ge-coupon-top">
-                  <span>Envío gratis</span>
-                  <strong>$0 ENVÍO</strong>
-                  <p>Tu primera entrega corre por nuestra cuenta.</p>
-                </div>
-                <div className="ge-coupon-code">
-                  <span><small>Usa el código</small><strong>LOJALOVE</strong></span>
-                  <button onClick={() => copyCode("LOJALOVE")} aria-label="Copiar código LOJALOVE">
-                    {copiedCode === "LOJALOVE" ? "¡Copiado!" : "Copiar"}
-                  </button>
-                </div>
-              </article>
+              {promos.slice(0, 2).map((offer, index) => (
+                <article key={offer.key} className={`ge-coupon-card ge-coupon-${index + 1}`}>
+                  <div className="ge-coupon-top">
+                    <span>{offer.label}</span>
+                    <strong>{offer.value}</strong>
+                    <p>{offer.detail}</p>
+                  </div>
+                  <div className="ge-coupon-code">
+                    <span><small>{offer.key === "plus" ? "Beneficio" : "En"}</small><strong>{offer.place}</strong></span>
+                    <button onClick={() => navigate(offer.to)} aria-label={`${offer.cta}: ${offer.place}`}>
+                      {offer.cta}
+                    </button>
+                  </div>
+                </article>
+              ))}
               <article className="ge-signup-card">
-                <span className="ge-signup-badge">Solo para nuevos usuarios</span>
-                <h3>Desbloquea estas promos en minutos.</h3>
-                <p>Crea tu cuenta en GoEats y descubre beneficios para tus pedidos.</p>
+                <span className="ge-signup-badge">Crea tu cuenta</span>
+                <h3>Pide en minutos.</h3>
+                <p>Crea tu cuenta en GoEats para pedir, seguir tu pedido y activar Plus si lo quieres.</p>
                 <button className="ge-action-link ge-action-light" onClick={() => openRegistration("customer")}>
                   Crear mi cuenta gratis <span><ArrowUpRight size={19} /></span>
                 </button>
-                <small>Los códigos son de muestra; aplican términos y condiciones.</small>
               </article>
             </div>
-            {copyError && (
-              <p className="ge-copy-error" role="status">
-                No se pudo copiar. Selecciona el código y cópialo manualmente.
-              </p>
-            )}
-            <p className="ge-promo-disclaimer">
-              Códigos promocionales de muestra. La vigencia y el canje deben activarse en el sistema de pedidos antes de publicar estas ofertas.
-            </p>
           </div>
         </section>
 
@@ -410,15 +435,15 @@ export const LandingExperience: React.FC = () => {
             <span>GO</span>
           </div>
           <div className="ge-promo-popup-content">
-            <span className="ge-promo-label">{promos[promoIndex].label}</span>
-            <strong>{promos[promoIndex].value}</strong>
-            <p>{promos[promoIndex].detail}</p>
-            <button className="ge-promo-copy" onClick={() => copyCode(promos[promoIndex].code)}>
-              <span><small>Código de muestra</small>{promos[promoIndex].code}</span>
-              <b>{copiedCode === promos[promoIndex].code ? "¡Copiado!" : "Copiar"}</b>
+            <span className="ge-promo-label">{currentPromo.label}</span>
+            <strong>{currentPromo.value}</strong>
+            <p>{currentPromo.detail}</p>
+            <button className="ge-promo-copy" onClick={() => navigate(currentPromo.to)}>
+              <span><small>{currentPromo.key === "plus" ? "Beneficio" : "En"}</small>{currentPromo.place}</span>
+              <b>{currentPromo.cta}</b>
             </button>
           </div>
-          <span className="ge-promo-progress" key={promoIndex} />
+          <span className="ge-promo-progress" key={currentPromo.key} />
         </aside>
       )}
     </div>

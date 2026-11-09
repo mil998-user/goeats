@@ -41,7 +41,22 @@ export const KitchenNotificationManager: React.FC = () => {
     }
     return "denied";
   });
-  const [dismissedPushBanner, setDismissedPushBanner] = useState(false);
+  // Closing the notice is remembered on this device, so it doesn't come back on every reload
+  const [dismissedPushBanner, setDismissedPushBanner] = useState(() => {
+    try {
+      return localStorage.getItem("goeats_push_notice_closed") === "1";
+    } catch {
+      return false;
+    }
+  });
+  const closePushBanner = () => {
+    setDismissedPushBanner(true);
+    try {
+      localStorage.setItem("goeats_push_notice_closed", "1");
+    } catch {
+      /* private mode: closes only for this visit */
+    }
+  };
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 1. Register Service Worker on mount for real native background Push Notifications
@@ -134,8 +149,8 @@ export const KitchenNotificationManager: React.FC = () => {
 
     const options: NotificationOptions = {
       body: message,
-      icon: "/favicon.svg",
-      badge: "/favicon.svg",
+      icon: "/icons/goeats-192.png",
+      badge: "/icons/goeats-192.png",
       tag: `goeats-order-${orderId || Date.now()}`,
       requireInteraction: true,
       data: {
@@ -300,6 +315,12 @@ export const KitchenNotificationManager: React.FC = () => {
     }
   };
 
+  // The push notice lives in the layout slot above the page, so it never covers buttons
+  const [noticeSlot, setNoticeSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setNoticeSlot(document.getElementById("layout-notices"));
+  }, []);
+
   // Only render for roles that attend tables or supervise (waiter, cashier, owner)
   const isRelevantRole = user && (user.role === "MOZO" || user.role === "CAJERO" || user.role === "RESTAURANT_OWNER");
   if (!isRelevantRole) return null;
@@ -307,18 +328,13 @@ export const KitchenNotificationManager: React.FC = () => {
   return (
     <>
       {/* 1. Request Push Permission Top Bar (if not yet granted) */}
-      {pushPermission !== "granted" && !dismissedPushBanner && createPortal(
+      {pushPermission !== "granted" && !dismissedPushBanner && noticeSlot && createPortal(
         <div
+          data-testid="push-notice"
           style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            zIndex: 9999999,
-            backgroundColor: "#0d2b1d",
-            borderBottom: "2px solid var(--accent-primary)",
-            boxShadow: "0 4px 20px rgba(0,0,0,0.5)",
-            padding: "10px 16px",
+            backgroundColor: "#111111",
+            borderBottom: "1px solid #444444",
+            padding: "12px 16px",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -332,20 +348,20 @@ export const KitchenNotificationManager: React.FC = () => {
               width: "32px",
               height: "32px",
               borderRadius: "50%",
-              backgroundColor: "rgba(0, 165, 67, 0.2)",
+              backgroundColor: "rgba(255, 255, 255, 0.15)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "var(--accent-primary)",
+              color: "#ffffff",
               flexShrink: 0
             }}>
               <BellRing size={18} />
             </div>
             <div>
-              <strong style={{ fontSize: "13px", color: "#ffffff", display: "block" }}>
-                {systemIconForEmoji("🔔")} Activar Notificaciones Push de Cocina
+              <strong style={{ fontSize: "15px", color: "#ffffff", display: "block" }}>
+                Avisos de cocina
               </strong>
-              <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
+              <span style={{ fontSize: "14px", color: "#d4d4d4" }}>
                 {pushPermission === "denied"
                   ? "Las notificaciones están bloqueadas en tu navegador. Haz clic en el candado de la dirección para permitirlas."
                   : "Permite los avisos para enterarte al instante cuando un plato esté casi listo o el cocinero te llame."}
@@ -358,10 +374,13 @@ export const KitchenNotificationManager: React.FC = () => {
               <button
                 type="button"
                 onClick={handleRequestPushPermission}
-                className="glow-btn"
                 style={{
-                  padding: "6px 14px",
-                  fontSize: "12px",
+                  background: "#ffffff",
+                  color: "#111111",
+                  border: "none",
+                  minHeight: "44px",
+                  padding: "10px 16px",
+                  fontSize: "14px",
                   borderRadius: "var(--radius-sm)",
                   fontWeight: 700,
                   cursor: "pointer",
@@ -371,26 +390,30 @@ export const KitchenNotificationManager: React.FC = () => {
                 }}
               >
                 <Sparkles size={14} />
-                Activar Notificaciones
+                Activar avisos
               </button>
             )}
             <button
               type="button"
-              onClick={() => setDismissedPushBanner(true)}
+              onClick={closePushBanner}
+              aria-label="Cerrar aviso"
               style={{
                 background: "none",
-                border: "none",
-                color: "var(--text-muted)",
+                border: "1px solid #555555",
+                borderRadius: "8px",
+                color: "#ffffff",
                 cursor: "pointer",
-                padding: "6px"
+                padding: "10px",
+                minWidth: "44px",
+                minHeight: "44px"
               }}
               title="Cerrar aviso"
             >
-              <X size={16} />
+              <X size={18} />
             </button>
           </div>
         </div>,
-        document.body
+        noticeSlot
       )}
 
       {/* 2. Top-Layer Floating Toast Banner via createPortal */}
@@ -398,7 +421,7 @@ export const KitchenNotificationManager: React.FC = () => {
         <div
           style={{
             position: "fixed",
-            top: pushPermission !== "granted" && !dismissedPushBanner ? "65px" : "18px",
+            top: "18px",
             left: "50%",
             transform: "translateX(-50%)",
             zIndex: 99999999,
@@ -437,7 +460,7 @@ export const KitchenNotificationManager: React.FC = () => {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
                 <span style={{
-                  fontSize: "10px",
+                  fontSize: "13px",
                   fontWeight: "bold",
                   padding: "2px 6px",
                   borderRadius: "4px",
@@ -460,7 +483,7 @@ export const KitchenNotificationManager: React.FC = () => {
               </button>
             </div>
 
-            <p style={{ margin: "6px 0 10px 0", fontSize: "12px", color: "var(--text-secondary)", lineHeight: 1.4 }}>
+            <p style={{ margin: "6px 0 10px 0", fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.4 }}>
               {activeToast.message}
             </p>
 
@@ -471,7 +494,7 @@ export const KitchenNotificationManager: React.FC = () => {
                 className={activeToast.type === "ALMOST_READY" ? "secondary-btn" : "glow-btn"}
                 style={{
                   padding: "6px 14px",
-                  fontSize: "12px",
+                  fontSize: "13px",
                   borderRadius: "var(--radius-sm)",
                   fontWeight: 700,
                   cursor: "pointer",
@@ -486,7 +509,7 @@ export const KitchenNotificationManager: React.FC = () => {
                 type="button"
                 onClick={() => setActiveToast(null)}
                 className="secondary-btn"
-                style={{ padding: "6px 12px", fontSize: "12px", borderRadius: "var(--radius-sm)", cursor: "pointer" }}
+                style={{ padding: "6px 12px", fontSize: "13px", borderRadius: "var(--radius-sm)", cursor: "pointer" }}
               >
                 Entendido
               </button>
@@ -533,7 +556,7 @@ export const KitchenNotificationManager: React.FC = () => {
                 right: "-4px",
                 backgroundColor: "var(--danger)",
                 color: "#ffffff",
-                fontSize: "11px",
+                fontSize: "13px",
                 fontWeight: "bold",
                 borderRadius: "10px",
                 padding: "2px 6px",
@@ -590,7 +613,7 @@ export const KitchenNotificationManager: React.FC = () => {
                     type="button"
                     onClick={handleTestPush}
                     title="Enviar notificación de prueba a tu sistema"
-                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: "11px", color: "var(--accent-primary)", fontWeight: 600 }}
+                    style={{ background: "none", border: "none", cursor: "pointer", fontSize: "13px", color: "var(--accent-primary)", fontWeight: 600 }}
                   >
                     Probar Push
                   </button>
@@ -601,7 +624,7 @@ export const KitchenNotificationManager: React.FC = () => {
                         setNotifications([]);
                         setUnreadCount(0);
                       }}
-                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: "11px", color: "var(--text-muted)" }}
+                      style={{ background: "none", border: "none", cursor: "pointer", fontSize: "13px", color: "var(--text-muted)" }}
                     >
                       Limpiar
                     </button>
@@ -619,7 +642,7 @@ export const KitchenNotificationManager: React.FC = () => {
               {/* Status bar */}
               <div style={{
                 padding: "6px 16px",
-                fontSize: "11px",
+                fontSize: "13px",
                 backgroundColor: pushPermission === "granted" ? "rgba(46, 213, 115, 0.1)" : "rgba(255, 71, 87, 0.1)",
                 color: pushPermission === "granted" ? "var(--success)" : "var(--danger)",
                 display: "flex",
@@ -639,7 +662,7 @@ export const KitchenNotificationManager: React.FC = () => {
                       color: "var(--accent-primary)",
                       fontWeight: "bold",
                       cursor: "pointer",
-                      fontSize: "11px",
+                      fontSize: "13px",
                       textDecoration: "underline"
                     }}
                   >
@@ -664,7 +687,7 @@ export const KitchenNotificationManager: React.FC = () => {
                         padding: "12px 16px",
                         borderBottom: "1px solid var(--border-light)",
                         cursor: "pointer",
-                        backgroundColor: notif.read ? "transparent" : "rgba(0, 165, 67, 0.08)",
+                        backgroundColor: notif.read ? "transparent" : "rgba(17, 17, 17, 0.08)",
                         display: "flex",
                         flexDirection: "column",
                         gap: "4px",
@@ -673,7 +696,7 @@ export const KitchenNotificationManager: React.FC = () => {
                     >
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <span style={{
-                          fontSize: "10px",
+                          fontSize: "13px",
                           fontWeight: "bold",
                           padding: "2px 8px",
                           borderRadius: "10px",
@@ -682,17 +705,17 @@ export const KitchenNotificationManager: React.FC = () => {
                         }}>
                           {notif.type === "ALMOST_READY" ? systemTextWithIcons("🟡 Casi Listo") : systemTextWithIcons("🟢 ¡Listo para Servir!")}
                         </span>
-                        <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                        <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>
                           {new Date(notif.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                         </span>
                       </div>
                       <div style={{ fontSize: "13px", fontWeight: "bold", color: "var(--text-primary)", marginTop: "2px" }}>
                         {notif.title}
                       </div>
-                      <div style={{ fontSize: "12px", color: "var(--text-secondary)", lineHeight: 1.3 }}>
+                      <div style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.3 }}>
                         {notif.message}
                       </div>
-                      <div style={{ fontSize: "11px", color: "var(--accent-primary)", fontWeight: 600, marginTop: "4px" }}>
+                      <div style={{ fontSize: "13px", color: "var(--accent-primary)", fontWeight: 600, marginTop: "4px" }}>
                         {systemIconForEmoji("👉")} Click para abrir {notif.tableName}
                       </div>
                     </div>

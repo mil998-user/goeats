@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { PlatformBankInfo } from "../components/PlatformBankInfo";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { apiRequest } from "../utils/api";
@@ -23,6 +24,11 @@ export const PlusPromo: React.FC = () => {
   const [loadingPlans, setLoadingPlans] = useState(true);
 
   React.useEffect(() => {
+    // Sin sesión la sección de planes no se muestra; no se piden al servidor.
+    if (!isAuthenticated) {
+      setLoadingPlans(false);
+      return;
+    }
     const fetchPlans = async () => {
       try {
         const res = await apiRequest("/saas/plans");
@@ -36,7 +42,7 @@ export const PlusPromo: React.FC = () => {
       }
     };
     fetchPlans();
-  }, []);
+  }, [isAuthenticated]);
 
   React.useEffect(() => {
     if (location.hash !== "#pricing-plans") return;
@@ -448,7 +454,7 @@ export const PlusPromo: React.FC = () => {
                         transform: "translateX(-50%)",
                         backgroundColor: "#fbbf24",
                         color: "#78350f",
-                        fontSize: "11px",
+                        fontSize: "13px",
                         fontWeight: 900,
                         padding: "4px 12px",
                         borderRadius: "50px",
@@ -463,7 +469,7 @@ export const PlusPromo: React.FC = () => {
                       <span style={{ color: "var(--text-secondary)", fontSize: "14px", marginLeft: "4px" }}>/ {plan.period || "mes"}</span>
                     </div>
                     <p style={{ color: "var(--text-secondary)", fontSize: "13px", margin: 0 }}>{plan.description}</p>
-                    <ul style={{ paddingLeft: "20px", color: "var(--text-primary)", fontSize: "13px", margin: 0, display: "flex", flexDirection: "column", gap: "10px" }}>
+                    <ul style={{ paddingLeft: "20px", color: "var(--text-primary)", fontSize: "13px", margin: 0, display: "flex", flexDirection: "column", gap: "12px" }}>
                       <li>Envíos gratis ilimitados ($0.00)</li>
                       <li>Bono de $0.50 para el repartidor</li>
                       <li>Despacho prioritario en cocina</li>
@@ -498,7 +504,7 @@ export const PlusPromo: React.FC = () => {
         textAlign: "center", 
         padding: "40px 20px", 
         color: "var(--text-secondary)", 
-        fontSize: "12px",
+        fontSize: "13px",
         borderTop: "1px solid var(--border-light)",
         backgroundColor: "var(--bg-secondary)"
       }}>
@@ -576,7 +582,7 @@ export const PlusPromo: React.FC = () => {
                     backgroundColor: "#fef2f2",
                     border: "1px solid #fee2e2",
                     color: "#dc2626",
-                    fontSize: "12px",
+                    fontSize: "13px",
                     borderRadius: "6px",
                     marginBottom: "15px"
                   }}>
@@ -587,7 +593,7 @@ export const PlusPromo: React.FC = () => {
                 {authTab === "login" ? (
                   <form onSubmit={handleLoginSubmit} style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                      <label style={{ fontSize: "12px", fontWeight: "600" }}>Nombre de Usuario</label>
+                      <label style={{ fontSize: "13px", fontWeight: "600" }}>Nombre de Usuario</label>
                       <input
                         type="text"
                         required
@@ -598,7 +604,7 @@ export const PlusPromo: React.FC = () => {
                       />
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                      <label style={{ fontSize: "12px", fontWeight: "600" }}>Contraseña</label>
+                      <label style={{ fontSize: "13px", fontWeight: "600" }}>Contraseña</label>
                       <input
                         type="password"
                         required
@@ -620,7 +626,7 @@ export const PlusPromo: React.FC = () => {
                 ) : (
                   <form onSubmit={handleRegisterSubmit} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                      <label style={{ fontSize: "11px", fontWeight: "600" }}>Nombre Completo</label>
+                      <label style={{ fontSize: "13px", fontWeight: "600" }}>Nombre Completo</label>
                       <input
                         type="text"
                         required
@@ -631,7 +637,7 @@ export const PlusPromo: React.FC = () => {
                       />
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                      <label style={{ fontSize: "11px", fontWeight: "600" }}>Nombre de Usuario</label>
+                      <label style={{ fontSize: "13px", fontWeight: "600" }}>Nombre de Usuario</label>
                       <input
                         type="text"
                         required
@@ -642,7 +648,7 @@ export const PlusPromo: React.FC = () => {
                       />
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                      <label style={{ fontSize: "11px", fontWeight: "600" }}>Cédula Ecuatoriana (10 dígitos)</label>
+                      <label style={{ fontSize: "13px", fontWeight: "600" }}>Cédula Ecuatoriana (10 dígitos)</label>
                       <input
                         type="text"
                         required
@@ -654,7 +660,7 @@ export const PlusPromo: React.FC = () => {
                       />
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                      <label style={{ fontSize: "11px", fontWeight: "600" }}>Correo Electrónico</label>
+                      <label style={{ fontSize: "13px", fontWeight: "600" }}>Correo Electrónico</label>
                       <input
                         type="email"
                         required
@@ -665,13 +671,13 @@ export const PlusPromo: React.FC = () => {
                       />
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                      <label style={{ fontSize: "11px", fontWeight: "600" }}>Contraseña</label>
+                      <label style={{ fontSize: "13px", fontWeight: "600" }}>Contraseña</label>
                       <input
                         type="password"
                         required
-                        minLength={6}
+                        minLength={8}
                         className="input-field"
-                        placeholder="Mínimo 6 caracteres"
+                        placeholder="Mínimo 8, con letras y números"
                         value={regPassword}
                         onChange={(e) => setRegPassword(e.target.value)}
                       />
@@ -707,14 +713,14 @@ export const PlusPromo: React.FC = () => {
                     border: "1px solid var(--border-light)",
                     borderRadius: "6px"
                   }}>
-                    <div style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: "bold", textTransform: "uppercase" }}>Plan Seleccionado:</div>
+                    <div style={{ fontSize: "13px", color: "var(--text-muted)", fontWeight: "bold", textTransform: "uppercase" }}>Plan Seleccionado:</div>
                     <div style={{ fontWeight: "bold", fontSize: "15px", margin: "2px 0" }}>{selectedPlan.name}</div>
                     <div style={{ fontSize: "18px", fontWeight: "800", color: "#d97706" }}>${selectedPlan.amount.toFixed(2)}</div>
                   </div>
 
                   {/* Payment Method Selector */}
                   <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                    <label style={{ fontSize: "12px", fontWeight: "600" }}>Forma de Pago</label>
+                    <label style={{ fontSize: "13px", fontWeight: "600" }}>Forma de Pago</label>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                       <button
                         type="button"
@@ -776,7 +782,7 @@ export const PlusPromo: React.FC = () => {
                           <CheckCircle size={18} />
                           <div>
                             <div style={{ fontWeight: "bold" }}>Pago Procesado Exitosamente</div>
-                            <div style={{ fontSize: "11px" }}>Transacción: {payphoneTransactionId}</div>
+                            <div style={{ fontSize: "13px" }}>Transacción: {payphoneTransactionId}</div>
                           </div>
                         </div>
                       ) : (
@@ -804,23 +810,10 @@ export const PlusPromo: React.FC = () => {
                   {/* Payment TRANSFER flow */}
                   {paymentMethod === "TRANSFER" && (
                     <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                      <div style={{
-                        fontSize: "11px",
-                        backgroundColor: "var(--bg-primary)",
-                        padding: "10px 14px",
-                        borderRadius: "6px",
-                        border: "1px solid var(--border-light)",
-                        lineHeight: "1.4"
-                      }}>
-                        <strong>Datos Bancarios de GoEats:</strong>
-                        <div>Banco Pichincha - Cuenta de Ahorros</div>
-                        <div>Número: 2201938482</div>
-                        <div>Titular: GoEats SaaS Inc.</div>
-                        <div>RUC: 1792839485001</div>
-                      </div>
+                      <PlatformBankInfo />
 
                       <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                        <label style={{ fontSize: "11px", fontWeight: "600" }}>Subir Foto del Comprobante</label>
+                        <label style={{ fontSize: "13px", fontWeight: "600" }}>Subir Foto del Comprobante</label>
                         <input
                           type="file"
                           accept="image/*"
@@ -835,7 +828,7 @@ export const PlusPromo: React.FC = () => {
                               reader.readAsDataURL(file);
                             }
                           }}
-                          style={{ fontSize: "12px" }}
+                          style={{ fontSize: "13px" }}
                         />
                       </div>
                     </div>
@@ -899,8 +892,8 @@ export const PlusPromo: React.FC = () => {
           <div className="global-modal-card" style={{ maxWidth: "380px", padding: "25px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px", borderBottom: "1px solid var(--border-light)", paddingBottom: "10px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#ff5a00", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: "bold" }}>P</div>
-                <h3 style={{ fontSize: "1.1rem", fontWeight: "bold", margin: 0, color: "#ff5a00" }}>Pasarela Payphone</h3>
+                <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#ff5a00", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", fontWeight: "bold" }}>P</div>
+                <h3 style={{ fontSize: "1.1rem", fontWeight: "bold", margin: 0, color: "#ff5a00" }}>Payphone: demostración, sin cobro real</h3>
               </div>
               <button
                 type="button"
@@ -917,17 +910,17 @@ export const PlusPromo: React.FC = () => {
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                <label style={{ fontSize: "11px", fontWeight: 600 }}>Número de Tarjeta</label>
+                <label style={{ fontSize: "13px", fontWeight: 600 }}>Número de Tarjeta</label>
                 <input type="text" style={{ padding: "8px", borderRadius: "4px", border: "1px solid var(--border-light)", backgroundColor: "var(--bg-primary)", color: "var(--text-primary)" }} placeholder="4111 1111 1111 1111" defaultValue="4111 1111 1111 1111" />
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                  <label style={{ fontSize: "11px", fontWeight: 600 }}>Vencimiento</label>
+                  <label style={{ fontSize: "13px", fontWeight: 600 }}>Vencimiento</label>
                   <input type="text" style={{ padding: "8px", borderRadius: "4px", border: "1px solid var(--border-light)", backgroundColor: "var(--bg-primary)", color: "var(--text-primary)" }} placeholder="12/28" defaultValue="12/28" />
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                  <label style={{ fontSize: "11px", fontWeight: 600 }}>CVV</label>
+                  <label style={{ fontSize: "13px", fontWeight: 600 }}>CVV</label>
                   <input type="password" style={{ padding: "8px", borderRadius: "4px", border: "1px solid var(--border-light)", backgroundColor: "var(--bg-primary)", color: "var(--text-primary)" }} placeholder="123" defaultValue="123" />
                 </div>
               </div>

@@ -3,6 +3,7 @@ import { useSocket } from "../context/SocketContext";
 import { apiRequest } from "../utils/api";
 import { Play, CheckCircle, Loader2, Sparkles, ChefHat, BellRing, CheckCircle2 } from "lucide-react";
 import { systemIconForEmoji, systemTextWithIcons } from "../utils/systemIcons";
+import { KitchenHistory } from "../components/KitchenHistory";
 
 
 interface OrderItem {
@@ -40,6 +41,7 @@ export const Kitchen: React.FC = () => {
   const [productionAreas, setProductionAreas] = useState<ProductionArea[]>([]);
   const [selectedArea, setSelectedArea] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [view, setView] = useState<"live" | "history">("live");
   const [callingWaiterOrderId, setCallingWaiterOrderId] = useState<number | null>(null);
   const [calledSuccessMap, setCalledSuccessMap] = useState<Record<number, boolean>>({});
 
@@ -216,7 +218,29 @@ export const Kitchen: React.FC = () => {
           </p>
         </div>
 
+        <div style={{ display: "flex", gap: "8px" }} role="group" aria-label="Vista de cocina">
+          <button
+            type="button"
+            aria-pressed={view === "live"}
+            onClick={() => setView("live")}
+            className={view === "live" ? "glow-btn" : "secondary-btn"}
+            style={{ padding: "8px 16px", minHeight: "44px", borderRadius: "var(--radius-sm)" }}
+          >
+            En curso
+          </button>
+          <button
+            type="button"
+            aria-pressed={view === "history"}
+            onClick={() => setView("history")}
+            className={view === "history" ? "glow-btn" : "secondary-btn"}
+            style={{ padding: "8px 16px", minHeight: "44px", borderRadius: "var(--radius-sm)" }}
+          >
+            Historial
+          </button>
+        </div>
+
         {/* Filter Area Selection */}
+        {view === "live" && (
         <div style={{ display: "flex", gap: "8px", overflowX: "auto", maxWidth: "100%", paddingBottom: "4px" }}>
           <button
             onClick={() => setSelectedArea(null)}
@@ -236,9 +260,12 @@ export const Kitchen: React.FC = () => {
             </button>
           ))}
         </div>
+        )}
       </div>
 
-      {loading ? (
+      {view === "history" ? (
+        <KitchenHistory />
+      ) : loading ? (
         <div style={{ display: "flex", justifyContent: "center", padding: "100px" }}>
           <Loader2 className="spinner" size={48} style={{ animation: "spin 1s linear infinite" }} />
         </div>
@@ -315,7 +342,7 @@ export const Kitchen: React.FC = () => {
                       </div>
                     </div>
                     <span style={{
-                      fontSize: "12px",
+                      fontSize: "13px",
                       color: "var(--text-secondary)",
                       backgroundColor: "var(--bg-secondary)",
                       padding: "4px 8px",
@@ -330,7 +357,7 @@ export const Kitchen: React.FC = () => {
                   <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "6px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span style={{
-                        fontSize: "11px",
+                        fontSize: "13px",
                         fontWeight: 700,
                         padding: "3px 8px",
                         borderRadius: "10px",
@@ -348,7 +375,7 @@ export const Kitchen: React.FC = () => {
                       }}>
                         {isAllReady ? systemTextWithIcons("🟢 ¡Todos listos!") : isAlmostReady ? systemTextWithIcons("🟡 Casi listo") : systemTextWithIcons("⏳ En preparación")} ({readyCount}/{totalCount})
                       </span>
-                      <span style={{ fontSize: "11px", color: "var(--text-secondary)", fontWeight: 600 }}>
+                      <span style={{ fontSize: "13px", color: "var(--text-secondary)", fontWeight: 600 }}>
                         {percent}%
                       </span>
                     </div>
@@ -365,7 +392,7 @@ export const Kitchen: React.FC = () => {
                   {group.order.comments && (
                     <div style={{
                       marginTop: "10px",
-                      fontSize: "12px",
+                      fontSize: "13px",
                       backgroundColor: "rgba(255, 165, 2, 0.08)",
                       borderLeft: "3px solid var(--warning)",
                       padding: "6px 10px",
@@ -404,14 +431,14 @@ export const Kitchen: React.FC = () => {
                             {item.quantity}x
                           </span>
                           <strong>{item.variant.menuItem.name}</strong>{" "}
-                          <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
+                          <span style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
                             ({item.variant.name})
                           </span>
                         </div>
                         
                         {/* Status tag */}
                         <span style={{
-                          fontSize: "10px",
+                          fontSize: "13px",
                           fontWeight: 700,
                           padding: "2px 6px",
                           borderRadius: "4px",
@@ -424,7 +451,7 @@ export const Kitchen: React.FC = () => {
                       </div>
 
                       {item.comments && (
-                        <div style={{ fontSize: "12px", color: "var(--accent-secondary)", fontStyle: "italic" }}>
+                        <div style={{ fontSize: "13px", color: "var(--accent-secondary)", fontStyle: "italic" }}>
                           * {item.comments}
                         </div>
                       )}
@@ -438,7 +465,7 @@ export const Kitchen: React.FC = () => {
                             style={{
                               flex: 1,
                               padding: "6px 12px",
-                              fontSize: "12px",
+                              fontSize: "13px",
                               backgroundColor: "rgba(255, 165, 2, 0.15)",
                               borderColor: "rgba(255, 165, 2, 0.3)",
                               color: "var(--warning)"
@@ -455,7 +482,7 @@ export const Kitchen: React.FC = () => {
                             style={{
                               flex: 1,
                               padding: "6px 12px",
-                              fontSize: "12px"
+                              fontSize: "13px"
                             }}
                           >
                             <CheckCircle size={12} style={{ marginRight: "4px" }} />
@@ -469,7 +496,7 @@ export const Kitchen: React.FC = () => {
                             style={{
                               flex: 1,
                               padding: "6px 12px",
-                              fontSize: "12px",
+                              fontSize: "13px",
                               backgroundColor: "rgba(46, 213, 115, 0.1)",
                               borderColor: "rgba(46, 213, 115, 0.3)",
                               color: "var(--success)"

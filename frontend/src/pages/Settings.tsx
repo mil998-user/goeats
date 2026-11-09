@@ -79,12 +79,18 @@ export const Settings: React.FC = () => {
   const [openingHours, setOpeningHours] = useState("");
   const [samePriceAsLocal, setSamePriceAsLocal] = useState(false);
   const [promoText, setPromoText] = useState("");
+  const [taxRate, setTaxRate] = useState(15);
+  const [waiterCallEnabled, setWaiterCallEnabled] = useState(true);
+  const [waiterCallWaitMin, setWaiterCallWaitMin] = useState(10);
+  const [payBeforeEating, setPayBeforeEating] = useState(false);
+  const [reservationsEnabled, setReservationsEnabled] = useState(true);
   const [faqs, setFaqs] = useState<{ question: string; answer: string }[]>([]);
   const [resolvingMaps, setResolvingMaps] = useState(false);
   const [mapsDetectMsg, setMapsDetectMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // Payment configuration states
   const [payphoneToken, setPayphoneToken] = useState("");
+  const [hasPayphoneToken, setHasPayphoneToken] = useState(false);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
 
   // SaaS categories states
@@ -337,13 +343,13 @@ export const Settings: React.FC = () => {
   };
 
   const handleDeleteStaff = async (id: number) => {
-    if (!window.confirm("¿Estás seguro de eliminar a este miembro del personal?")) return;
+    if (!window.confirm("¿Quitar a este miembro del personal? Si ya atendió pedidos o usó la caja, su cuenta se desactiva y su historial se conserva.")) return;
     try {
       const res = await apiRequest(`/auth/staff/${id}`, {
         method: "DELETE"
       });
       if (res.success) {
-        setSuccessMsg("Personal eliminado con éxito.");
+        setSuccessMsg(res.message || "Personal eliminado.");
         loadStaff();
       }
       setTimeout(() => setSuccessMsg(null), 3000);
@@ -738,7 +744,7 @@ export const Settings: React.FC = () => {
         setWifiSsid(r.wifiSsid || "");
         setWifiPassword(r.wifiPassword || "");
         setQrOrderingEnabled(r.qrOrderingEnabled !== false);
-        setPayphoneToken(r.payphoneToken || "");
+        setHasPayphoneToken(Boolean(r.hasPayphoneToken));
         setCoverImage(r.coverImage || "");
         setDescription(r.description || "");
         setMapLatitude(r.mapLatitude !== null && r.mapLatitude !== undefined ? r.mapLatitude.toString() : "");
@@ -748,6 +754,11 @@ export const Settings: React.FC = () => {
         setOpeningHours(r.openingHours || "");
         setSamePriceAsLocal(r.samePriceAsLocal === true);
         setPromoText(r.promoText || "");
+        setTaxRate(typeof r.taxRate === "number" ? r.taxRate : 15);
+        setWaiterCallEnabled(r.waiterCallEnabled !== false);
+        setWaiterCallWaitMin(typeof r.waiterCallWaitMin === "number" ? r.waiterCallWaitMin : 10);
+        setPayBeforeEating(r.payBeforeEating === true);
+        setReservationsEnabled(r.reservationsEnabled !== false);
         setSelectedCategoryIds(r.categories?.map((c: any) => c.id) || []);
         setSelectedSubcategoryIds(r.subcategories?.map((s: any) => s.id) || []);
         
@@ -922,6 +933,11 @@ export const Settings: React.FC = () => {
         openingHours,
         samePriceAsLocal,
         promoText,
+        taxRate,
+        waiterCallEnabled,
+        waiterCallWaitMin,
+        payBeforeEating,
+        reservationsEnabled,
         faqsJson: JSON.stringify(faqs),
         categoryIds: selectedCategoryIds,
         subcategoryIds: selectedSubcategoryIds
@@ -1197,7 +1213,7 @@ export const Settings: React.FC = () => {
       )}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "30px" }}>
         <div>
-          <h1 style={{ fontSize: "28px", display: "flex", alignItems: "center", gap: "10px" }}>
+          <h1 style={{ fontSize: "28px", display: "flex", alignItems: "center", gap: "12px" }}>
             <SettingsIcon size={26} style={{ color: "var(--accent-primary)" }} />
             Configuración del Restaurante
           </h1>
@@ -1242,7 +1258,7 @@ export const Settings: React.FC = () => {
         {/* TAB 1: GENERAL SETTINGS */}
         {activeTab === "general" && (
           <div className="glass-card" style={{ padding: "30px", borderRadius: "var(--radius-lg)" }}>
-            <h3 style={{ fontSize: "16px", marginBottom: "20px", borderBottom: "1px solid var(--border-light)", paddingBottom: "10px" }}>
+            <h3 style={{ fontSize: "16px", marginBottom: "20px", borderBottom: "1px solid var(--border-light)", paddingBottom: "12px" }}>
               Perfil del Restaurante
             </h3>
             
@@ -1304,7 +1320,7 @@ export const Settings: React.FC = () => {
                     />
                   </label>
                   {logo && logo.startsWith("data:image") && (
-                    <span style={{ fontSize: "12px", color: "var(--success)", fontWeight: 500 }}>
+                    <span style={{ fontSize: "13px", color: "var(--success)", fontWeight: 500 }}>
                       Cargado ✓
                     </span>
                   )}
@@ -1313,7 +1329,7 @@ export const Settings: React.FC = () => {
                       type="button"
                       onClick={() => setLogo("")}
                       style={{
-                        fontSize: "11px",
+                        fontSize: "13px",
                         color: "var(--accent-primary)",
                         background: "none",
                         border: "none",
@@ -1353,7 +1369,7 @@ export const Settings: React.FC = () => {
               </div>
             </div>
 
-            <h3 style={{ fontSize: "16px", marginBottom: "20px", borderBottom: "1px solid var(--border-light)", paddingBottom: "10px", marginTop: "30px" }}>
+            <h3 style={{ fontSize: "16px", marginBottom: "20px", borderBottom: "1px solid var(--border-light)", paddingBottom: "12px", marginTop: "30px" }}>
               <Wifi size={18} style={{ marginRight: "8px", verticalAlign: "middle", color: "var(--accent-secondary)" }} />
               Red WiFi local (Para Clientes en Mesa)
             </h3>
@@ -1404,7 +1420,46 @@ export const Settings: React.FC = () => {
               </label>
             </div>
 
-            <h3 style={{ fontSize: "16px", marginBottom: "20px", borderBottom: "1px solid var(--border-light)", paddingBottom: "10px", marginTop: "30px" }}>
+            <fieldset style={{ marginTop: "15px", padding: "15px", border: "1px solid var(--border-light)", borderRadius: "var(--radius-sm)", backgroundColor: "var(--bg-tertiary)", display: "flex", flexDirection: "column", gap: "14px" }}>
+              <legend style={{ fontSize: "14px", fontWeight: 800, padding: "0 6px" }}>Atención en el local</legend>
+              <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", fontSize: "14px", fontWeight: 600, cursor: "pointer" }}>
+                <input type="checkbox" checked={payBeforeEating} onChange={(e) => setPayBeforeEating(e.target.checked)} style={{ width: "18px", height: "18px", flexShrink: 0, accentColor: "var(--accent-primary)" }} />
+                <span>
+                  Cobrar antes de preparar
+                  <small style={{ display: "block", fontWeight: 400, color: "var(--text-secondary)" }}>
+                    {payBeforeEating
+                      ? "El pedido de mesa espera en caja y pasa a cocina cuando se cobra (pagar, comer)."
+                      : "El pedido de mesa va directo a cocina y se cobra al final (comer, pagar)."}
+                  </small>
+                </span>
+              </label>
+              <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", fontSize: "14px", fontWeight: 600, cursor: "pointer" }}>
+                <input type="checkbox" checked={waiterCallEnabled} onChange={(e) => setWaiterCallEnabled(e.target.checked)} style={{ width: "18px", height: "18px", flexShrink: 0, accentColor: "var(--accent-primary)" }} />
+                <span>
+                  Los clientes pueden llamar al mesero desde el QR de la mesa
+                  <small style={{ display: "block", fontWeight: 400, color: "var(--text-secondary)" }}>Pedir la cuenta siempre está disponible.</small>
+                </span>
+              </label>
+              {waiterCallEnabled && (
+                <div className="input-group" style={{ margin: 0, maxWidth: "320px" }}>
+                  <label htmlFor="waiter-call-wait">Espera entre dos llamados de la misma mesa</label>
+                  <select id="waiter-call-wait" className="input-field" value={waiterCallWaitMin} onChange={(e) => setWaiterCallWaitMin(Number(e.target.value))}>
+                    {[0, 5, 10, 15, 20, 30].map((minutes) => (
+                      <option key={minutes} value={minutes}>{minutes === 0 ? "Sin espera" : `${minutes} minutos`}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", fontSize: "14px", fontWeight: 600, cursor: "pointer" }}>
+                <input type="checkbox" checked={reservationsEnabled} onChange={(e) => setReservationsEnabled(e.target.checked)} style={{ width: "18px", height: "18px", flexShrink: 0, accentColor: "var(--accent-primary)" }} />
+                <span>
+                  Recibir reservas desde la app
+                  <small style={{ display: "block", fontWeight: 400, color: "var(--text-secondary)" }}>Las verás en el menú Reservas para confirmarlas.</small>
+                </span>
+              </label>
+            </fieldset>
+
+            <h3 style={{ fontSize: "16px", marginBottom: "20px", borderBottom: "1px solid var(--border-light)", paddingBottom: "12px", marginTop: "30px" }}>
               <Building2 size={18} style={{ marginRight: "8px", verticalAlign: "middle", color: "var(--accent-secondary)" }} />
               Personalización de la Portada y Presentación
             </h3>
@@ -1416,7 +1471,7 @@ export const Settings: React.FC = () => {
               alignItems: "center",
               marginBottom: "20px",
             }}>
-              <label style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "14px", fontWeight: 600 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: "12px", fontSize: "14px", fontWeight: 600 }}>
                 <input
                   type="checkbox"
                   checked={samePriceAsLocal}
@@ -1436,6 +1491,21 @@ export const Settings: React.FC = () => {
                   onChange={(e) => setPromoText(e.target.value)}
                   className="input-field"
                 />
+              </div>
+              <div className="input-group" style={{ margin: 0 }}>
+                <label htmlFor="restaurant-tax-rate">IVA que cobra el local</label>
+                <select
+                  id="restaurant-tax-rate"
+                  className="input-field"
+                  value={taxRate}
+                  onChange={(e) => setTaxRate(Number(e.target.value))}
+                >
+                  <option value={15}>15 % (tasa general)</option>
+                  <option value={12}>12 %</option>
+                  <option value={5}>5 %</option>
+                  <option value={0}>0 % (no cobra IVA)</option>
+                </select>
+                <small style={{ color: "var(--text-secondary)" }}>Los precios del menú ya incluyen el IVA. Se usa al cobrar en caja.</small>
               </div>
             </div>
 
@@ -1497,7 +1567,7 @@ export const Settings: React.FC = () => {
                     />
                   </label>
                   {coverImage && coverImage.startsWith("data:image") && (
-                    <span style={{ fontSize: "12px", color: "var(--success)", fontWeight: 500 }}>
+                    <span style={{ fontSize: "13px", color: "var(--success)", fontWeight: 500 }}>
                       Cargado ✓
                     </span>
                   )}
@@ -1506,7 +1576,7 @@ export const Settings: React.FC = () => {
                       type="button"
                       onClick={() => setCoverImage("")}
                       style={{
-                        fontSize: "11px",
+                        fontSize: "13px",
                         color: "var(--accent-primary)",
                         background: "none",
                         border: "none",
@@ -1522,7 +1592,7 @@ export const Settings: React.FC = () => {
               </div>
             </div>
 
-            <h3 style={{ fontSize: "16px", marginBottom: "20px", borderBottom: "1px solid var(--border-light)", paddingBottom: "10px", marginTop: "30px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "10px" }}>
+            <h3 style={{ fontSize: "16px", marginBottom: "20px", borderBottom: "1px solid var(--border-light)", paddingBottom: "12px", marginTop: "30px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
               <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                 <MapPin size={18} style={{ color: "var(--accent-secondary)" }} />
                 Ubicación del Local en el Mapa & Horarios
@@ -1561,7 +1631,7 @@ export const Settings: React.FC = () => {
                   border: "1px solid rgba(46, 213, 115, 0.3)",
                   padding: "6px 14px",
                   borderRadius: "20px",
-                  fontSize: "12px",
+                  fontSize: "13px",
                   fontWeight: "700",
                   cursor: "pointer",
                   transition: "all 0.2s ease"
@@ -1584,7 +1654,7 @@ export const Settings: React.FC = () => {
               borderRadius: "var(--radius-md)",
               border: "1px solid var(--border-light)"
             }}>
-              <span style={{ fontSize: "12px", fontWeight: "700", color: "var(--text-muted)", marginRight: "4px" }}>
+              <span style={{ fontSize: "13px", fontWeight: "700", color: "var(--text-muted)", marginRight: "4px" }}>
                 {systemIconForEmoji("⚡")} Fijar Ciudad:
               </span>
               {[
@@ -1608,7 +1678,7 @@ export const Settings: React.FC = () => {
                     border: "1px solid var(--border-light)",
                     padding: "4px 10px",
                     borderRadius: "14px",
-                    fontSize: "11px",
+                    fontSize: "13px",
                     fontWeight: "600",
                     cursor: "pointer"
                   }}
@@ -1689,7 +1759,7 @@ export const Settings: React.FC = () => {
                     marginTop: "8px",
                     padding: "8px 12px",
                     borderRadius: "8px",
-                    fontSize: "12px",
+                    fontSize: "13px",
                     fontWeight: "600",
                     backgroundColor: mapsDetectMsg.type === "success" ? "#ecfdf5" : "#fef2f2",
                     color: mapsDetectMsg.type === "success" ? "#065f46" : "#991b1b",
@@ -1704,14 +1774,14 @@ export const Settings: React.FC = () => {
                 </div>
               )}
 
-              <small style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px", display: "block" }}>
+              <small style={{ fontSize: "13px", color: "var(--text-muted)", marginTop: "4px", display: "block" }}>
                 {systemIconForEmoji("💡")} Pega cualquier link de Google Maps (incluyendo enlaces cortos como maps.app.goo.gl) y las coordenadas se extraerán automáticamente.
               </small>
             </div>
 
             {/* Interactive Visual Map Picker for Restaurant Only */}
             <div style={{ marginBottom: "20px" }}>
-              <label style={{ fontSize: "12px", fontWeight: "700", marginBottom: "8px", display: "block", color: "var(--text-primary)" }}>
+              <label style={{ fontSize: "13px", fontWeight: "700", marginBottom: "8px", display: "block", color: "var(--text-primary)" }}>
                 {systemIconForEmoji("🗺️")} Ubicación Oficial de la Puerta de tu Local (Arrastra o Haz Clic)
               </label>
               <RestaurantLocationPicker
@@ -1817,7 +1887,7 @@ export const Settings: React.FC = () => {
               </button>
             </div>
 
-            <h3 style={{ fontSize: "16px", marginBottom: "20px", borderBottom: "1px solid var(--border-light)", paddingBottom: "10px", marginTop: "30px" }}>
+            <h3 style={{ fontSize: "16px", marginBottom: "20px", borderBottom: "1px solid var(--border-light)", paddingBottom: "12px", marginTop: "30px" }}>
               <HelpCircle size={18} style={{ marginRight: "8px", verticalAlign: "middle", color: "var(--accent-secondary)" }} />
               Preguntas Frecuentes (FAQs)
             </h3>
@@ -1901,7 +1971,7 @@ export const Settings: React.FC = () => {
               </button>
             </div>
 
-            <h3 style={{ fontSize: "16px", marginBottom: "20px", borderBottom: "1px solid var(--border-light)", paddingBottom: "10px", marginTop: "30px" }}>
+            <h3 style={{ fontSize: "16px", marginBottom: "20px", borderBottom: "1px solid var(--border-light)", paddingBottom: "12px", marginTop: "30px" }}>
               <Tag size={18} style={{ marginRight: "8px", verticalAlign: "middle", color: "var(--accent-secondary)" }} />
               Categorización del Negocio
             </h3>
@@ -1999,13 +2069,13 @@ export const Settings: React.FC = () => {
                 <label>Token de la Aplicación (App Token)</label>
                 <input
                   type="password"
-                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  placeholder={hasPayphoneToken ? "Token guardado. Escribe uno nuevo para reemplazarlo" : "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."}
                   value={payphoneToken}
                   onChange={(e) => setPayphoneToken(e.target.value)}
                   className="input-field"
                   style={{ fontFamily: "monospace" }}
                 />
-                <span style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px", display: "block" }}>
+                <span style={{ fontSize: "13px", color: "var(--text-muted)", marginTop: "4px", display: "block" }}>
                   Obtén este token desde tu consola de desarrollador en Payphone Developer Portal.
                 </span>
               </div>
@@ -2022,7 +2092,7 @@ export const Settings: React.FC = () => {
                   type="button"
                   onClick={handleOpenAddAccount}
                   className="glow-btn"
-                  style={{ padding: "8px 14px", fontSize: "12px" }}
+                  style={{ padding: "8px 14px", fontSize: "13px" }}
                 >
                   <Plus size={14} />
                   Agregar Cuenta
@@ -2033,7 +2103,7 @@ export const Settings: React.FC = () => {
                 <div style={{ textAlign: "center", padding: "40px", color: "var(--text-muted)" }}>
                   <Building2 size={40} style={{ margin: "0 auto 15px auto", opacity: 0.5 }} />
                   <p style={{ fontSize: "14px", margin: 0 }}>No tienes cuentas bancarias configuradas.</p>
-                  <p style={{ fontSize: "12px", margin: "5px 0 0 0" }}>Los clientes no podrán elegir "Transferencia Bancaria" en Delivery.</p>
+                  <p style={{ fontSize: "13px", margin: "5px 0 0 0" }}>Los clientes no podrán elegir "Transferencia Bancaria" en Delivery.</p>
                 </div>
               ) : (
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px" }}>
@@ -2056,11 +2126,11 @@ export const Settings: React.FC = () => {
                         <div style={{ fontSize: "13px", color: "var(--text-secondary)", marginTop: "4px" }}>
                           {acc.accountType} — <strong>{acc.accountNumber}</strong>
                         </div>
-                        <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "6px" }}>
+                        <div style={{ fontSize: "13px", color: "var(--text-muted)", marginTop: "6px" }}>
                           <strong>Titular:</strong> {acc.ownerName} ({acc.ownerId})
                         </div>
                         {acc.qrCodeImage && (
-                          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "10px", fontSize: "11px", color: "var(--success)" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "12px", fontSize: "13px", color: "var(--success)" }}>
                             <QrCode size={14} />
                             <span>Código QR de Pago rápido adjunto</span>
                           </div>
@@ -2167,16 +2237,18 @@ export const Settings: React.FC = () => {
             padding: "20px 30px",
             borderRadius: "var(--radius-lg)",
             display: "flex",
+            flexWrap: "wrap",
+            gap: "12px",
             justifyContent: "space-between",
             alignItems: "center"
           }}>
-            <div>
+            <div style={{ flex: "1 1 220px", minWidth: 0 }}>
               <h3 style={{ fontSize: "16px", margin: 0, fontWeight: 700 }}>Distribución Física de Salones</h3>
               <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: "4px 0 0 0" }}>
                 Organiza tu restaurante por áreas (salón, terraza, VIP) y gestiona sus mesas para pedidos rápidos por QR.
               </p>
             </div>
-            <div style={{ display: "flex", gap: "10px" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
               <button
                 type="button"
                 onClick={() => {
@@ -2252,6 +2324,8 @@ export const Settings: React.FC = () => {
                   {/* Area Header */}
                   <div style={{
                     display: "flex",
+                    flexWrap: "wrap",
+                    gap: "10px",
                     justifyContent: "space-between",
                     alignItems: "center",
                     borderBottom: "1px solid var(--border-light)",
@@ -2263,7 +2337,7 @@ export const Settings: React.FC = () => {
                       <h3 style={{ fontSize: "18px", margin: 0, fontWeight: 700 }}>
                         {area.name}
                         <span style={{
-                          fontSize: "12px",
+                          fontSize: "13px",
                           fontWeight: 500,
                           color: "var(--text-secondary)",
                           marginLeft: "10px",
@@ -2276,7 +2350,7 @@ export const Settings: React.FC = () => {
                       </h3>
                     </div>
 
-                    <div style={{ display: "flex", gap: "10px" }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
                       {area.tables && area.tables.length > 0 && (
                         <button
                           type="button"
@@ -2286,7 +2360,7 @@ export const Settings: React.FC = () => {
                           }}
                           style={{
                             padding: "6px 12px",
-                            fontSize: "12px",
+                            fontSize: "13px",
                             borderRadius: "var(--radius-sm)",
                             backgroundColor: "rgba(255, 71, 87, 0.08)",
                             border: "1px solid rgba(255, 71, 87, 0.2)",
@@ -2309,7 +2383,7 @@ export const Settings: React.FC = () => {
                         className="glow-btn"
                         style={{
                           padding: "6px 12px",
-                          fontSize: "12px",
+                          fontSize: "13px",
                           display: "flex",
                           alignItems: "center",
                           gap: "4px",
@@ -2327,7 +2401,7 @@ export const Settings: React.FC = () => {
                         onClick={() => handleOpenEditArea(area)}
                         style={{
                           padding: "6px 12px",
-                          fontSize: "12px",
+                          fontSize: "13px",
                           borderRadius: "var(--radius-sm)",
                           backgroundColor: "var(--bg-tertiary)",
                           border: "1px solid var(--border-light)",
@@ -2346,7 +2420,7 @@ export const Settings: React.FC = () => {
                         onClick={() => handleDeleteArea(area.id)}
                         style={{
                           padding: "6px 12px",
-                          fontSize: "12px",
+                          fontSize: "13px",
                           borderRadius: "var(--radius-sm)",
                           backgroundColor: "rgba(255, 71, 87, 0.1)",
                           border: "1px solid rgba(255, 71, 87, 0.2)",
@@ -2380,7 +2454,7 @@ export const Settings: React.FC = () => {
                         onClick={() => handleOpenAddTable(area.id)}
                         style={{
                           marginTop: "10px",
-                          fontSize: "12px",
+                          fontSize: "13px",
                           color: "var(--accent-secondary)",
                           background: "none",
                           border: "none",
@@ -2419,7 +2493,7 @@ export const Settings: React.FC = () => {
                                 Mesa {table.number}
                               </strong>
                               <span style={{
-                                fontSize: "11px",
+                                fontSize: "13px",
                                 padding: "2px 6px",
                                 borderRadius: "4px",
                                 backgroundColor: "var(--bg-tertiary)",
@@ -2429,7 +2503,7 @@ export const Settings: React.FC = () => {
                               </span>
                             </div>
                             <div style={{
-                              fontSize: "11px",
+                              fontSize: "13px",
                               color: "var(--text-muted)",
                               marginTop: "8px",
                               display: "flex",
@@ -2461,7 +2535,7 @@ export const Settings: React.FC = () => {
                                 setShowQRModal(true);
                               }}
                               style={{
-                                fontSize: "11px",
+                                fontSize: "13px",
                                 padding: "4px 8px",
                                 borderRadius: "4px",
                                 backgroundColor: "rgba(255, 71, 87, 0.08)",
@@ -2645,7 +2719,7 @@ export const Settings: React.FC = () => {
                         type="button"
                         onClick={() => setQrCodeImage("")}
                         style={{
-                          fontSize: "11px",
+                          fontSize: "13px",
                           color: "var(--accent-primary)",
                           backgroundColor: "transparent",
                           border: "none",
@@ -2659,7 +2733,7 @@ export const Settings: React.FC = () => {
                   ) : (
                     <label style={{ cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
                       <ImageIcon size={24} style={{ color: "var(--text-muted)" }} />
-                      <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>Subir imagen QR (Deuna, Pichincha, etc.)</span>
+                      <span style={{ fontSize: "13px", color: "var(--text-secondary)" }}>Subir imagen QR (Deuna, Pichincha, etc.)</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -2788,7 +2862,7 @@ export const Settings: React.FC = () => {
           </div>
 
           <div className="glass-card" style={{ padding: "0", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+            <table className="mobile-cards" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
               <thead>
                 <tr style={{ backgroundColor: "var(--bg-tertiary)", borderBottom: "1px solid var(--border-light)" }}>
                   <th style={{ padding: "15px 20px", fontSize: "13px", color: "var(--text-secondary)", fontWeight: 600 }}>Nombre</th>
@@ -2814,7 +2888,7 @@ export const Settings: React.FC = () => {
                       <td style={{ padding: "15px 20px", fontSize: "14px", color: "var(--text-secondary)" }}>{member.email || "—"}</td>
                       <td style={{ padding: "15px 20px", fontSize: "14px" }}>
                         <span style={{
-                          fontSize: "11px",
+                          fontSize: "13px",
                           fontWeight: 700,
                           padding: "3px 8px",
                           borderRadius: "10px",
@@ -2915,13 +2989,13 @@ export const Settings: React.FC = () => {
           </div>
 
           <div className="glass-card" style={{ padding: "0", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+            <table className="mobile-cards" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
               <thead>
                 <tr style={{ backgroundColor: "var(--bg-secondary)", borderBottom: "1px solid var(--border-light)" }}>
-                  <th style={{ padding: "12px 20px", fontSize: "12px", textTransform: "uppercase", color: "var(--text-secondary)", fontWeight: 700 }}>Nombre de Caja</th>
-                  <th style={{ padding: "12px 20px", fontSize: "12px", textTransform: "uppercase", color: "var(--text-secondary)", fontWeight: 700 }}>Cajero Asignado</th>
-                  <th style={{ padding: "12px 20px", fontSize: "12px", textTransform: "uppercase", color: "var(--text-secondary)", fontWeight: 700 }}>Estado</th>
-                  <th style={{ padding: "12px 20px", fontSize: "12px", textTransform: "uppercase", color: "var(--text-secondary)", fontWeight: 700, textAlign: "right" }}>Acciones</th>
+                  <th style={{ padding: "12px 20px", fontSize: "13px", textTransform: "uppercase", color: "var(--text-secondary)", fontWeight: 700 }}>Nombre de Caja</th>
+                  <th style={{ padding: "12px 20px", fontSize: "13px", textTransform: "uppercase", color: "var(--text-secondary)", fontWeight: 700 }}>Cajero Asignado</th>
+                  <th style={{ padding: "12px 20px", fontSize: "13px", textTransform: "uppercase", color: "var(--text-secondary)", fontWeight: 700 }}>Estado</th>
+                  <th style={{ padding: "12px 20px", fontSize: "13px", textTransform: "uppercase", color: "var(--text-secondary)", fontWeight: 700, textAlign: "right" }}>Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -2942,7 +3016,7 @@ export const Settings: React.FC = () => {
                           <span style={{
                             padding: "4px 8px",
                             borderRadius: "12px",
-                            backgroundColor: "rgba(0, 165, 67, 0.1)",
+                            backgroundColor: "rgba(17, 17, 17, 0.1)",
                             color: "var(--accent-primary)",
                             fontWeight: 600
                           }}>
@@ -2956,9 +3030,9 @@ export const Settings: React.FC = () => {
                         <span style={{
                           padding: "3px 8px",
                           borderRadius: "10px",
-                          fontSize: "11px",
+                          fontSize: "13px",
                           fontWeight: 700,
-                          backgroundColor: reg.isActive ? "rgba(0, 165, 67, 0.1)" : "rgba(255, 71, 87, 0.1)",
+                          backgroundColor: reg.isActive ? "rgba(17, 17, 17, 0.1)" : "rgba(255, 71, 87, 0.1)",
                           color: reg.isActive ? "var(--accent-primary)" : "#ff4757"
                         }}>
                           {reg.isActive ? "Activa" : "Inactiva"}
@@ -3056,7 +3130,7 @@ export const Settings: React.FC = () => {
                         <span style={{ fontWeight: 600, fontSize: "14px" }}>{customer.name}</span>
                         {customer.isPlus && (
                           <span style={{
-                            fontSize: "10px",
+                            fontSize: "13px",
                             fontWeight: 800,
                             padding: "2px 6px",
                             borderRadius: "10px",
@@ -3067,10 +3141,10 @@ export const Settings: React.FC = () => {
                           </span>
                         )}
                       </div>
-                      <div style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "4px" }}>
+                      <div style={{ fontSize: "13px", color: "var(--text-secondary)", marginTop: "4px" }}>
                         Cédula: {customer.cedula || "—"}
                       </div>
-                      <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px" }}>
+                      <div style={{ fontSize: "13px", color: "var(--text-muted)", marginTop: "2px" }}>
                         {customer.customerOrders?.length || 0} {customer.customerOrders?.length === 1 ? "pedido" : "pedidos"}
                       </div>
                     </div>
@@ -3089,7 +3163,7 @@ export const Settings: React.FC = () => {
                         {selectedCustomer.name}
                         {selectedCustomer.isPlus && (
                           <span style={{
-                            fontSize: "10px",
+                            fontSize: "13px",
                             fontWeight: 800,
                             padding: "2px 6px",
                             borderRadius: "10px",
@@ -3100,7 +3174,7 @@ export const Settings: React.FC = () => {
                           </span>
                         )}
                       </h4>
-                      <p style={{ fontSize: "12px", color: "var(--text-secondary)", margin: "4px 0 0 0" }}>
+                      <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: "4px 0 0 0" }}>
                         <strong>Email:</strong> {selectedCustomer.email || "No registrado"} | <strong>Cédula:</strong> {selectedCustomer.cedula || "—"}
                       </p>
                     </div>
@@ -3124,7 +3198,7 @@ export const Settings: React.FC = () => {
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
                             <span style={{ fontSize: "13px", fontWeight: 600 }}>Pedido #{order.id}</span>
                             <span style={{
-                              fontSize: "11px",
+                              fontSize: "13px",
                               fontWeight: 700,
                               padding: "2px 8px",
                               borderRadius: "10px",
@@ -3135,7 +3209,7 @@ export const Settings: React.FC = () => {
                             </span>
                           </div>
 
-                          <div style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "8px" }}>
+                          <div style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "8px" }}>
                             Fecha: {new Date(order.createdAt).toLocaleString()}
                           </div>
 
@@ -3256,7 +3330,7 @@ export const Settings: React.FC = () => {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "10px" }}>
                 <div>
                   <h4 style={{ fontSize: "16px", fontWeight: 700, margin: 0 }}>Insumos e Ingredientes</h4>
-                  <p style={{ fontSize: "12px", color: "var(--text-secondary)", margin: 0 }}>Mapea los insumos que utilizas para las recetas de tu menú.</p>
+                  <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: 0 }}>Mapea los insumos que utilizas para las recetas de tu menú.</p>
                 </div>
                 <div style={{ display: "flex", gap: "10px" }}>
                   <button type="button" onClick={handleOpenAdjustment} className="secondary-btn" style={{ padding: "8px 16px", fontSize: "13px", display: "flex", alignItems: "center", gap: "6px" }}>
@@ -3271,7 +3345,7 @@ export const Settings: React.FC = () => {
               </div>
 
               <div className="responsive-table-wrapper">
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+                <table className="mobile-cards" style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
                   <thead>
                     <tr style={{ borderBottom: "2px solid var(--border-light)", textAlign: "left", color: "var(--text-secondary)" }}>
                       <th style={{ padding: "12px 10px" }}>Código</th>
@@ -3302,7 +3376,7 @@ export const Settings: React.FC = () => {
                             <td style={{ padding: "12px 10px" }}>{sup.category?.name || "Sin Categoría"}</td>
                             <td style={{ padding: "12px 10px", textAlign: "right", fontWeight: 700, color: isLowStock ? "var(--danger)" : "var(--text-primary)" }}>
                               {sup.stock.toFixed(2)} {sup.unit?.name}
-                              {isLowStock && <span style={{ fontSize: "10px", display: "block", color: "var(--danger)", fontWeight: "normal" }}>{systemIconForEmoji("⚠️")} Stock Bajo</span>}
+                              {isLowStock && <span style={{ fontSize: "13px", display: "block", color: "var(--danger)", fontWeight: "normal" }}>{systemIconForEmoji("⚠️")} Stock Bajo</span>}
                             </td>
                             <td style={{ padding: "12px 10px", textAlign: "right", color: "var(--text-secondary)" }}>{sup.minStock.toFixed(2)} {sup.unit?.name}</td>
                             <td style={{ padding: "12px 10px", textAlign: "right" }}>${sup.cost.toFixed(2)}</td>
@@ -3333,7 +3407,7 @@ export const Settings: React.FC = () => {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
                 <div>
                   <h4 style={{ fontSize: "16px", fontWeight: 700, margin: 0 }}>Proveedores de Insumos</h4>
-                  <p style={{ fontSize: "12px", color: "var(--text-secondary)", margin: 0 }}>Administra los contactos de los distribuidores de tus insumos.</p>
+                  <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: 0 }}>Administra los contactos de los distribuidores de tus insumos.</p>
                 </div>
                 <button type="button" onClick={handleOpenAddSupplier} className="glow-btn" style={{ padding: "8px 16px", fontSize: "13px", display: "flex", alignItems: "center", gap: "6px" }}>
                   <Plus size={14} />
@@ -3342,7 +3416,7 @@ export const Settings: React.FC = () => {
               </div>
 
               <div className="responsive-table-wrapper">
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+                <table className="mobile-cards" style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
                   <thead>
                     <tr style={{ borderBottom: "2px solid var(--border-light)", textAlign: "left", color: "var(--text-secondary)" }}>
                       <th style={{ padding: "12px 10px" }}>RUC / Cédula</th>
@@ -3493,7 +3567,7 @@ export const Settings: React.FC = () => {
                 {/* Temp Add Form Row */}
                 <div style={{ display: "grid", gridTemplateColumns: "1.8fr 1fr 1fr auto", gap: "10px", alignItems: "flex-end", marginBottom: "20px", backgroundColor: "var(--bg-tertiary)", padding: "15px", borderRadius: "var(--radius-md)" }}>
                   <div className="input-group" style={{ marginBottom: 0 }}>
-                    <label style={{ fontSize: "11px" }}>Insumo</label>
+                    <label style={{ fontSize: "13px" }}>Insumo</label>
                     <select
                       value={tempSupplyId}
                       onChange={(e) => setTempSupplyId(e.target.value)}
@@ -3508,7 +3582,7 @@ export const Settings: React.FC = () => {
                   </div>
 
                   <div className="input-group" style={{ marginBottom: 0 }}>
-                    <label style={{ fontSize: "11px" }}>Cant.</label>
+                    <label style={{ fontSize: "13px" }}>Cant.</label>
                     <input
                       type="number"
                       step="0.01"
@@ -3521,7 +3595,7 @@ export const Settings: React.FC = () => {
                   </div>
 
                   <div className="input-group" style={{ marginBottom: 0 }}>
-                    <label style={{ fontSize: "11px" }}>Costo Unit.</label>
+                    <label style={{ fontSize: "13px" }}>Costo Unit.</label>
                     <input
                       type="number"
                       step="0.01"
@@ -3544,7 +3618,7 @@ export const Settings: React.FC = () => {
                 </div>
 
                 {/* Items list */}
-                <h5 style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-secondary)", marginBottom: "10px" }}>Detalle de la Compra</h5>
+                <h5 style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-secondary)", marginBottom: "12px" }}>Detalle de la Compra</h5>
                 {purchaseItems.length === 0 ? (
                   <div style={{ border: "2px dashed var(--border-light)", padding: "40px 20px", textAlign: "center", color: "var(--text-muted)", borderRadius: "var(--radius-md)", fontSize: "13px" }}>
                     Agrega los insumos comprados arriba para armar el detalle de la factura.
@@ -3555,7 +3629,7 @@ export const Settings: React.FC = () => {
                       <div key={item.supplyId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 15px", border: "1px solid var(--border-light)", borderRadius: "var(--radius-sm)" }}>
                         <div>
                           <strong style={{ fontSize: "13px" }}>{item.name}</strong>
-                          <div style={{ fontSize: "11px", color: "var(--text-secondary)" }}>
+                          <div style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
                             {item.quantity.toFixed(2)} unidades x ${item.price.toFixed(2)}
                           </div>
                         </div>
@@ -3579,7 +3653,7 @@ export const Settings: React.FC = () => {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
                 <div>
                   <h4 style={{ fontSize: "16px", fontWeight: 700, margin: 0 }}>Historial de Movimientos (Kardex)</h4>
-                  <p style={{ fontSize: "12px", color: "var(--text-secondary)", margin: 0 }}>Auditoría completa de entradas y salidas físicas de insumos.</p>
+                  <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: 0 }}>Auditoría completa de entradas y salidas físicas de insumos.</p>
                 </div>
                 <button type="button" onClick={handleOpenAdjustment} className="secondary-btn" style={{ padding: "8px 16px", fontSize: "13px", display: "flex", alignItems: "center", gap: "6px" }}>
                   <ClipboardList size={14} />
@@ -3588,7 +3662,7 @@ export const Settings: React.FC = () => {
               </div>
 
               <div className="responsive-table-wrapper" style={{ maxHeight: "500px", overflowY: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+                <table className="mobile-cards" style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
                   <thead>
                     <tr style={{ borderBottom: "2px solid var(--border-light)", textAlign: "left", color: "var(--text-secondary)", position: "sticky", top: 0, backgroundColor: "#ffffff" }}>
                       <th style={{ padding: "12px 10px" }}>Fecha / Hora</th>
@@ -3617,7 +3691,7 @@ export const Settings: React.FC = () => {
                             <td style={{ padding: "12px 10px", fontWeight: 600 }}>{mov.supply?.name || `Insumo ID: ${mov.supplyId}`}</td>
                             <td style={{ padding: "12px 10px" }}>
                               <span style={{
-                                fontSize: "10px",
+                                fontSize: "13px",
                                 fontWeight: "bold",
                                 padding: "2px 8px",
                                 borderRadius: "10px",
@@ -3654,11 +3728,11 @@ export const Settings: React.FC = () => {
             <div className="glass-card" style={{ padding: "25px", borderRadius: "var(--radius-lg)" }}>
               <div style={{ marginBottom: "20px" }}>
                 <h4 style={{ fontSize: "16px", fontWeight: 700, margin: 0 }}>Cuentas por Pagar (Compras a Crédito)</h4>
-                <p style={{ fontSize: "12px", color: "var(--text-secondary)", margin: 0 }}>Monitorea los montos pendientes de pago a proveedores.</p>
+                <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: 0 }}>Monitorea los montos pendientes de pago a proveedores.</p>
               </div>
 
               <div className="responsive-table-wrapper">
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+                <table className="mobile-cards" style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
                   <thead>
                     <tr style={{ borderBottom: "2px solid var(--border-light)", textAlign: "left", color: "var(--text-secondary)" }}>
                       <th style={{ padding: "12px 10px" }}>Fecha Compra</th>
@@ -3693,11 +3767,11 @@ export const Settings: React.FC = () => {
                             <td style={{ padding: "12px 10px", textAlign: "right", fontWeight: 700, color: balance > 0 ? "var(--danger)" : "var(--text-primary)" }}>${balance.toFixed(2)}</td>
                             <td style={{ padding: "12px 10px", color: isOverdue ? "var(--danger)" : "var(--text-primary)", fontWeight: isOverdue ? "bold" : "normal" }}>
                               {cred.dueDate ? new Date(cred.dueDate).toLocaleDateString() : "—"}
-                              {isOverdue && <span style={{ fontSize: "10px", display: "block", color: "var(--danger)" }}>{systemIconForEmoji("⚠️")} Vencido</span>}
+                              {isOverdue && <span style={{ fontSize: "13px", display: "block", color: "var(--danger)" }}>{systemIconForEmoji("⚠️")} Vencido</span>}
                             </td>
                             <td style={{ padding: "12px 10px" }}>
                               <span style={{
-                                fontSize: "10px",
+                                fontSize: "13px",
                                 fontWeight: "bold",
                                 padding: "2px 8px",
                                 borderRadius: "10px",
@@ -3709,11 +3783,11 @@ export const Settings: React.FC = () => {
                             </td>
                             <td style={{ padding: "12px 10px", textAlign: "center" }}>
                               {cred.status === "PENDING" ? (
-                                <button type="button" onClick={() => handleOpenPayCredit(cred)} className="glow-btn" style={{ padding: "5px 10px", fontSize: "11px", backgroundColor: "var(--success)", borderColor: "var(--success)" }}>
+                                <button type="button" onClick={() => handleOpenPayCredit(cred)} className="glow-btn" style={{ padding: "5px 10px", fontSize: "13px", backgroundColor: "var(--success)", borderColor: "var(--success)" }}>
                                   Pagar / Abonar
                                 </button>
                               ) : (
-                                <span style={{ color: "var(--text-muted)", fontSize: "12px" }}>—</span>
+                                <span style={{ color: "var(--text-muted)", fontSize: "13px" }}>—</span>
                               )}
                             </td>
                           </tr>
@@ -4379,7 +4453,7 @@ export const Settings: React.FC = () => {
                 <X size={20} />
               </button>
             </div>
-            <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginBottom: "15px" }}>
+            <p style={{ fontSize: "13px", color: "var(--text-secondary)", marginBottom: "15px" }}>
               Registra un pago de crédito para el proveedor <strong>{selectedCredit.purchase?.supplier?.businessName}</strong>. 
               El saldo pendiente total es de <strong>${(selectedCredit.totalAmount - selectedCredit.paidAmount).toFixed(2)}</strong>.
             </p>
@@ -4398,7 +4472,7 @@ export const Settings: React.FC = () => {
                 />
               </div>
 
-              <small style={{ fontSize: "11px", color: "var(--text-secondary)" }}>
+              <small style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
                 * Se registrará una salida de caja ("Egreso") bajo la categoría "Compras" en tu turno de caja activo.
               </small>
 

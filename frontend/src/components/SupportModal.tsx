@@ -394,7 +394,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                     <div>
-                      <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569", marginBottom: "4px", display: "block" }}>
+                      <label style={{ fontSize: "13px", fontWeight: "600", color: "#475569", marginBottom: "4px", display: "block" }}>
                         Tu Nombre *
                       </label>
                       <input
@@ -414,7 +414,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                       />
                     </div>
                     <div>
-                      <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569", marginBottom: "4px", display: "block" }}>
+                      <label style={{ fontSize: "13px", fontWeight: "600", color: "#475569", marginBottom: "4px", display: "block" }}>
                         Correo Electrónico *
                       </label>
                       <input
@@ -437,7 +437,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                     <div>
-                      <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569", marginBottom: "4px", display: "block" }}>
+                      <label style={{ fontSize: "13px", fontWeight: "600", color: "#475569", marginBottom: "4px", display: "block" }}>
                         Teléfono / Celular
                       </label>
                       <input
@@ -456,7 +456,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                       />
                     </div>
                     <div>
-                      <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569", marginBottom: "4px", display: "block" }}>
+                      <label style={{ fontSize: "13px", fontWeight: "600", color: "#475569", marginBottom: "4px", display: "block" }}>
                         Nº de Pedido (Opcional)
                       </label>
                       <input
@@ -478,7 +478,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                     <div>
-                      <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569", marginBottom: "4px", display: "block" }}>
+                      <label style={{ fontSize: "13px", fontWeight: "600", color: "#475569", marginBottom: "4px", display: "block" }}>
                         Tu Perfil
                       </label>
                       <select
@@ -505,7 +505,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                     </div>
 
                     <div>
-                      <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569", marginBottom: "4px", display: "block" }}>
+                      <label style={{ fontSize: "13px", fontWeight: "600", color: "#475569", marginBottom: "4px", display: "block" }}>
                         Motivo / Categoría
                       </label>
                       <select
@@ -529,7 +529,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                   </div>
 
                   <div>
-                    <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569", marginBottom: "4px", display: "block" }}>
+                    <label style={{ fontSize: "13px", fontWeight: "600", color: "#475569", marginBottom: "4px", display: "block" }}>
                       Asunto / Título (Opcional)
                     </label>
                     <input
@@ -549,7 +549,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                   </div>
 
                   <div>
-                    <label style={{ fontSize: "12px", fontWeight: "600", color: "#475569", marginBottom: "4px", display: "block" }}>
+                    <label style={{ fontSize: "13px", fontWeight: "600", color: "#475569", marginBottom: "4px", display: "block" }}>
                       Detalle de tu problema o consulta *
                     </label>
                     <textarea
@@ -646,7 +646,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                           gap: "4px",
                           backgroundColor: "#f0fdf4",
                           color: "#15803d",
-                          fontSize: "10.5px",
+                          fontSize: "13px",
                           fontWeight: "600",
                           padding: "2px 7px",
                           borderRadius: "10px",
@@ -664,7 +664,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                         En línea
                       </span>
                     </div>
-                    <div style={{ fontSize: "12px", color: "#64748b", marginTop: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    <div style={{ fontSize: "13px", color: "#64748b", marginTop: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {supportPhone} · Asistencia rápida
                     </div>
                   </div>
@@ -681,7 +681,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                     border: "none",
                     borderRadius: "10px",
                     fontWeight: "600",
-                    fontSize: "12px",
+                    fontSize: "13px",
                     textDecoration: "none",
                     display: "inline-flex",
                     alignItems: "center",
@@ -735,7 +735,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                     <div style={{ fontSize: "14px", fontWeight: "700", color: "#0f172a" }}>
                       Correo Electrónico
                     </div>
-                    <div style={{ fontSize: "12px", color: "#64748b", marginTop: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    <div style={{ fontSize: "13px", color: "#64748b", marginTop: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {supportEmail}
                     </div>
                   </div>
@@ -749,7 +749,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                     border: "1px solid #cbd5e1",
                     borderRadius: "10px",
                     fontWeight: "600",
-                    fontSize: "12px",
+                    fontSize: "13px",
                     textDecoration: "none",
                     display: "inline-flex",
                     alignItems: "center",
@@ -783,7 +783,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                   padding: "10px 14px",
                   borderRadius: "10px",
                   backgroundColor: "#f8fafc",
-                  fontSize: "12px",
+                  fontSize: "13px",
                   color: "#64748b",
                   textAlign: "center",
                   border: "1px solid #f1f5f9",

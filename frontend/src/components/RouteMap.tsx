@@ -3,6 +3,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Navigation, ExternalLink, Compass, RefreshCw, Radio } from "lucide-react";
 import { systemIconForEmoji } from "../utils/systemIcons";
+import { escapeHtml } from "../utils/html";
 
 
 interface RouteMapProps {
@@ -85,9 +86,9 @@ export const RouteMap: React.FC<RouteMapProps> = ({
     const label = isSelf ? "Tú (Repartidor)" : (name || "Repartidor");
     return `
       <div style="position: relative; display: flex; flex-direction: column; align-items: center; transform: translate(-50%, -100%);">
-        <div style="background: rgba(18, 24, 38, 0.95); color: #2ed573; padding: 4px 10px; border-radius: 12px; font-weight: 800; font-size: 11px; box-shadow: 0 4px 14px rgba(0,0,0,0.5); white-space: nowrap; margin-bottom: 4px; border: 1.5px solid #2ed573; display: flex; align-items: center; gap: 5px;">
+        <div style="background: rgba(18, 24, 38, 0.95); color: #2ed573; padding: 4px 10px; border-radius: 12px; font-weight: 800; font-size: 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.5); white-space: nowrap; margin-bottom: 4px; border: 1.5px solid #2ed573; display: flex; align-items: center; gap: 5px;">
           <span style="display: inline-block; width: 7px; height: 7px; background: #2ed573; border-radius: 50%; box-shadow: 0 0 6px #2ed573;"></span>
-          <span>${label}</span>
+          <span>${escapeHtml(label)}</span>
         </div>
         <div style="position: relative; width: 34px; height: 34px; background: #2ed573; border: 2.5px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(46,213,115,0.7);">
           <svg aria-hidden="true" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="6" r="1"/><path d="M12 17.5 14 8l-3-3-2 3h4"/><path d="M6 17.5 10 12l2 2h3"/><path d="m18.5 17.5-3.5-6h-3"/></svg>
@@ -233,7 +234,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
           iconSize: [0, 0],
         });
         const marker = L.marker([driverLat, driverLng], { icon: driverIcon, zIndexOffset: 1000 }).addTo(map);
-        marker.bindPopup(`<b>${isDriverView ? "Tu ubicación actual" : (driverName || "Repartidor en camino")}</b>`);
+        marker.bindPopup(`<b>${isDriverView ? "Tu ubicación actual" : escapeHtml(driverName || "Repartidor en camino")}</b>`);
         driverMarkerRef.current = marker;
       }
 
@@ -372,6 +373,9 @@ export const RouteMap: React.FC<RouteMapProps> = ({
 
       // Turn-by-turn route between Restaurant and Customer
       fetchStreetRoute(restL, restG, delivL, delivG).then((routeData) => {
+        // The screen may have closed while the route was loading
+        if (mapInstanceRef.current !== map) return;
+
         mainRoute.setLatLngs(routeData.coordinates);
         setDistanceKm(routeData.distanceKm);
         setEtaMinutes(routeData.durationMin);
@@ -381,14 +385,15 @@ export const RouteMap: React.FC<RouteMapProps> = ({
           [delivL, delivG],
           ...routeData.coordinates,
         ]);
-        map.fitBounds(bounds, { padding: [45, 45] });
+        // No animation: the zoom animation keeps running if the map closes and Leaflet fails
+        map.fitBounds(bounds, { padding: [45, 45], animate: false });
       });
 
       // 3. Restaurant Origin Marker (Gold Badge)
       const restIconHtml = `
         <div style="position: relative; display: flex; flex-direction: column; align-items: center; transform: translate(-50%, -100%);">
-          <div style="background: rgba(20, 24, 33, 0.94); color: #ffd700; padding: 4px 10px; border-radius: 12px; font-weight: 800; font-size: 11px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); white-space: nowrap; margin-bottom: 3px; border: 1px solid rgba(255,215,0,0.4); backdrop-filter: blur(4px);">
-            ${restaurantName}
+          <div style="background: rgba(20, 24, 33, 0.94); color: #ffd700; padding: 4px 10px; border-radius: 12px; font-weight: 800; font-size: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); white-space: nowrap; margin-bottom: 3px; border: 1px solid rgba(255,215,0,0.4); backdrop-filter: blur(4px);">
+            ${escapeHtml(restaurantName)}
           </div>
           <div style="width: 26px; height: 26px; background: #ff9f43; border: 2.5px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(255,159,67,0.6);">
             <div style="width: 8px; height: 8px; background: #ffffff; border-radius: 50%;"></div>
@@ -402,13 +407,13 @@ export const RouteMap: React.FC<RouteMapProps> = ({
       });
       L.marker([restL, restG], { icon: restIcon })
         .addTo(map)
-        .bindPopup(`<b>Retiro en:</b><br/>${restaurantName}<br/>${restaurantAddress || "Local"}`);
+        .bindPopup(`<b>Retiro en:</b><br/>${escapeHtml(restaurantName)}<br/>${escapeHtml(restaurantAddress || "Local")}`);
 
       // 4. Customer Destination Marker (Coral Red Badge)
       const delivIconHtml = `
         <div style="position: relative; display: flex; flex-direction: column; align-items: center; transform: translate(-50%, -100%);">
-          <div style="background: rgba(255, 71, 87, 0.95); color: #ffffff; padding: 4px 10px; border-radius: 12px; font-weight: 800; font-size: 11px; box-shadow: 0 4px 12px rgba(255,71,87,0.5); white-space: nowrap; margin-bottom: 3px; border: 1px solid rgba(255,255,255,0.4);">
-            ${customerName ? customerName : "Cliente"}
+          <div style="background: rgba(255, 71, 87, 0.95); color: #ffffff; padding: 4px 10px; border-radius: 12px; font-weight: 800; font-size: 12px; box-shadow: 0 4px 12px rgba(255,71,87,0.5); white-space: nowrap; margin-bottom: 3px; border: 1px solid rgba(255,255,255,0.4);">
+            ${escapeHtml(customerName || "Cliente")}
           </div>
           <div style="width: 26px; height: 26px; background: #ff4757; border: 2.5px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(255,71,87,0.6);">
             <div style="width: 8px; height: 8px; background: #ffffff; border-radius: 50%;"></div>
@@ -422,7 +427,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
       });
       L.marker([delivL, delivG], { icon: delivIcon })
         .addTo(map)
-        .bindPopup(`<b>Entrega a:</b><br/>${customerName || "Cliente"}<br/>${deliveryAddress}`);
+        .bindPopup(`<b>Entrega a:</b><br/>${escapeHtml(customerName || "Cliente")}<br/>${escapeHtml(deliveryAddress)}`);
 
       // 5. Driver Marker if coordinates already available
       const initDriverLat = driverLat ?? currentGps?.lat;
@@ -435,7 +440,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
           iconSize: [0, 0],
         });
         const driverMarker = L.marker([initDriverLat, initDriverLng], { icon: driverIcon, zIndexOffset: 1000 }).addTo(map);
-        driverMarker.bindPopup(`<b>${isDriverView ? "Tu ubicación actual" : (driverName || "Repartidor en camino")}</b>`);
+        driverMarker.bindPopup(`<b>${isDriverView ? "Tu ubicación actual" : escapeHtml(driverName || "Repartidor en camino")}</b>`);
         driverMarkerRef.current = driverMarker;
       }
 
@@ -493,7 +498,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
           borderRadius: "30px",
           border: "1px solid rgba(255,255,255,0.14)",
           boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-          fontSize: "12px",
+          fontSize: "13px",
           fontWeight: "700",
           pointerEvents: "none"
         }}>
@@ -509,7 +514,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
               display: "inline-flex",
               alignItems: "center",
               gap: "4px",
-              fontSize: "10px",
+              fontSize: "13px",
               color: "#2ed573",
               background: "rgba(46, 213, 115, 0.15)",
               padding: "2px 6px",
@@ -519,7 +524,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
               <Radio size={10} className="animate-pulse" /> GPS en vivo
             </span>
           ) : (
-            <span style={{ fontSize: "10px", color: "var(--text-muted)", opacity: 0.8 }}>
+            <span style={{ fontSize: "13px", color: "var(--text-muted)", opacity: 0.8 }}>
               Ruta estimada
             </span>
           )}
@@ -586,7 +591,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          fontSize: "11px",
+          fontSize: "13px",
           color: "var(--text-secondary)"
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
@@ -616,7 +621,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
               padding: "3px 8px",
               borderRadius: "6px",
               cursor: "pointer",
-              fontSize: "10.5px",
+              fontSize: "13px",
               fontWeight: "600"
             }}
           >
@@ -639,7 +644,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
         <div style={{ display: "flex", alignItems: "center", gap: "6px", flex: "1 1 180px", overflow: "hidden" }}>
           <span style={{ fontSize: "14px" }}>{systemIconForEmoji("📍")}</span>
           <span style={{
-            fontSize: "12px",
+            fontSize: "13px",
             color: "var(--text-primary, #ffffff)",
             overflow: "hidden",
             textOverflow: "ellipsis",
@@ -665,7 +670,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
                 border: "1px solid rgba(255, 159, 67, 0.4)",
                 padding: "7px 12px",
                 borderRadius: "8px",
-                fontSize: "11px",
+                fontSize: "13px",
                 fontWeight: "700",
                 cursor: "pointer",
                 transition: "background 0.2s ease",
@@ -688,7 +693,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
               border: "none",
               padding: "7px 14px",
               borderRadius: "8px",
-              fontSize: "12px",
+              fontSize: "13px",
               fontWeight: "700",
               cursor: "pointer",
               transition: "background 0.2s ease",
@@ -712,7 +717,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
               border: "none",
               padding: "7px 14px",
               borderRadius: "8px",
-              fontSize: "12px",
+              fontSize: "13px",
               fontWeight: "800",
               cursor: "pointer",
               transition: "background 0.2s ease",

@@ -3,6 +3,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { MapPin, Navigation, Compass, Loader2, Search, X } from "lucide-react";
 import { systemTextWithIcons } from "../utils/systemIcons";
+import { escapeHtml } from "../utils/html";
 
 
 interface LocationPickerMapProps {
@@ -446,7 +447,7 @@ export const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
       // Custom User Marker Pin (Coral Badge)
       const userPinHtml = `
         <div style="position: relative; display: flex; flex-direction: column; align-items: center; cursor: grab; transform: translate(-50%, -100%);">
-          <div style="background: rgba(255, 71, 87, 0.95); color: white; padding: 3px 8px; border-radius: 12px; font-weight: 800; font-size: 10px; box-shadow: 0 4px 12px rgba(255,71,87,0.4); white-space: nowrap; margin-bottom: 2px; border: 1px solid rgba(255,255,255,0.4);">
+          <div style="background: rgba(255, 71, 87, 0.95); color: white; padding: 3px 8px; border-radius: 12px; font-weight: 800; font-size: 12px; box-shadow: 0 4px 12px rgba(255,71,87,0.4); white-space: nowrap; margin-bottom: 2px; border: 1px solid rgba(255,255,255,0.4);">
             Tu Entrega
           </div>
           <div style="width: 24px; height: 24px; background: #ff4757; border: 2.5px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(255,71,87,0.6);">
@@ -484,8 +485,8 @@ export const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
       if (showRestaurantLocation && restaurantLat && restaurantLng) {
         const restPinHtml = `
           <div style="position: relative; display: flex; flex-direction: column; align-items: center; transform: translate(-50%, -100%);">
-            <div style="background: rgba(20, 24, 33, 0.9); color: #ffd700; padding: 3px 8px; border-radius: 12px; font-weight: 800; font-size: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.4); white-space: nowrap; margin-bottom: 2px; border: 1px solid rgba(255,215,0,0.3); backdrop-filter: blur(4px);">
-              ${restaurantName}
+            <div style="background: rgba(20, 24, 33, 0.9); color: #ffd700; padding: 3px 8px; border-radius: 12px; font-weight: 800; font-size: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.4); white-space: nowrap; margin-bottom: 2px; border: 1px solid rgba(255,215,0,0.3); backdrop-filter: blur(4px);">
+              ${escapeHtml(restaurantName)}
             </div>
             <div style="width: 22px; height: 22px; background: #ff9f43; border: 2.5px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(255,159,67,0.5);">
               <div style="width: 7px; height: 7px; background: #ffffff; border-radius: 50%;"></div>
@@ -588,7 +589,7 @@ export const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
               border: "1px solid var(--border-light, rgba(255,255,255,0.12))",
               borderRadius: "20px",
               padding: "7px 36px 7px 34px",
-              fontSize: "12.5px",
+              fontSize: "13px",
               color: "#ffffff",
               outline: "none"
             }}
@@ -643,7 +644,7 @@ export const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
                     style={{
                       padding: "10px 14px",
                       cursor: "pointer",
-                      fontSize: "12px",
+                      fontSize: "13px",
                       color: "#ffffff",
                       borderBottom: i < searchResults.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none",
                       display: "flex",
@@ -665,7 +666,7 @@ export const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
                   </div>
                 ))
               ) : (
-                <div style={{ padding: "12px 14px", fontSize: "12px", color: "var(--text-muted)", textAlign: "center" }}>
+                <div style={{ padding: "12px 14px", fontSize: "13px", color: "var(--text-muted)", textAlign: "center" }}>
                   No se encontraron resultados exactos. Intenta con el nombre de la calle o mueve el pin en el mapa.
                 </div>
               )}
@@ -683,7 +684,7 @@ export const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
             border: "none",
             borderRadius: "20px",
             padding: "7px 14px",
-            fontSize: "11.5px",
+            fontSize: "13px",
             fontWeight: "800",
             cursor: "pointer",
             display: "inline-flex",
@@ -718,7 +719,7 @@ export const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
               borderRadius: "24px",
               border: "1px solid rgba(255, 71, 87, 0.4)",
               boxShadow: "0 4px 14px rgba(0,0,0,0.3)",
-              fontSize: "12px",
+              fontSize: "13px",
               fontWeight: "700",
               cursor: "pointer",
               transition: "all 0.2s ease",
@@ -744,7 +745,7 @@ export const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
         justifyContent: "space-between",
         flexWrap: "wrap",
         gap: "8px",
-        fontSize: "12px"
+        fontSize: "13px"
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: "6px", flex: "1 1 180px", overflow: "hidden" }}>
           <MapPin size={15} color="#ff4757" style={{ flexShrink: 0 }} />
@@ -760,7 +761,7 @@ export const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
             padding: "3px 10px",
             borderRadius: "16px",
             fontWeight: "800",
-            fontSize: "11px",
+            fontSize: "13px",
             display: "inline-flex",
             alignItems: "center",
             gap: "4px",

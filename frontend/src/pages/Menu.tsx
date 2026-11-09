@@ -8,7 +8,9 @@ import {
   ChefHat,
   DollarSign,
   Loader2,
-  X
+  X,
+  Eye,
+  EyeOff
 } from "lucide-react";
 
 interface Supply {
@@ -28,6 +30,8 @@ interface MenuItemVariant {
   id: number;
   name: string;
   price: number;
+  promoPrice?: number | null;
+  promoEndsAt?: string | null;
   stockLimit: number | null;
   recipeIngredients?: RecipeIngredient[];
 }
@@ -37,6 +41,7 @@ interface MenuItem {
   name: string;
   description: string | null;
   productionAreaId: number | null;
+  isActive?: boolean;
   variants: MenuItemVariant[];
 }
 
@@ -68,7 +73,7 @@ export const Menu: React.FC = () => {
   const loadMenuData = async () => {
     try {
       setLoading(true);
-      const catRes = await apiRequest("/menu/categories");
+      const catRes = await apiRequest("/menu/categories?includeHidden=true");
       setCategories(catRes.categories || []);
       if (catRes.categories && catRes.categories.length > 0 && !selectedCategoryId) {
         setSelectedCategoryId(catRes.categories[0].id);
@@ -150,14 +155,48 @@ export const Menu: React.FC = () => {
     }
   };
 
+  // Hidden dishes leave the menu and the POS, but past orders keep their detail
+  const handleToggleItemVisibility = async (itemId: number, isActive: boolean) => {
+    try {
+      await apiRequest(`/menu/items/${itemId}`, {
+        method: "PUT",
+        body: JSON.stringify({ isActive }),
+      });
+      await loadMenuData();
+    } catch (error: any) {
+      alert(error.message || "No se pudo cambiar el plato");
+    }
+  };
+
   const handleDeleteItem = async (itemId: number) => {
     if (!window.confirm("¿Está seguro de eliminar este plato?")) return;
     try {
       await apiRequest(`/menu/items/${itemId}`, { method: "DELETE" });
       await loadMenuData();
     } catch (error: any) {
-      alert(error.message || "Error al eliminar plato");
+      const message = error.message || "Error al eliminar plato";
+      if (message.includes("Ocultar") && window.confirm(`${message}\n\n¿Quieres ocultarlo ahora?`)) {
+        await handleToggleItemVisibility(itemId, false);
+        return;
+      }
+      alert(message);
     }
+  };
+
+  // A promotion counts only until its end date
+  const promoIsActive = (variant: Partial<MenuItemVariant>) =>
+    !!variant.promoPrice && !!variant.promoEndsAt && new Date(variant.promoEndsAt) > new Date() && variant.promoPrice < (variant.price || 0);
+
+  const toDateInput = (iso?: string | null) => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+
+  const openVariantEditor = (variant: MenuItemVariant, menuItemId: number) => {
+    // An expired promotion opens empty so it can be set again
+    const active = promoIsActive(variant);
+    setEditingVariant({ ...variant, menuItemId, promoPrice: active ? variant.promoPrice : null, promoEndsAt: active ? toDateInput(variant.promoEndsAt) : null });
   };
 
   // VARIANT OPERATIONS
@@ -170,7 +209,10 @@ export const Menu: React.FC = () => {
         name: editingVariant.name,
         price: parseFloat(editingVariant.price.toString()),
         stockLimit: editingVariant.stockLimit ? parseInt(editingVariant.stockLimit.toString(), 10) : null,
-        menuItemId: editingVariant.menuItemId
+        menuItemId: editingVariant.menuItemId,
+        // The promotion lasts until the end of the chosen day
+        promoPrice: editingVariant.promoPrice || null,
+        promoEndsAt: editingVariant.promoEndsAt ? new Date(`${editingVariant.promoEndsAt}T23:59:59`).toISOString() : null,
       };
 
       if (editingVariant.id) {
@@ -287,7 +329,7 @@ export const Menu: React.FC = () => {
         </button>
       </div>
 
-      <div style={{
+      <div className="menu-layout" style={{
         display: "grid",
         gridTemplateColumns: "260px 1fr",
         gap: "30px",
@@ -295,7 +337,7 @@ export const Menu: React.FC = () => {
       }}>
         {/* LEFT COLUMN: Categories list */}
         <div className="glass-card" style={{ padding: "15px", borderRadius: "var(--radius-md)" }}>
-          <h3 style={{ fontSize: "14px", color: "var(--text-muted)", padding: "10px", textTransform: "uppercase" }}>Categorías</h3>
+          <h3 style={{ fontSize: "14px", color: "var(--text-muted)", padding: "12px", textTransform: "uppercase" }}>Categorías</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
             {categories.map(cat => (
               <div
@@ -332,7 +374,7 @@ export const Menu: React.FC = () => {
         <div style={{ display: "flex", flexDirection: "column", gap: "25px" }}>
           {selectedCategory ? (
             <div className="glass-card" style={{ padding: "30px", borderRadius: "var(--radius-md)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "25px", borderBottom: "1px solid var(--border-light)", paddingBottom: "15px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px", marginBottom: "25px", borderBottom: "1px solid var(--border-light)", paddingBottom: "15px" }}>
                 <div>
                   <h2 style={{ fontSize: "22px" }}>Platos en {selectedCategory.name}</h2>
                   <p style={{ color: "var(--text-secondary)", fontSize: "13px", marginTop: "2px" }}>
@@ -366,9 +408,16 @@ export const Menu: React.FC = () => {
                         borderRadius: "var(--radius-sm)"
                       }}
                     >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "15px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "10px", marginBottom: "15px" }}>
                         <div>
-                          <h3 style={{ fontSize: "18px" }}>{item.name}</h3>
+                          <h3 style={{ fontSize: "18px", opacity: item.isActive === false ? 0.6 : 1 }}>
+                            {item.name}
+                            {item.isActive === false && (
+                              <span style={{ marginLeft: "8px", fontSize: "13px", fontWeight: 700, padding: "2px 8px", borderRadius: "12px", border: "1px solid var(--text-muted)", color: "var(--text-secondary)" }}>
+                                Oculto
+                              </span>
+                            )}
+                          </h3>
                           <p style={{ color: "var(--text-secondary)", fontSize: "13px", marginTop: "4px" }}>
                             {item.description}
                           </p>
@@ -377,7 +426,7 @@ export const Menu: React.FC = () => {
                           <button
                             onClick={() => setEditingVariant({ name: "", price: 0, menuItemId: item.id })}
                             className="secondary-btn"
-                            style={{ padding: "6px 12px", fontSize: "12px" }}
+                            style={{ padding: "6px 12px", fontSize: "13px" }}
                           >
                             + Variación
                           </button>
@@ -386,6 +435,14 @@ export const Menu: React.FC = () => {
                             style={{ color: "var(--text-muted)", cursor: "pointer", padding: "4px" }}
                           >
                             <Edit size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleToggleItemVisibility(item.id, item.isActive === false)}
+                            title={item.isActive === false ? "Mostrar en el menú" : "Ocultar del menú"}
+                            aria-label={item.isActive === false ? "Mostrar en el menú" : "Ocultar del menú"}
+                            style={{ color: "var(--text-muted)", cursor: "pointer", padding: "4px" }}
+                          >
+                            {item.isActive === false ? <Eye size={16} /> : <EyeOff size={16} />}
                           </button>
                           <button
                             onClick={() => handleDeleteItem(item.id)}
@@ -399,7 +456,7 @@ export const Menu: React.FC = () => {
                       {/* Variants list of the Item */}
                       <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
                         {item.variants.length === 0 ? (
-                          <span style={{ fontSize: "12px", color: "var(--text-muted)", fontStyle: "italic" }}>
+                          <span style={{ fontSize: "13px", color: "var(--text-muted)", fontStyle: "italic" }}>
                             Sin presentaciones de precio. Agregue una para poder vender.
                           </span>
                         ) : (
@@ -409,6 +466,7 @@ export const Menu: React.FC = () => {
                               style={{
                                 display: "flex",
                                 alignItems: "center",
+                                flexWrap: "wrap",
                                 gap: "10px",
                                 padding: "8px 12px",
                                 backgroundColor: "var(--bg-tertiary)",
@@ -418,6 +476,11 @@ export const Menu: React.FC = () => {
                               }}
                             >
                               <span>{variant.name}: <strong style={{ color: "var(--success)" }}>${variant.price.toFixed(2)}</strong></span>
+                              {promoIsActive(variant) && (
+                                <span data-testid="menu-promo" style={{ background: "#b91c1c", color: "#ffffff", borderRadius: "6px", padding: "2px 8px", fontWeight: 700 }}>
+                                  Promo ${variant.promoPrice!.toFixed(2)} hasta {new Date(variant.promoEndsAt!).toLocaleDateString("es-EC")}
+                                </span>
+                              )}
                               <div style={{ display: "flex", gap: "6px", marginLeft: "10px" }}>
                                 <button
                                   onClick={() => handleOpenRecipe(variant)}
@@ -427,7 +490,7 @@ export const Menu: React.FC = () => {
                                   <ChefHat size={14} />
                                 </button>
                                 <button
-                                  onClick={() => setEditingVariant({ ...variant, menuItemId: item.id })}
+                                  onClick={() => openVariantEditor(variant, item.id)}
                                   style={{ color: "var(--text-muted)", cursor: "pointer" }}
                                 >
                                   <Edit size={12} />
@@ -528,7 +591,7 @@ export const Menu: React.FC = () => {
                     <option key={area.id} value={area.id}>{area.name}</option>
                   ))}
                 </select>
-                <small style={{ fontSize: "11px", color: "var(--text-secondary)", marginTop: "4px" }}>
+                <small style={{ fontSize: "13px", color: "var(--text-secondary)", marginTop: "4px" }}>
                   * Los platos con área de producción pagan 12% de IVA en el POS y aparecen en la cocina KDS.
                 </small>
               </div>
@@ -574,6 +637,37 @@ export const Menu: React.FC = () => {
                   />
                 </div>
               </div>
+              <fieldset style={{ border: "1px solid var(--border-light)", borderRadius: "var(--radius-sm)", padding: "12px 14px", marginBottom: "16px" }}>
+                <legend style={{ fontSize: "14px", fontWeight: 700, padding: "0 6px" }}>Promoción (opcional)</legend>
+                <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: "0 0 10px" }}>
+                  Precio más bajo hasta la fecha que elijas. Deja ambos vacíos para quitarla.
+                </p>
+                <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                  <div className="input-group" style={{ flex: "1 1 140px", margin: 0 }}>
+                    <label htmlFor="variant-promo-price">Precio de promoción ($)</label>
+                    <input
+                      id="variant-promo-price"
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      className="input-field"
+                      value={editingVariant.promoPrice || ""}
+                      onChange={(e) => setEditingVariant({ ...editingVariant, promoPrice: e.target.value ? parseFloat(e.target.value) : null })}
+                    />
+                  </div>
+                  <div className="input-group" style={{ flex: "1 1 140px", margin: 0 }}>
+                    <label htmlFor="variant-promo-end">Hasta el día</label>
+                    <input
+                      id="variant-promo-end"
+                      type="date"
+                      className="input-field"
+                      min={toDateInput(new Date().toISOString())}
+                      value={editingVariant.promoEndsAt || ""}
+                      onChange={(e) => setEditingVariant({ ...editingVariant, promoEndsAt: e.target.value || null })}
+                    />
+                  </div>
+                </div>
+              </fieldset>
               <div className="input-group" style={{ marginBottom: "25px" }}>
                 <label>Límite Diario (Opcional, null = sin límite)</label>
                 <input
@@ -618,7 +712,7 @@ export const Menu: React.FC = () => {
               borderRadius: "var(--radius-sm)"
             }}>
               <div style={{ flex: 2 }}>
-                <label style={{ fontSize: "11px", color: "var(--text-secondary)" }}>Insumo / Ingrediente</label>
+                <label style={{ fontSize: "13px", color: "var(--text-secondary)" }}>Insumo / Ingrediente</label>
                 <select
                   value={newIngredientSupplyId}
                   onChange={(e) => setNewIngredientSupplyId(e.target.value)}
@@ -633,7 +727,7 @@ export const Menu: React.FC = () => {
               </div>
 
               <div style={{ flex: 1 }}>
-                <label style={{ fontSize: "11px", color: "var(--text-secondary)" }}>Cantidad</label>
+                <label style={{ fontSize: "13px", color: "var(--text-secondary)" }}>Cantidad</label>
                 <input
                   type="number"
                   step="0.001"
@@ -678,7 +772,7 @@ export const Menu: React.FC = () => {
                   >
                     <div>
                       <strong style={{ fontSize: "14px" }}>{ing.supply?.name}</strong>
-                      <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>ID: {ing.supplyId}</div>
+                      <div style={{ fontSize: "13px", color: "var(--text-muted)" }}>ID: {ing.supplyId}</div>
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
                       <span style={{ fontSize: "14px", fontWeight: "bold" }}>

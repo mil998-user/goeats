@@ -23,6 +23,7 @@ import { FoodPreferencesModal } from "./FoodPreferencesModal";
 import { FOOD_PREFERENCE_CATEGORIES, normalizeFoodPreferences } from "../utils/foodPreferences";
 import { Link } from "react-router-dom";
 import { systemIconForEmoji } from "../utils/systemIcons";
+import { SavedAddresses } from "./SavedAddresses";
 
 
 export const CustomerProfileView: React.FC = () => {
@@ -85,19 +86,11 @@ export const CustomerProfileView: React.FC = () => {
       }
     } catch (err: unknown) {
       console.warn("Error loading profile:", err);
-      // Fallback to local user
-      if (user) {
-        setName(user.name || "");
-        setEmail(user.email || "");
-        setPhone(user.phone || "");
-        setCedula(user.cedula || "");
-        setUsername(user.username || "");
-        setIsPlus(user.isPlus || false);
-      }
+      // The form keeps the data of the saved session. Depending on user here made the profile reload without end
     } finally {
       setLoading(false);
     }
-  }, [updateUser, user]);
+  }, [updateUser]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -285,7 +278,7 @@ export const CustomerProfileView: React.FC = () => {
                     backgroundColor: "rgba(251, 191, 36, 0.2)",
                     border: "1px solid #fbbf24",
                     color: "#fde047",
-                    fontSize: "11px",
+                    fontSize: "13px",
                     fontWeight: "700",
                     padding: "3px 10px",
                     borderRadius: "20px",
@@ -302,7 +295,7 @@ export const CustomerProfileView: React.FC = () => {
             <div style={{ color: "#94a3b8", fontSize: "13px", marginTop: "4px" }}>
               @{username || "usuario"} · Comensal
             </div>
-            <div style={{ color: "#64748b", fontSize: "12px", marginTop: "4px", display: "flex", alignItems: "center", gap: "5px" }}>
+            <div style={{ color: "#64748b", fontSize: "13px", marginTop: "4px", display: "flex", alignItems: "center", gap: "5px" }}>
               <Calendar size={13} />
               <span>Registrado el {formattedDate}</span>
             </div>
@@ -324,7 +317,7 @@ export const CustomerProfileView: React.FC = () => {
               <div style={{ color: "#fbbf24", fontWeight: "700", fontSize: "13px", display: "flex", alignItems: "center", gap: "6px" }}>
                 <Sparkles size={14} /> Envíos Gratis Ilimitados
               </div>
-              <div style={{ color: "#cbd5e1", fontSize: "11px", marginTop: "2px" }}>Membresía activa</div>
+              <div style={{ color: "#cbd5e1", fontSize: "13px", marginTop: "2px" }}>Membresía activa</div>
             </div>
           ) : (
             <Link
@@ -474,7 +467,7 @@ export const CustomerProfileView: React.FC = () => {
                     }}
                   />
                 </div>
-                <span style={{ fontSize: "11px", color: "#94a3b8", marginTop: "4px", display: "block" }}>
+                <span style={{ fontSize: "13px", color: "#94a3b8", marginTop: "4px", display: "block" }}>
                   Vinculado a tu inicio de sesión
                 </span>
               </div>
@@ -503,7 +496,7 @@ export const CustomerProfileView: React.FC = () => {
                     }}
                   />
                 </div>
-                <span style={{ fontSize: "11px", color: "#64748b", marginTop: "4px", display: "block" }}>
+                <span style={{ fontSize: "13px", color: "#64748b", marginTop: "4px", display: "block" }}>
                   El repartidor se comunicará a este número al entregar tu pedido
                 </span>
               </div>
@@ -533,7 +526,7 @@ export const CustomerProfileView: React.FC = () => {
                     }}
                   />
                 </div>
-                <span style={{ fontSize: "11px", color: "#64748b", marginTop: "4px", display: "block" }}>
+                <span style={{ fontSize: "13px", color: "#64748b", marginTop: "4px", display: "block" }}>
                   Requerido por los restaurantes para emitir tu factura electrónica
                 </span>
               </div>
@@ -564,7 +557,7 @@ export const CustomerProfileView: React.FC = () => {
               {showPasswordChange && (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 240px), 1fr))", gap: "14px", marginTop: "14px" }}>
                   <div>
-                    <label style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#334155", marginBottom: "4px" }}>
+                    <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#334155", marginBottom: "4px" }}>
                       Nueva Contraseña
                     </label>
                     <input
@@ -583,7 +576,7 @@ export const CustomerProfileView: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#334155", marginBottom: "4px" }}>
+                    <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#334155", marginBottom: "4px" }}>
                       Confirmar Nueva Contraseña
                     </label>
                     <input
@@ -644,6 +637,8 @@ export const CustomerProfileView: React.FC = () => {
             </div>
           </form>
         </div>
+
+        <SavedAddresses />
 
         {/* Card: Preferencias Gastronómicas */}
         <div
@@ -861,7 +856,7 @@ export const CustomerProfileView: React.FC = () => {
                 <h3 style={{ fontSize: "18px", fontWeight: "800", color: "#1e293b", margin: 0 }}>
                   ¿Eliminar tu cuenta definitivamente?
                 </h3>
-                <span style={{ fontSize: "12px", color: "#ef4444", fontWeight: "700" }}>Acción irreversible</span>
+                <span style={{ fontSize: "13px", color: "#ef4444", fontWeight: "700" }}>Acción irreversible</span>
               </div>
             </div>
 
@@ -870,7 +865,7 @@ export const CustomerProfileView: React.FC = () => {
             </p>
 
             <div style={{ backgroundColor: "#fef2f2", border: "1px solid #fee2e2", borderRadius: "12px", padding: "14px" }}>
-              <label style={{ display: "block", fontSize: "12px", fontWeight: "700", color: "#991b1b", marginBottom: "8px" }}>
+              <label style={{ display: "block", fontSize: "13px", fontWeight: "700", color: "#991b1b", marginBottom: "8px" }}>
                 Para confirmar, escribe la palabra <span style={{ textDecoration: "underline" }}>ELIMINAR</span> a continuación:
               </label>
               <input
@@ -898,7 +893,7 @@ export const CustomerProfileView: React.FC = () => {
             </div>
 
             {deleteError && (
-              <div style={{ fontSize: "12px", color: "#ef4444", fontWeight: "600" }}>
+              <div style={{ fontSize: "13px", color: "#ef4444", fontWeight: "600" }}>
                 {systemIconForEmoji("⚠️")} {deleteError}
               </div>
             )}

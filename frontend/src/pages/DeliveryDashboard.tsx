@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { PlatformBankInfo } from "../components/PlatformBankInfo";
 import { apiRequest } from "../utils/api";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -14,6 +15,9 @@ import {
 } from "lucide-react";
 import { RouteMap } from "../components/RouteMap";
 import { SupportModal } from "../components/SupportModal";
+import { DriverOrderActions } from "../components/DriverOrderActions";
+import { StarAverage } from "../components/Stars";
+import { RateCustomerModal } from "../components/RateCustomerModal";
 import { systemIconForEmoji, systemTextWithIcons } from "../utils/systemIcons";
 
 
@@ -33,6 +37,7 @@ interface Order {
   deliveryObservation: string | null;
   paymentMethodString?: string;
   requiresPin?: boolean;
+  pickedUpAt?: string | null;
   financialBreakdown?: {
     foodSubtotal: number;
     commissionPct: number;
@@ -40,7 +45,13 @@ interface Order {
     providerPayAmount: number;
     driverBonus: number;
     driverEarnings: number;
+    tip?: number;
     customerTotal: number;
+  };
+  dispatch?: {
+    distanceKm: number | null;
+    nearby: boolean;
+    openToAll: boolean;
   };
   restaurant: {
     id: number;
@@ -83,6 +94,9 @@ export const DeliveryDashboard: React.FC = () => {
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [maxDebtLimit, setMaxDebtLimit] = useState<number>(50);
   const [isDebtLocked, setIsDebtLocked] = useState<boolean>(false);
+  // Comes from the server, which applies the balance rule set by the administrator
+  const [canTakeOrders, setCanTakeOrders] = useState<boolean>(true);
+  const [takeBlockedMessage, setTakeBlockedMessage] = useState<string | null>(null);
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [deliveryRate, setDeliveryRate] = useState<any>(null);
 
@@ -102,6 +116,43 @@ export const DeliveryDashboard: React.FC = () => {
   const [payphoneTransactionId, setPayphoneTransactionId] = useState<string>("");
   const [showPayphoneSimulator, setShowPayphoneSimulator] = useState(false);
   const [submittingRecharge, setSubmittingRecharge] = useState(false);
+
+  // Nearest-driver dispatch and ratings
+  const [hasRecentLocation, setHasRecentLocation] = useState(true);
+  const [myRating, setMyRating] = useState<{ average: number | null; count: number } | null>(null);
+  const [rateCustomerOrderId, setRateCustomerOrderId] = useState<number | null>(null);
+
+  // Share the position every minute so nearby ready orders show up first, even without an active delivery
+  useEffect(() => {
+    if (!("geolocation" in navigator)) return;
+    let stopped = false;
+    const send = () =>
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          if (stopped) return;
+          apiRequest("/delivery/location", {
+            method: "POST",
+            body: JSON.stringify({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+          })
+            .then(() => setHasRecentLocation(true))
+            .catch(() => {});
+        },
+        () => {},
+        { enableHighAccuracy: false, maximumAge: 30000, timeout: 15000 }
+      );
+    send();
+    const timer = window.setInterval(send, 60000);
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  useEffect(() => {
+    apiRequest("/ratings/driver/me")
+      .then((res) => setMyRating({ average: res.average ?? null, count: res.count ?? 0 }))
+      .catch(() => setMyRating(null));
+  }, []);
 
   const handleBuyRecharge = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,6 +194,7 @@ export const DeliveryDashboard: React.FC = () => {
       if (availRes.success) {
         setAvailableOrders(availRes.orders || []);
         setDeliveryRate(availRes.rate);
+        setHasRecentLocation(availRes.hasRecentLocation !== false);
       }
 
       // 2. Load active deliveries
@@ -157,6 +209,8 @@ export const DeliveryDashboard: React.FC = () => {
         setWalletBalance(walletRes.walletBalance || 0);
         setMaxDebtLimit(walletRes.maxDebtLimit ?? 50);
         setIsDebtLocked(!!walletRes.isDebtLocked);
+        setCanTakeOrders(walletRes.canTakeOrders !== false);
+        setTakeBlockedMessage(walletRes.blockedMessage || null);
         setTransactions(walletRes.transactions || []);
       }
 
@@ -181,17 +235,12 @@ export const DeliveryDashboard: React.FC = () => {
   }, []);
 
   const handleTakeOrder = async (orderId: number, commission: number) => {
-    if (isDebtLocked) {
-      alert(`Tu cuenta tiene una deuda acumulada que alcanza el límite permitido (-$${maxDebtLimit.toFixed(2)}). Realiza una recarga o abono a GoEats para volver a tomar pedidos.`);
+    if (!canTakeOrders) {
+      alert(takeBlockedMessage || "No puedes tomar pedidos con tu saldo actual.");
       return;
     }
 
-    if (walletBalance < commission && walletBalance <= -maxDebtLimit) {
-      alert(`Saldo insuficiente. Tu balance actual es $${walletBalance.toFixed(2)} y supera el límite de deuda.`);
-      return;
-    }
-
-    if (!confirm("¿Deseas aceptar este pedido? Se descontará la comisión de despacho correspondiente.")) return;
+    if (!confirm(`¿Deseas aceptar este pedido? Se descontarán $${commission.toFixed(2)} de comisión.`)) return;
 
     setActionLoading(orderId);
     try {
@@ -211,7 +260,7 @@ export const DeliveryDashboard: React.FC = () => {
     let pinToSend: string | undefined = undefined;
 
     if (requiresPin) {
-      const enteredPin = prompt("INGRESE EL PIN DE 4 DÍGITOS DEL CLIENTE (PEDIDOSYA STYLE):\n(El cliente tiene este código en su pantalla de seguimiento para validar la entrega)");
+      const enteredPin = prompt("Escribe el código de entrega de 4 dígitos que te da el cliente.\n(El cliente lo ve en Mis pedidos)");
       if (enteredPin === null) return; // cancelado
       if (!enteredPin.trim()) {
         alert("Debes ingresar el PIN de 4 dígitos proporcionado por el cliente.");
@@ -230,6 +279,7 @@ export const DeliveryDashboard: React.FC = () => {
       });
       if (res.success) {
         alert("¡Entrega verificada y completada con éxito!");
+        setRateCustomerOrderId(orderId);
         loadData();
       }
     } catch (err: any) {
@@ -295,6 +345,11 @@ export const DeliveryDashboard: React.FC = () => {
           <p style={{ color: "var(--text-secondary)", fontSize: "14px" }}>
             Hola, <strong style={{ color: "var(--text-primary)" }}>{user?.name}</strong>. Gestiona tus entregas y billetera virtual.
           </p>
+          {myRating && (
+            <div data-testid="driver-rating" style={{ marginTop: "4px" }}>
+              Tu calificación: <StarAverage average={myRating.average} count={myRating.count} />
+            </div>
+          )}
         </div>
         <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
           {/* Virtual Wallet Quick Display */}
@@ -309,7 +364,7 @@ export const DeliveryDashboard: React.FC = () => {
           }}>
             <Wallet size={18} color={walletBalance > 0 ? "var(--success)" : "var(--accent-primary)"} />
             <div>
-              <div style={{ fontSize: "10px", color: "var(--text-muted)", textTransform: "uppercase" }}>Saldo Wallet</div>
+              <div style={{ fontSize: "13px", color: "var(--text-muted)", textTransform: "uppercase" }}>Saldo Wallet</div>
               <div style={{ fontSize: "16px", fontWeight: "bold", color: walletBalance > 0 ? "var(--success)" : "var(--accent-primary)" }}>
                 ${walletBalance.toFixed(2)}
               </div>
@@ -412,6 +467,11 @@ export const DeliveryDashboard: React.FC = () => {
           {/* Tab 1: Available Orders */}
           {activeTab === "available" && (
             <div>
+              {!hasRecentLocation && (
+                <p role="status" style={{ padding: "12px 14px", border: "1px solid var(--border-light)", borderRadius: "var(--radius-md)", fontSize: "14px", marginBottom: "16px" }}>
+                  Activa la ubicación del teléfono: los pedidos cercanos se ofrecen primero a los motorizados que están cerca.
+                </p>
+              )}
               {availableOrders.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-secondary)" }}>
                   <Clock size={48} style={{ color: "var(--text-muted)", marginBottom: "15px" }} />
@@ -432,14 +492,32 @@ export const DeliveryDashboard: React.FC = () => {
                     }}>
                       <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "10px", borderBottom: "1px solid var(--border-light)", paddingBottom: "15px" }}>
                         <div>
-                          <span style={{ fontSize: "12px", color: "var(--text-muted)", textTransform: "uppercase" }}>Pedido</span>
+                          <span style={{ fontSize: "13px", color: "var(--text-muted)", textTransform: "uppercase" }}>Pedido</span>
                           <h3 style={{ fontSize: "18px", color: "var(--text-primary)" }}>#{order.id} - {order.restaurant.name}</h3>
+                          {order.dispatch && (
+                            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "4px", fontSize: "13px" }}>
+                              {order.dispatch.distanceKm !== null && (
+                                <span>A {order.dispatch.distanceKm.toFixed(1)} km del local</span>
+                              )}
+                              {order.dispatch.nearby && !order.dispatch.openToAll && (
+                                <span data-testid={`nearby-${order.id}`} style={{ fontWeight: 700, color: "var(--success)" }}>Pedido cercano</span>
+                              )}
+                            </div>
+                          )}
                         </div>
                         <div style={{ textAlign: "right" }}>
-                          <span style={{ fontSize: "12px", color: "var(--text-muted)", textTransform: "uppercase" }}>Ganancia Conductor</span>
+                          <span style={{ fontSize: "13px", color: "var(--text-muted)", textTransform: "uppercase" }}>Ganancia Conductor</span>
                           <div style={{ fontSize: "20px", fontWeight: "bold", color: "var(--success)" }}>
-                            +${order.shippingCost.toFixed(2)}
+                            +${(order.financialBreakdown
+                              ? order.financialBreakdown.driverEarnings + (order.financialBreakdown.tip || 0)
+                              : order.shippingCost
+                            ).toFixed(2)}
                           </div>
+                          {(order.financialBreakdown?.tip || 0) > 0 && (
+                            <div style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
+                              Incluye propina de ${order.financialBreakdown!.tip!.toFixed(2)}
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -457,7 +535,7 @@ export const DeliveryDashboard: React.FC = () => {
                             border: "1px solid var(--border-light)",
                             padding: "7px 16px",
                             borderRadius: "20px",
-                            fontSize: "12px",
+                            fontSize: "13px",
                             fontWeight: "700",
                             cursor: "pointer",
                             transition: "all 0.2s ease"
@@ -494,31 +572,31 @@ export const DeliveryDashboard: React.FC = () => {
                         )}
 
                         <div>
-                          <h4 style={{ fontSize: "13px", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "10px" }}>Puntos de Ruta</h4>
+                          <h4 style={{ fontSize: "13px", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "12px" }}>Puntos de Ruta</h4>
                           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                             <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
                               <MapPin size={16} color="var(--accent-secondary)" style={{ marginTop: "2px", flexShrink: 0 }} />
                               <div>
-                                <strong style={{ fontSize: "12px", color: "var(--text-muted)" }}>Origen (Restaurante):</strong>
+                                <strong style={{ fontSize: "13px", color: "var(--text-muted)" }}>Origen (Restaurante):</strong>
                                 <div style={{ fontSize: "14px" }}>{order.restaurant.address || "Dirección no registrada"}</div>
                                 {order.restaurant.phone && (
-                                  <div style={{ fontSize: "12px", color: "var(--text-secondary)" }}>Tlf: {order.restaurant.phone}</div>
+                                  <div style={{ fontSize: "13px", color: "var(--text-secondary)" }}>Tlf: {order.restaurant.phone}</div>
                                 )}
                               </div>
                             </div>
                             <div style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
                               <MapPin size={16} color="var(--accent-primary)" style={{ marginTop: "2px", flexShrink: 0 }} />
                               <div>
-                                <strong style={{ fontSize: "12px", color: "var(--text-muted)" }}>Destino (Cliente):</strong>
+                                <strong style={{ fontSize: "13px", color: "var(--text-muted)" }}>Destino (Cliente):</strong>
                                 <div style={{ fontSize: "14px" }}>{order.deliveryAddress}</div>
-                                <div style={{ fontSize: "12px", color: "var(--text-secondary)" }}>{order.customerName} - {order.deliveryPhone}</div>
+                                <div style={{ fontSize: "13px", color: "var(--text-secondary)" }}>{order.customerName} - {order.deliveryPhone}</div>
                               </div>
                             </div>
                           </div>
                         </div>
 
                         <div>
-                          <h4 style={{ fontSize: "13px", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "10px" }}>Detalle del Cobro</h4>
+                          <h4 style={{ fontSize: "13px", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "12px" }}>Detalle del Cobro</h4>
                           <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: "13px", color: "var(--text-secondary)" }}>
                             <div style={{ display: "flex", justifyContent: "space-between" }}>
                               <span>Total de Productos (Ya cobrado):</span>
@@ -553,24 +631,25 @@ export const DeliveryDashboard: React.FC = () => {
                         flexWrap: "wrap",
                         gap: "10px"
                       }}>
-                        <div style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
+                        <div style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
                           {order.comments && <span><strong>Obs:</strong> {order.comments}</span>}
                         </div>
                         <button
                           onClick={() => handleTakeOrder(order.id, commissionCost)}
-                          disabled={actionLoading === order.id || walletBalance < commissionCost}
+                          disabled={actionLoading === order.id || !canTakeOrders}
+                          title={canTakeOrders ? undefined : takeBlockedMessage || undefined}
                           style={{
                             padding: "10px 24px",
                             borderRadius: "var(--radius-md)",
-                            backgroundColor: walletBalance >= commissionCost ? "var(--text-primary)" : "var(--border-light)",
-                            color: walletBalance >= commissionCost ? "var(--bg-primary)" : "var(--text-muted)",
+                            backgroundColor: canTakeOrders ? "var(--text-primary)" : "var(--border-light)",
+                            color: canTakeOrders ? "var(--bg-primary)" : "var(--text-muted)",
                             border: "none",
                             fontWeight: "bold",
-                            cursor: walletBalance >= commissionCost ? "pointer" : "not-allowed",
+                            cursor: canTakeOrders ? "pointer" : "not-allowed",
                             transition: "all var(--transition-fast)"
                           }}
                         >
-                          {actionLoading === order.id ? "Aceptando..." : walletBalance < commissionCost ? "Saldo Insuficiente en Wallet" : "Aceptar y Descontar Comisión"}
+                          {actionLoading === order.id ? "Aceptando..." : !canTakeOrders ? "Sin saldo para tomar pedidos" : "Aceptar y Descontar Comisión"}
                         </button>
                       </div>
                     </div>
@@ -604,7 +683,7 @@ export const DeliveryDashboard: React.FC = () => {
                       <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "10px", borderBottom: "1px solid var(--border-light)", paddingBottom: "15px" }}>
                         <div>
                           <span style={{
-                            fontSize: "11px",
+                            fontSize: "13px",
                             backgroundColor: "rgba(52, 152, 219, 0.1)",
                             color: "#3498db",
                             padding: "3px 8px",
@@ -655,12 +734,12 @@ export const DeliveryDashboard: React.FC = () => {
                         {/* Column 2: Details & Financials */}
                         <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
                           <div>
-                            <h4 style={{ fontSize: "13px", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "10px" }}>Direcciones de Entrega</h4>
+                            <h4 style={{ fontSize: "13px", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "12px" }}>Direcciones de Entrega</h4>
                             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                               <div style={{ display: "flex", gap: "8px" }}>
                                 <MapPin size={16} color="var(--accent-secondary)" style={{ flexShrink: 0, marginTop: "2px" }} />
                                 <div>
-                                  <strong style={{ fontSize: "12px", color: "var(--text-muted)" }}>Retiro en local:</strong>
+                                  <strong style={{ fontSize: "13px", color: "var(--text-muted)" }}>Retiro en local:</strong>
                                   <div style={{ fontSize: "14px" }}>{order.restaurant.address}</div>
                                   {order.restaurant.phone && (
                                     <a href={`tel:${order.restaurant.phone}`} style={{ fontSize: "13px", color: "var(--accent-secondary)", textDecoration: "underline", display: "inline-block", marginTop: "3px" }}>
@@ -672,7 +751,7 @@ export const DeliveryDashboard: React.FC = () => {
                               <div style={{ display: "flex", gap: "8px" }}>
                                 <MapPin size={16} color="var(--accent-primary)" style={{ flexShrink: 0, marginTop: "2px" }} />
                                 <div>
-                                  <strong style={{ fontSize: "12px", color: "var(--text-muted)" }}>Entrega final:</strong>
+                                  <strong style={{ fontSize: "13px", color: "var(--text-muted)" }}>Entrega final:</strong>
                                   <div style={{ fontSize: "14px" }}>{order.deliveryAddress}</div>
                                   <div style={{ fontSize: "14px", fontWeight: "bold" }}>{order.customerName}</div>
                                   <a href={`tel:${order.deliveryPhone}`} style={{ fontSize: "13px", color: "var(--accent-primary)", textDecoration: "underline", display: "inline-block", marginTop: "3px" }}>
@@ -684,7 +763,7 @@ export const DeliveryDashboard: React.FC = () => {
                           </div>
 
                           <div>
-                            <h4 style={{ fontSize: "13px", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "10px" }}>Productos del Pedido</h4>
+                            <h4 style={{ fontSize: "13px", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "12px" }}>Productos del Pedido</h4>
                             <div style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "13px" }}>
                               {order.items.map((it) => (
                                 <div key={it.id} style={{ display: "flex", justifyContent: "space-between" }}>
@@ -713,11 +792,11 @@ export const DeliveryDashboard: React.FC = () => {
                                     ${order.financialBreakdown.providerPayAmount.toFixed(2)}
                                   </span>
                                 </div>
-                                <p style={{ fontSize: "11px", color: "#8ab4f8", margin: 0, lineHeight: 1.3 }}>
+                                <p style={{ fontSize: "13px", color: "#8ab4f8", margin: 0, lineHeight: 1.3 }}>
                                   El valor original es ${order.financialBreakdown.foodSubtotal.toFixed(2)} pero se le resta ${order.financialBreakdown.appCommissionFromProvider.toFixed(2)} por comisión ({order.financialBreakdown.commissionPct}%) aceptada por el proveedor.
                                 </p>
 
-                                <div style={{ fontSize: "11px", color: "#e8eaed", marginTop: "4px" }}>
+                                <div style={{ fontSize: "13px", color: "#e8eaed", marginTop: "4px" }}>
                                   {systemIconForEmoji("🎁")} GoEats le pagará <strong>${order.financialBreakdown.driverBonus.toFixed(2)} extras</strong> por este pedido. Recuerde siempre cobrar al cliente lo que marca.
                                 </div>
 
@@ -734,6 +813,12 @@ export const DeliveryDashboard: React.FC = () => {
                                   <span>El total que ganará por esta orden:</span>
                                   <span style={{ color: "var(--success)" }}>${order.financialBreakdown.driverEarnings.toFixed(2)}</span>
                                 </div>
+                                {(order.financialBreakdown.tip || 0) > 0 && (
+                                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", color: "var(--text-primary)" }}>
+                                    <span>Propina del cliente (es toda tuya):</span>
+                                    <span style={{ color: "var(--success)" }}>+${order.financialBreakdown.tip!.toFixed(2)}</span>
+                                  </div>
+                                )}
 
                                 <div style={{
                                   backgroundColor: "rgba(46, 204, 113, 0.1)",
@@ -746,7 +831,7 @@ export const DeliveryDashboard: React.FC = () => {
                                 }}>
                                   <span style={{ fontSize: "14px", fontWeight: "bold", color: "var(--success)" }}>{systemIconForEmoji("🧾")} Cobrar cliente:</span>
                                   <span style={{ fontSize: "17px", fontWeight: "bold", color: "var(--success)" }}>
-                                    ${order.financialBreakdown.customerTotal.toFixed(2)}
+                                    ${(order.financialBreakdown.customerTotal + (order.paymentMethodString === "CASH" ? order.financialBreakdown.tip || 0 : 0)).toFixed(2)}
                                   </span>
                                 </div>
                               </div>
@@ -759,7 +844,7 @@ export const DeliveryDashboard: React.FC = () => {
                                 backgroundColor: "rgba(241, 196, 15, 0.05)",
                                 border: "1px solid rgba(241, 196, 15, 0.2)",
                                 borderRadius: "var(--radius-sm)",
-                                fontSize: "12px",
+                                fontSize: "13px",
                                 color: "var(--text-primary)"
                               }}>
                                 <strong>Observación guardada:</strong> {order.deliveryObservation}
@@ -835,7 +920,7 @@ export const DeliveryDashboard: React.FC = () => {
                                   padding: "6px 12px",
                                   color: "#dc2626",
                                   cursor: "pointer",
-                                  fontSize: "12px",
+                                  fontSize: "13px",
                                   fontWeight: "600",
                                   display: "flex",
                                   alignItems: "center",
@@ -847,27 +932,20 @@ export const DeliveryDashboard: React.FC = () => {
                                 Incidencia en Ruta
                               </button>
                             </div>
-                            <button
-                              onClick={() => handleCompleteOrder(order.id, order.requiresPin)}
-                              disabled={actionLoading === order.id}
-                              style={{
-                                backgroundColor: "var(--success)",
-                                color: "white",
-                                border: "none",
-                                padding: "12px 24px",
-                                borderRadius: "var(--radius-md)",
-                                fontWeight: "bold",
-                                cursor: "pointer",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "6px",
-                                transition: "all var(--transition-fast)"
-                              }}
-                            >
-                              <CheckCircle size={16} />
-                              {order.requiresPin ? systemTextWithIcons("🔒 Completar con PIN del Cliente") : "Completar y Entregar Pedido"}
-                            </button>
                           </div>
+                        )}
+                        {!showObsInput[order.id] && (
+                          <DriverOrderActions
+                            orderId={order.id}
+                            pickedUpAt={order.pickedUpAt}
+                            requiresPin={order.requiresPin}
+                            busy={actionLoading === order.id}
+                            onComplete={() => handleCompleteOrder(order.id, order.requiresPin)}
+                            onChanged={(message) => {
+                              alert(message);
+                              loadData();
+                            }}
+                          />
                         )}
                       </div>
                     </div>
@@ -905,7 +983,7 @@ export const DeliveryDashboard: React.FC = () => {
                   display: "inline-block",
                   padding: "4px 12px",
                   borderRadius: "20px",
-                  fontSize: "12px",
+                  fontSize: "13px",
                   fontWeight: "bold",
                   backgroundColor: isDebtLocked ? "rgba(231, 76, 60, 0.15)" : "rgba(46, 204, 113, 0.15)",
                   color: isDebtLocked ? "#e74c3c" : "#2ecc71",
@@ -919,7 +997,7 @@ export const DeliveryDashboard: React.FC = () => {
                   backgroundColor: isDebtLocked ? "rgba(255, 71, 87, 0.08)" : "rgba(52, 152, 219, 0.06)",
                   border: isDebtLocked ? "1px solid rgba(255, 71, 87, 0.3)" : "1px solid rgba(52, 152, 219, 0.2)",
                   borderRadius: "var(--radius-md)",
-                  fontSize: "12px",
+                  fontSize: "13px",
                   color: "var(--text-secondary)",
                   display: "flex",
                   gap: "10px",
@@ -936,7 +1014,7 @@ export const DeliveryDashboard: React.FC = () => {
                   </div>
                 </div>
 
-                <div style={{ marginTop: "20px", fontSize: "12px", color: "var(--text-muted)" }}>
+                <div style={{ marginTop: "20px", fontSize: "13px", color: "var(--text-muted)" }}>
                   Los pedidos pagados en línea (tarjeta) acreditan saldo a tu favor y descuentan automáticamente tu deuda.
                 </div>
               </div>
@@ -968,7 +1046,7 @@ export const DeliveryDashboard: React.FC = () => {
                       }}>
                         <div>
                           <div style={{ fontSize: "14px", fontWeight: "bold" }}>{tx.description}</div>
-                          <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                          <div style={{ fontSize: "13px", color: "var(--text-muted)" }}>
                             {new Date(tx.createdAt).toLocaleString("es-EC")} - Tipo: {tx.type}
                           </div>
                         </div>
@@ -1017,7 +1095,7 @@ export const DeliveryDashboard: React.FC = () => {
                       <div style={{ fontSize: "28px", fontWeight: "800", color: "var(--success)" }}>
                         ${card.amount.toFixed(2)}
                       </div>
-                      <p style={{ fontSize: "12px", color: "var(--text-secondary)", margin: 0 }}>{card.description}</p>
+                      <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: 0 }}>{card.description}</p>
                     </div>
                   ))}
                 </div>
@@ -1029,13 +1107,13 @@ export const DeliveryDashboard: React.FC = () => {
                 {selectedCard ? (
                   <form onSubmit={handleBuyRecharge}>
                     <div style={{ marginBottom: "15px", padding: "10px", backgroundColor: "var(--bg-primary)", borderRadius: "var(--radius-sm)", border: "1px solid var(--border-light)" }}>
-                      <div style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase" }}>PLAN SELECCIONADO:</div>
+                      <div style={{ fontSize: "13px", color: "var(--text-muted)", textTransform: "uppercase" }}>PLAN SELECCIONADO:</div>
                       <div style={{ fontWeight: "bold", fontSize: "14px" }}>{selectedCard.name}</div>
                       <div style={{ fontSize: "18px", fontWeight: "bold", color: "var(--success)" }}>${selectedCard.amount.toFixed(2)}</div>
                     </div>
 
                     <div className="input-group">
-                      <label style={{ fontSize: "12px", fontWeight: "600", marginBottom: "8px", display: "block" }}>Método de Pago</label>
+                      <label style={{ fontSize: "13px", fontWeight: "600", marginBottom: "8px", display: "block" }}>Método de Pago</label>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "15px" }}>
                         <button
                           type="button"
@@ -1081,7 +1159,7 @@ export const DeliveryDashboard: React.FC = () => {
                             <CheckCircle size={16} />
                             <div>
                               <div style={{ fontWeight: "bold" }}>Pago Exitoso</div>
-                              <div style={{ fontSize: "11px" }}>Transacción: {payphoneTransactionId}</div>
+                              <div style={{ fontSize: "13px" }}>Transacción: {payphoneTransactionId}</div>
                             </div>
                           </div>
                         ) : (
@@ -1100,23 +1178,10 @@ export const DeliveryDashboard: React.FC = () => {
                     {/* Transfer flow */}
                     {rechargeMethod === "TRANSFER" && (
                       <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "20px" }}>
-                        <div style={{
-                          fontSize: "11px",
-                          backgroundColor: "var(--bg-primary)",
-                          padding: "10px",
-                          borderRadius: "var(--radius-sm)",
-                          border: "1px solid var(--border-light)",
-                          lineHeight: "1.4"
-                        }}>
-                          <strong>Cuentas de la Plataforma GoEats:</strong>
-                          <div>Banco Pichincha - Cta Ahorros</div>
-                          <div>Número: 2201938482</div>
-                          <div>Titular: GoEats SaaS Inc.</div>
-                          <div>RUC: 1792839485001</div>
-                        </div>
+                        <PlatformBankInfo />
 
                         <div className="input-group" style={{ marginBottom: 0 }}>
-                          <label style={{ fontSize: "11px", fontWeight: "600" }}>Subir Foto del Comprobante</label>
+                          <label style={{ fontSize: "13px", fontWeight: "600" }}>Subir Foto del Comprobante</label>
                           <input
                             type="file"
                             accept="image/*"
@@ -1164,8 +1229,8 @@ export const DeliveryDashboard: React.FC = () => {
           <div className="global-modal-card" style={{ maxWidth: "380px", padding: "25px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px", borderBottom: "1px solid var(--border-light)", paddingBottom: "10px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#ff5a00", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: "bold" }}>P</div>
-                <h3 style={{ fontSize: "1.1rem", fontWeight: "bold", margin: 0, color: "#ff5a00" }}>Pasarela Payphone</h3>
+                <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#ff5a00", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", fontWeight: "bold" }}>P</div>
+                <h3 style={{ fontSize: "1.1rem", fontWeight: "bold", margin: 0, color: "#ff5a00" }}>Payphone: demostración, sin cobro real</h3>
               </div>
               <button
                 type="button"
@@ -1182,17 +1247,17 @@ export const DeliveryDashboard: React.FC = () => {
               </div>
 
               <div className="input-group">
-                <label style={{ fontSize: "11px" }}>Número de Tarjeta</label>
+                <label style={{ fontSize: "13px" }}>Número de Tarjeta</label>
                 <input type="text" className="input-field" placeholder="4111 1111 1111 1111" defaultValue="4111 1111 1111 1111" />
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                 <div className="input-group">
-                  <label style={{ fontSize: "11px" }}>Fecha Vencimiento</label>
+                  <label style={{ fontSize: "13px" }}>Fecha Vencimiento</label>
                   <input type="text" className="input-field" placeholder="12/28" defaultValue="12/28" />
                 </div>
                 <div className="input-group">
-                  <label style={{ fontSize: "11px" }}>CVV</label>
+                  <label style={{ fontSize: "13px" }}>CVV</label>
                   <input type="password" className="input-field" placeholder="123" defaultValue="123" />
                 </div>
               </div>
@@ -1215,6 +1280,10 @@ export const DeliveryDashboard: React.FC = () => {
       )}
 
       {/* Support & Help Center Modal */}
+      {rateCustomerOrderId !== null && (
+        <RateCustomerModal orderId={rateCustomerOrderId} onClose={() => setRateCustomerOrderId(null)} />
+      )}
+
       <SupportModal
         isOpen={isSupportOpen}
         onClose={() => {

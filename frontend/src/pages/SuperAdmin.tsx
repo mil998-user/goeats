@@ -1,4 +1,7 @@
 import React, { useEffect, useState } from "react";
+import { DeliveryIncidentsPanel } from "../components/DeliveryIncidentsPanel";
+import { UnassignedDeliveries } from "../components/UnassignedDeliveries";
+import { StarAverage } from "../components/Stars";
 import { apiRequest } from "../utils/api";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -105,8 +108,11 @@ export const SuperAdmin: React.FC = () => {
   const [ratePricePerKm, setRatePricePerKm] = useState("0.50");
   const [rateCostPerOrder, setRateCostPerOrder] = useState("0.50");
   const [rateIsActive, setRateIsActive] = useState(true);
+  const [rateBalanceRule, setRateBalanceRule] = useState<"PREPAID" | "DEBT_LIMIT">("PREPAID");
   const [savingRate, setSavingRate] = useState(false);
   const [ratePlusDriverBonus, setRatePlusDriverBonus] = useState("0.50");
+  const [rateRadiusKm, setRateRadiusKm] = useState("5");
+  const [rateWaitMin, setRateWaitMin] = useState("3");
 
   // SaaS States
   const [saasCustomers, setSaasCustomers] = useState<any[]>([]);
@@ -536,7 +542,10 @@ export const SuperAdmin: React.FC = () => {
           pricePerKm: parseFloat(ratePricePerKm),
           costPerOrder: parseFloat(rateCostPerOrder),
           plusDriverBonus: parseFloat(ratePlusDriverBonus),
-          isActive: rateIsActive
+          dispatchRadiusKm: parseFloat(rateRadiusKm),
+          dispatchWaitMin: parseInt(rateWaitMin, 10),
+          isActive: rateIsActive,
+          balanceRule: rateBalanceRule
         })
       });
       if (res.success) {
@@ -548,6 +557,7 @@ export const SuperAdmin: React.FC = () => {
         setRateCostPerOrder("0.50");
         setRatePlusDriverBonus("0.50");
         setRateIsActive(true);
+        setRateBalanceRule("PREPAID"); setRateRadiusKm("5"); setRateWaitMin("3");
         loadRates();
       }
     } catch (err: any) {
@@ -564,7 +574,10 @@ export const SuperAdmin: React.FC = () => {
     setRatePricePerKm(rate.pricePerKm.toString());
     setRateCostPerOrder(rate.costPerOrder.toString());
     setRatePlusDriverBonus((rate.plusDriverBonus ?? 0.50).toString());
+    setRateRadiusKm(String(rate.dispatchRadiusKm ?? 5));
+    setRateWaitMin(String(rate.dispatchWaitMin ?? 3));
     setRateIsActive(rate.isActive);
+    setRateBalanceRule(rate.balanceRule === "DEBT_LIMIT" ? "DEBT_LIMIT" : "PREPAID");
   };
 
   const loadRestaurants = async () => {
@@ -774,12 +787,14 @@ export const SuperAdmin: React.FC = () => {
       color: "var(--text-primary)",
       fontFamily: "var(--font-body)",
       padding: "30px"
-    }}>
+    }} className="superadmin-page">
       {/* Header section */}
       <header style={{
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
+        flexWrap: "wrap",
+        gap: "16px",
         marginBottom: "40px",
         paddingBottom: "20px",
         borderBottom: "1px solid var(--border-light)"
@@ -802,12 +817,16 @@ export const SuperAdmin: React.FC = () => {
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: "10px" }}>
-          <button
+        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          {import.meta.env.DEV && <button
             onClick={async () => {
-              if (window.confirm("ATENCIÓN: Esto vaciará por completo todas las órdenes, ventas, facturas, transacciones y turnos de caja del sistema. Las configuraciones de restaurantes, mesas y usuarios base se mantendrán. ¿Desea continuar?")) {
+              const confirmation = window.prompt("ATENCIÓN: Esto vaciará por completo todas las órdenes, ventas, facturas, transacciones y turnos de caja del sistema. Las configuraciones de restaurantes, mesas y usuarios base se mantendrán. Para continuar escribe VACIAR.");
+              if (confirmation === "VACIAR") {
                 try {
-                  const res = await apiRequest("/auth/reset-database", { method: "POST" });
+                  const res = await apiRequest("/auth/reset-database", {
+                    method: "POST",
+                    body: JSON.stringify({ confirm: confirmation }),
+                  });
                   alert(res.message || "Sistema vaciado exitosamente.");
                   window.location.reload();
                 } catch (err: any) {
@@ -822,7 +841,7 @@ export const SuperAdmin: React.FC = () => {
               padding: "8px 16px",
               backgroundColor: "rgba(255, 71, 87, 0.1)",
               border: "1px solid rgba(255, 71, 87, 0.2)",
-              color: "var(--accent-primary)",
+              color: "#b91c1c",
               borderRadius: "var(--radius-md)",
               cursor: "pointer",
               fontWeight: 600,
@@ -830,7 +849,7 @@ export const SuperAdmin: React.FC = () => {
             }}
           >
             {systemIconForEmoji("🔥")} Vaciar Sistema (Reset)
-          </button>
+          </button>}
 
           <button
             onClick={logout}
@@ -1025,11 +1044,12 @@ export const SuperAdmin: React.FC = () => {
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
+              flexWrap: "wrap",
               gap: "20px",
               marginBottom: "25px"
             }}>
               {/* Search Bar */}
-              <div style={{ position: "relative", flex: 1, maxWidth: "400px" }}>
+              <div style={{ position: "relative", flex: "1 1 260px", maxWidth: "400px" }}>
                 <Search size={18} style={{
                   position: "absolute",
                   left: "14px",
@@ -1087,7 +1107,7 @@ export const SuperAdmin: React.FC = () => {
               </div>
             ) : (
               <div className="glass-card" style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "900px" }}>
+                <table className="mobile-cards" style={{ width: "100%", borderCollapse: "collapse", minWidth: "900px" }}>
                   <thead>
                     <tr style={{ borderBottom: "1px solid var(--border-light)" }}>
                       <th style={{ padding: "16px 20px", textAlign: "left", fontSize: "13px", color: "var(--text-muted)" }}>RESTAURANTE</th>
@@ -1137,7 +1157,7 @@ export const SuperAdmin: React.FC = () => {
                               )}
                               <div>
                                 <div style={{ fontWeight: 600, fontSize: "15px" }}>{restaurant.name}</div>
-                                <div style={{ fontSize: "11px", color: "var(--text-muted)", display: "flex", gap: "10px", marginTop: "2px" }}>
+                                <div style={{ fontSize: "13px", color: "var(--text-muted)", display: "flex", gap: "12px", marginTop: "2px" }}>
                                   <span>ID: {restaurant.id}</span>
                                   {restaurant.address && <span>{restaurant.address}</span>}
                                 </div>
@@ -1169,29 +1189,29 @@ export const SuperAdmin: React.FC = () => {
                             {ownerUser ? (
                               <div>
                                 <div style={{ fontSize: "13px", fontWeight: 600 }}>{ownerUser.name}</div>
-                                <div style={{ fontSize: "11px", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "6px", marginTop: "2px" }}>
+                                <div style={{ fontSize: "13px", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "6px", marginTop: "2px" }}>
                                   <span>@{ownerUser.username}</span>
                                   {ownerUser.isActive ? (
-                                    <span style={{ color: "var(--success)", fontWeight: 600, fontSize: "10px" }}>● Activo</span>
+                                    <span style={{ color: "var(--success)", fontWeight: 600, fontSize: "13px" }}>● Activo</span>
                                   ) : (
-                                    <span style={{ color: "#f59e0b", fontWeight: 600, fontSize: "10px" }}>● Inactivo</span>
+                                    <span style={{ color: "#f59e0b", fontWeight: 600, fontSize: "13px" }}>● Inactivo</span>
                                   )}
                                 </div>
                                 {ownerUser.email && (
-                                  <div style={{ fontSize: "11px", color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: "4px", marginTop: "3px" }}>
+                                  <div style={{ fontSize: "13px", color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: "4px", marginTop: "3px" }}>
                                     <Mail size={12} color="var(--text-muted)" />
                                     <a href={`mailto:${ownerUser.email}`} style={{ color: "var(--text-secondary)", textDecoration: "none" }}>{ownerUser.email}</a>
                                   </div>
                                 )}
                                 {(ownerUser.phone || restaurant.phone) && (
-                                  <div style={{ fontSize: "11px", color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: "4px", marginTop: "2px" }}>
+                                  <div style={{ fontSize: "13px", color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: "4px", marginTop: "2px" }}>
                                     <Phone size={12} color="var(--text-muted)" />
                                     <span>{ownerUser.phone || restaurant.phone}</span>
                                   </div>
                                 )}
                               </div>
                             ) : (
-                              <div style={{ fontSize: "12px", color: "var(--accent-primary)" }}>Sin dueño asignado</div>
+                              <div style={{ fontSize: "13px", color: "var(--accent-primary)" }}>Sin dueño asignado</div>
                             )}
                           </td>
 
@@ -1215,7 +1235,7 @@ export const SuperAdmin: React.FC = () => {
                                 borderRadius: "12px",
                                 backgroundColor: "rgba(245, 158, 11, 0.15)",
                                 color: "#d97706",
-                                fontSize: "11px",
+                                fontSize: "13px",
                                 fontWeight: 700
                               }}>
                                 <Clock size={12} />
@@ -1230,7 +1250,7 @@ export const SuperAdmin: React.FC = () => {
                                 borderRadius: "12px",
                                 backgroundColor: "rgba(59, 130, 246, 0.15)",
                                 color: "#2563eb",
-                                fontSize: "11px",
+                                fontSize: "13px",
                                 fontWeight: 700
                               }}>
                                 <Search size={12} />
@@ -1245,7 +1265,7 @@ export const SuperAdmin: React.FC = () => {
                                 borderRadius: "12px",
                                 backgroundColor: "rgba(239, 68, 68, 0.15)",
                                 color: "#dc2626",
-                                fontSize: "11px",
+                                fontSize: "13px",
                                 fontWeight: 700
                               }}>
                                 <XCircle size={12} />
@@ -1260,7 +1280,7 @@ export const SuperAdmin: React.FC = () => {
                                 borderRadius: "12px",
                                 backgroundColor: "rgba(46, 213, 115, 0.15)",
                                 color: "var(--success)",
-                                fontSize: "11px",
+                                fontSize: "13px",
                                 fontWeight: 700
                               }}>
                                 <CheckCircle size={12} />
@@ -1275,7 +1295,7 @@ export const SuperAdmin: React.FC = () => {
                                 borderRadius: "12px",
                                 backgroundColor: "rgba(255, 71, 87, 0.15)",
                                 color: "var(--accent-primary)",
-                                fontSize: "11px",
+                                fontSize: "13px",
                                 fontWeight: 700
                               }}>
                                 <XCircle size={12} />
@@ -1294,7 +1314,7 @@ export const SuperAdmin: React.FC = () => {
                                     style={{
                                       padding: "7px 14px",
                                       borderRadius: "var(--radius-sm)",
-                                      fontSize: "12px",
+                                      fontSize: "13px",
                                       fontWeight: 700,
                                       cursor: "pointer",
                                       display: "inline-flex",
@@ -1317,7 +1337,7 @@ export const SuperAdmin: React.FC = () => {
                                       style={{
                                         padding: "7px 12px",
                                         borderRadius: "var(--radius-sm)",
-                                        fontSize: "12px",
+                                        fontSize: "13px",
                                         fontWeight: 600,
                                         cursor: "pointer",
                                         display: "inline-flex",
@@ -1343,7 +1363,7 @@ export const SuperAdmin: React.FC = () => {
                                     style={{
                                       padding: "7px 12px",
                                       borderRadius: "var(--radius-sm)",
-                                      fontSize: "12px",
+                                      fontSize: "13px",
                                       fontWeight: 600,
                                       cursor: "pointer",
                                       display: "inline-flex",
@@ -1367,7 +1387,7 @@ export const SuperAdmin: React.FC = () => {
                                     style={{
                                       padding: "6px 12px",
                                       borderRadius: "var(--radius-sm)",
-                                      fontSize: "12px",
+                                      fontSize: "13px",
                                       fontWeight: 600,
                                       cursor: "pointer",
                                       transition: "all var(--transition-fast)",
@@ -1388,7 +1408,7 @@ export const SuperAdmin: React.FC = () => {
                                       style={{
                                         padding: "6px 10px",
                                         borderRadius: "var(--radius-sm)",
-                                        fontSize: "12px",
+                                        fontSize: "13px",
                                         fontWeight: 600,
                                         cursor: "pointer",
                                         backgroundColor: "rgba(239, 68, 68, 0.08)",
@@ -1497,14 +1517,14 @@ export const SuperAdmin: React.FC = () => {
                           setEditingSubcategoryName("");
                         }}
                         className="secondary-btn"
-                        style={{ flex: 1, padding: "8px", fontSize: "12px" }}
+                        style={{ flex: 1, padding: "8px", fontSize: "13px" }}
                       >
                         Cancelar
                       </button>
                       <button
                         type="submit"
                         className="glow-btn"
-                        style={{ flex: 1, padding: "8px", fontSize: "12px" }}
+                        style={{ flex: 1, padding: "8px", fontSize: "13px" }}
                       >
                         Actualizar
                       </button>
@@ -1522,7 +1542,7 @@ export const SuperAdmin: React.FC = () => {
                   type="button"
                   onClick={loadCategories}
                   className="secondary-btn"
-                  style={{ padding: "6px 12px", fontSize: "12px" }}
+                  style={{ padding: "6px 12px", fontSize: "13px" }}
                 >
                   Actualizar Lista
                 </button>
@@ -1556,7 +1576,7 @@ export const SuperAdmin: React.FC = () => {
                             {cat.name}
                           </div>
                           {cat.description && (
-                            <p style={{ fontSize: "12px", color: "var(--text-secondary)", margin: "4px 0 0 0" }}>
+                            <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: "4px 0 0 0" }}>
                               {cat.description}
                             </p>
                           )}
@@ -1591,13 +1611,13 @@ export const SuperAdmin: React.FC = () => {
 
                       {/* Subcategories Subsection */}
                       <div style={{ borderTop: "1px solid var(--border-light)", paddingTop: "12px", marginTop: "10px" }}>
-                        <div style={{ fontSize: "12px", fontWeight: "bold", color: "var(--text-muted)", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                        <div style={{ fontSize: "13px", fontWeight: "bold", color: "var(--text-muted)", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
                           Subcategorías
                         </div>
 
                         {/* Subcategories List */}
                         {(!cat.subcategories || cat.subcategories.length === 0) ? (
-                          <div style={{ fontSize: "12px", color: "var(--text-muted)", fontStyle: "italic", marginBottom: "12px" }}>
+                          <div style={{ fontSize: "13px", color: "var(--text-muted)", fontStyle: "italic", marginBottom: "12px" }}>
                             Sin subcategorías creadas.
                           </div>
                         ) : (
@@ -1613,7 +1633,7 @@ export const SuperAdmin: React.FC = () => {
                                   border: "1px solid var(--border-light)",
                                   padding: "4px 10px",
                                   borderRadius: "20px",
-                                  fontSize: "12px"
+                                  fontSize: "13px"
                                 }}
                               >
                                 <span>{sub.name}</span>
@@ -1649,13 +1669,13 @@ export const SuperAdmin: React.FC = () => {
                             value={newSubcategoryNames[cat.id] || ""}
                             onChange={(e) => setNewSubcategoryNames(prev => ({ ...prev, [cat.id]: e.target.value }))}
                             className="input-field"
-                            style={{ padding: "6px 10px", fontSize: "12px" }}
+                            style={{ padding: "6px 10px", fontSize: "13px" }}
                           />
                           <button
                             type="button"
                             onClick={() => handleCreateSubcategory(cat.id)}
                             className="glow-btn"
-                            style={{ padding: "6px 12px", fontSize: "12px", flexShrink: 0 }}
+                            style={{ padding: "6px 12px", fontSize: "13px", flexShrink: 0 }}
                           >
                             + Agregar
                           </button>
@@ -1674,6 +1694,7 @@ export const SuperAdmin: React.FC = () => {
         {/* ======================================= */}
         {/* TAB 2: DELIVERY RATES CONFIGURATION    */}
         {/* ======================================= */}
+        {activeTab === "delivery" && <UnassignedDeliveries />}
         {activeTab === "delivery" && (
           <div className="mobile-column-stack" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "30px", alignItems: "start" }}>
             {/* Rates list */}
@@ -1689,9 +1710,10 @@ export const SuperAdmin: React.FC = () => {
                     setRatePricePerKm("0.50");
                     setRateCostPerOrder("0.50");
                     setRateIsActive(true);
+                  setRateBalanceRule("PREPAID"); setRateRadiusKm("5"); setRateWaitMin("3");
                   }}
                   className="secondary-btn"
-                  style={{ padding: "6px 12px", fontSize: "12px" }}
+                  style={{ padding: "6px 12px", fontSize: "13px" }}
                 >
                   Crear Nueva
                 </button>
@@ -1719,7 +1741,7 @@ export const SuperAdmin: React.FC = () => {
                           {r.name}
                           {r.isActive && (
                             <span style={{
-                              fontSize: "10px",
+                              fontSize: "13px",
                               backgroundColor: "rgba(46, 213, 115, 0.1)",
                               color: "var(--success)",
                               padding: "2px 6px",
@@ -1730,15 +1752,15 @@ export const SuperAdmin: React.FC = () => {
                             </span>
                           )}
                         </div>
-                        <div style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "4px" }}>
-                          Base: ${r.basePrice.toFixed(2)} • Km: ${r.pricePerKm.toFixed(2)} • Comisión: ${r.costPerOrder.toFixed(2)} • Bono Plus: ${r.plusDriverBonus?.toFixed(2) || "0.00"}
+                        <div style={{ fontSize: "13px", color: "var(--text-secondary)", marginTop: "4px" }}>
+                          Base: ${r.basePrice.toFixed(2)} • Km: ${r.pricePerKm.toFixed(2)} • Comisión: ${r.costPerOrder.toFixed(2)} • Bono Plus: ${r.plusDriverBonus?.toFixed(2) || "0.00"} • {r.balanceRule === "DEBT_LIMIT" ? "Saldo: con límite de deuda" : "Saldo: con recarga"} • Radio: {r.dispatchRadiusKm ?? 5} km • Espera: {r.dispatchWaitMin ?? 3} min
                         </div>
                       </div>
                       <button
                         type="button"
                         onClick={() => handleEditRate(r)}
                         className="secondary-btn"
-                        style={{ padding: "6px 12px", fontSize: "12px" }}
+                        style={{ padding: "6px 12px", fontSize: "13px" }}
                       >
                         Editar
                       </button>
@@ -1804,7 +1826,7 @@ export const SuperAdmin: React.FC = () => {
                     onChange={(e) => setRateCostPerOrder(e.target.value)}
                     className="input-field"
                   />
-                  <small style={{ color: "var(--text-muted)", fontSize: "11px", marginTop: "2px", display: "block" }}>
+                  <small style={{ color: "var(--text-muted)", fontSize: "13px", marginTop: "2px", display: "block" }}>
                     Esta cantidad se descontará de la billetera del motorizado por cada pedido que acepte.
                   </small>
                 </div>
@@ -1820,8 +1842,60 @@ export const SuperAdmin: React.FC = () => {
                     onChange={(e) => setRatePlusDriverBonus(e.target.value)}
                     className="input-field"
                   />
-                  <small style={{ color: "var(--text-muted)", fontSize: "11px", marginTop: "2px", display: "block" }}>
+                  <small style={{ color: "var(--text-muted)", fontSize: "13px", marginTop: "2px", display: "block" }}>
                     Esta cantidad se le pagará al conductor por cada pedido entregado a un usuario GoEats Plus.
+                  </small>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "12px" }}>
+                  <div className="input-group">
+                    <label htmlFor="rateRadiusKm">Radio de motorizados cercanos (km)</label>
+                    <input
+                      id="rateRadiusKm"
+                      type="number"
+                      step="0.5"
+                      min="0.5"
+                      max="50"
+                      required
+                      value={rateRadiusKm}
+                      onChange={(e) => setRateRadiusKm(e.target.value)}
+                      className="input-field"
+                    />
+                  </div>
+                  <div className="input-group">
+                    <label htmlFor="rateWaitMin">Espera antes de ofrecer a todos (min)</label>
+                    <input
+                      id="rateWaitMin"
+                      type="number"
+                      step="1"
+                      min="0"
+                      max="30"
+                      required
+                      value={rateWaitMin}
+                      onChange={(e) => setRateWaitMin(e.target.value)}
+                      className="input-field"
+                    />
+                  </div>
+                </div>
+                <small style={{ color: "var(--text-muted)", fontSize: "13px", margin: "-6px 0 14px", display: "block" }}>
+                  Un pedido listo se ofrece primero a los motorizados dentro del radio. Pasada la espera lo ven todos y, si sigue sin motorizado, llega una alerta a este panel.
+                </small>
+
+                <div className="input-group">
+                  <label htmlFor="rateBalanceRule">Regla de saldo del motorizado</label>
+                  <select
+                    id="rateBalanceRule"
+                    value={rateBalanceRule}
+                    onChange={(e) => setRateBalanceRule(e.target.value === "DEBT_LIMIT" ? "DEBT_LIMIT" : "PREPAID")}
+                    className="input-field"
+                  >
+                    <option value="PREPAID">Con recarga: necesita saldo para tomar pedidos</option>
+                    <option value="DEBT_LIMIT">Con límite de deuda: puede quedar en negativo hasta su límite</option>
+                  </select>
+                  <small style={{ color: "var(--text-muted)", fontSize: "13px", marginTop: "2px", display: "block" }}>
+                    {rateBalanceRule === "DEBT_LIMIT"
+                      ? "El límite de cada motorizado es $50 si no se cambia. Al llegar al límite no puede tomar más pedidos hasta abonar."
+                      : "Si su saldo es menor que la comisión, no puede tomar pedidos hasta recargar."}
                   </small>
                 </div>
 
@@ -1850,6 +1924,7 @@ export const SuperAdmin: React.FC = () => {
                         setRateCostPerOrder("0.50");
                         setRatePlusDriverBonus("0.50");
                         setRateIsActive(true);
+                      setRateBalanceRule("PREPAID"); setRateRadiusKm("5"); setRateWaitMin("3");
                       }}
                       className="secondary-btn"
                       style={{ flex: 1, padding: "10px" }}
@@ -1876,6 +1951,7 @@ export const SuperAdmin: React.FC = () => {
         {/* ======================================= */}
         {activeTab === "wallet" && (
           <div>
+            <DeliveryIncidentsPanel />
             <div style={{
               display: "flex",
               justifyContent: "space-between",
@@ -1894,7 +1970,7 @@ export const SuperAdmin: React.FC = () => {
             </div>
 
             <div className="glass-card" style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "800px" }}>
+              <table className="mobile-cards" style={{ width: "100%", borderCollapse: "collapse", minWidth: "800px" }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--border-light)" }}>
                     <th style={{ padding: "16px 20px", textAlign: "left", fontSize: "13px", color: "var(--text-muted)" }}>MOTORIZADO</th>
@@ -1928,11 +2004,14 @@ export const SuperAdmin: React.FC = () => {
                             <Truck size={16} color="var(--text-secondary)" />
                             {driver.name} (Ref: @{driver.username})
                           </div>
+                          <div style={{ marginTop: "4px", fontWeight: 400 }}>
+                            <StarAverage average={driver.ratingAverage ?? null} count={driver.ratingCount ?? 0} />
+                          </div>
                         </td>
                         <td style={{ padding: "18px 20px", fontSize: "13px" }}>
                           <div><strong>CI:</strong> {driver.cedula}</div>
-                          <div style={{ color: "var(--text-secondary)", fontSize: "12px" }}>{driver.phone || "Sin teléfono"}</div>
-                          <div style={{ color: "var(--text-muted)", fontSize: "11px" }}>{driver.email || "Sin correo"}</div>
+                          <div style={{ color: "var(--text-secondary)", fontSize: "13px" }}>{driver.phone || "Sin teléfono"}</div>
+                          <div style={{ color: "var(--text-muted)", fontSize: "13px" }}>{driver.email || "Sin correo"}</div>
                         </td>
                         <td style={{ padding: "18px 20px", fontSize: "13px" }}>
                           <span style={{
@@ -1940,12 +2019,12 @@ export const SuperAdmin: React.FC = () => {
                             borderRadius: "12px",
                             backgroundColor: "#f1f5f9",
                             fontWeight: 600,
-                            fontSize: "12px"
+                            fontSize: "13px"
                           }}>
                             {driver.vehicleType === "BICI" ? systemTextWithIcons("🚲 Bicicleta") : driver.vehicleType === "AUTO" ? systemTextWithIcons("🚗 Automóvil") : systemTextWithIcons("🛵 Moto")}
                           </span>
                           {driver.vehiclePlate && (
-                            <div style={{ fontSize: "11px", color: "var(--text-secondary)", marginTop: "4px" }}>
+                            <div style={{ fontSize: "13px", color: "var(--text-secondary)", marginTop: "4px" }}>
                               Placa: <strong>{driver.vehiclePlate}</strong>
                             </div>
                           )}
@@ -1959,7 +2038,7 @@ export const SuperAdmin: React.FC = () => {
                               backgroundColor: "rgba(46, 213, 115, 0.12)",
                               color: "#2ed573",
                               fontWeight: 700,
-                              fontSize: "12px",
+                              fontSize: "13px",
                               border: "1px solid rgba(46, 213, 115, 0.3)"
                             }}>
                               {systemIconForEmoji("✅")} Aprobado / Activo
@@ -1972,7 +2051,7 @@ export const SuperAdmin: React.FC = () => {
                               backgroundColor: "rgba(255, 171, 0, 0.12)",
                               color: "#d97706",
                               fontWeight: 700,
-                              fontSize: "12px",
+                              fontSize: "13px",
                               border: "1px solid rgba(255, 171, 0, 0.3)"
                             }}>
                               {systemIconForEmoji("⏳")} Pendiente Aprobación
@@ -1987,12 +2066,12 @@ export const SuperAdmin: React.FC = () => {
                             {driver.walletBalance < 0 ? `-$${Math.abs(driver.walletBalance).toFixed(2)}` : `$${driver.walletBalance.toFixed(2)}`}
                           </div>
                           {driver.walletBalance <= -50 && (
-                            <span style={{ fontSize: "10px", color: "#ff4757", fontWeight: "bold" }}>
+                            <span style={{ fontSize: "13px", color: "#ff4757", fontWeight: "bold" }}>
                               {systemIconForEmoji("⚠️")} DEUDA &gt; $50 (PAUSADO)
                             </span>
                           )}
                           {driver.walletBalance > 0 && (
-                            <span style={{ fontSize: "10px", color: "var(--success)", fontWeight: "bold" }}>
+                            <span style={{ fontSize: "13px", color: "var(--success)", fontWeight: "bold" }}>
                               A FAVOR
                             </span>
                           )}
@@ -2006,7 +2085,7 @@ export const SuperAdmin: React.FC = () => {
                                 className="glow-btn"
                                 style={{
                                   padding: "6px 12px",
-                                  fontSize: "12px",
+                                  fontSize: "13px",
                                   backgroundColor: "#2980b9",
                                   borderColor: "#2980b9",
                                   color: "white"
@@ -2021,7 +2100,7 @@ export const SuperAdmin: React.FC = () => {
                               onClick={() => handleToggleDriverStatus(driver)}
                               style={{
                                 padding: "6px 12px",
-                                fontSize: "12px",
+                                fontSize: "13px",
                                 fontWeight: 700,
                                 borderRadius: "8px",
                                 border: "none",
@@ -2043,7 +2122,7 @@ export const SuperAdmin: React.FC = () => {
                               className="secondary-btn"
                               style={{
                                 padding: "6px 12px",
-                                fontSize: "12px",
+                                fontSize: "13px",
                               }}
                             >
                               <DollarSign size={13} style={{ marginRight: "4px" }} />
@@ -2073,7 +2152,7 @@ export const SuperAdmin: React.FC = () => {
             </div>
 
             <div className="glass-card" style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "800px" }}>
+              <table className="mobile-cards" style={{ width: "100%", borderCollapse: "collapse", minWidth: "800px" }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--border-light)" }}>
                     <th style={{ padding: "16px 20px", textAlign: "left", fontSize: "13px", color: "var(--text-muted)" }}>CLIENTE</th>
@@ -2107,7 +2186,7 @@ export const SuperAdmin: React.FC = () => {
                               backgroundColor: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)",
                               border: "1px solid #fbbf24",
                               color: "#d97706",
-                              fontSize: "11px",
+                              fontSize: "13px",
                               fontWeight: "bold"
                             }}>
                               Club Plus {systemIconForEmoji("✨")}
@@ -2122,7 +2201,7 @@ export const SuperAdmin: React.FC = () => {
                               backgroundColor: "var(--bg-tertiary)",
                               border: "1px solid var(--border-light)",
                               color: "var(--text-muted)",
-                              fontSize: "11px"
+                              fontSize: "13px"
                             }}>
                               Estándar
                             </span>
@@ -2136,7 +2215,7 @@ export const SuperAdmin: React.FC = () => {
                               className="secondary-btn"
                               style={{
                                 padding: "6px 12px",
-                                fontSize: "12px",
+                                fontSize: "13px",
                                 color: customer.isPlus ? "var(--accent-primary)" : "var(--success)",
                                 borderColor: customer.isPlus ? "rgba(255, 71, 87, 0.2)" : "rgba(46, 213, 115, 0.2)"
                               }}
@@ -2200,7 +2279,7 @@ export const SuperAdmin: React.FC = () => {
                     setPlanDescription("");
                   }}
                   className="secondary-btn"
-                  style={{ padding: "6px 12px", fontSize: "12px" }}
+                  style={{ padding: "6px 12px", fontSize: "13px" }}
                 >
                   Crear Nuevo
                 </button>
@@ -2238,7 +2317,7 @@ export const SuperAdmin: React.FC = () => {
                               {p.name}
                               {p.discount && (
                                 <span style={{
-                                  fontSize: "9px",
+                                  fontSize: "13px",
                                   backgroundColor: "rgba(255, 71, 87, 0.05)",
                                   color: "var(--accent-primary)",
                                   padding: "2px 6px",
@@ -2249,10 +2328,10 @@ export const SuperAdmin: React.FC = () => {
                                 </span>
                               )}
                             </div>
-                            <div style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "4px", fontWeight: 600 }}>
+                            <div style={{ fontSize: "13px", color: "var(--text-secondary)", marginTop: "4px", fontWeight: 600 }}>
                               ${p.amount.toFixed(2)} / {p.period || "mes"}
                             </div>
-                            <p style={{ fontSize: "11px", color: "var(--text-muted)", margin: "4px 0 0 0", lineHeight: "1.3" }}>
+                            <p style={{ fontSize: "13px", color: "var(--text-muted)", margin: "4px 0 0 0", lineHeight: "1.3" }}>
                               {p.description}
                             </p>
                           </div>
@@ -2304,10 +2383,10 @@ export const SuperAdmin: React.FC = () => {
                             <div style={{ fontWeight: "bold", fontSize: "14px" }}>
                               {p.name}
                             </div>
-                            <div style={{ fontSize: "12px", color: "var(--success)", marginTop: "4px", fontWeight: 600 }}>
+                            <div style={{ fontSize: "13px", color: "var(--success)", marginTop: "4px", fontWeight: 600 }}>
                               Monto: ${p.amount.toFixed(2)}
                             </div>
-                            <p style={{ fontSize: "11px", color: "var(--text-muted)", margin: "4px 0 0 0", lineHeight: "1.3" }}>
+                            <p style={{ fontSize: "13px", color: "var(--text-muted)", margin: "4px 0 0 0", lineHeight: "1.3" }}>
                               {p.description}
                             </p>
                           </div>
@@ -2476,7 +2555,7 @@ export const SuperAdmin: React.FC = () => {
             </div>
 
             <div className="glass-card" style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "900px" }}>
+              <table className="mobile-cards" style={{ width: "100%", borderCollapse: "collapse", minWidth: "900px" }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--border-light)" }}>
                     <th style={{ padding: "16px 20px", textAlign: "left", fontSize: "13px", color: "var(--text-muted)" }}>USUARIO</th>
@@ -2517,14 +2596,14 @@ export const SuperAdmin: React.FC = () => {
                           <td style={{ padding: "16px 20px", textAlign: "right", fontWeight: "bold" }}>
                             ${order.amount.toFixed(2)}
                           </td>
-                          <td style={{ padding: "16px 20px", textAlign: "center", fontSize: "12px" }}>
+                          <td style={{ padding: "16px 20px", textAlign: "center", fontSize: "13px" }}>
                             {order.paymentMethod === "CARD" ? systemTextWithIcons("💳 Tarjeta (Payphone)") : systemTextWithIcons("🏦 Transferencia")}
                           </td>
                           <td style={{ padding: "16px 20px", textAlign: "center" }}>
                             <span style={{
                               padding: "4px 8px",
                               borderRadius: "10px",
-                              fontSize: "11px",
+                              fontSize: "13px",
                               fontWeight: "bold",
                               backgroundColor: order.status === "APPROVED" ? "rgba(46, 213, 115, 0.1)" : order.status === "PENDING" ? "rgba(251, 191, 36, 0.1)" : "rgba(255, 71, 87, 0.1)",
                               color: order.status === "APPROVED" ? "var(--success)" : order.status === "PENDING" ? "#d97706" : "var(--accent-primary)"
@@ -2532,7 +2611,7 @@ export const SuperAdmin: React.FC = () => {
                               {order.status === "APPROVED" ? "Aprobado" : order.status === "PENDING" ? "Pendiente" : "Rechazado"}
                             </span>
                           </td>
-                          <td style={{ padding: "16px 20px", fontSize: "12px", color: "var(--text-secondary)", textAlign: "center" }}>
+                          <td style={{ padding: "16px 20px", fontSize: "13px", color: "var(--text-secondary)", textAlign: "center" }}>
                             {new Date(order.createdAt).toLocaleDateString("es-EC")}
                           </td>
                           <td style={{ padding: "16px 20px", textAlign: "center" }}>
@@ -2541,12 +2620,12 @@ export const SuperAdmin: React.FC = () => {
                                 type="button"
                                 onClick={() => setSelectedReceiptOrder(order)}
                                 className="glow-btn"
-                                style={{ padding: "6px 12px", fontSize: "12px" }}
+                                style={{ padding: "6px 12px", fontSize: "13px" }}
                               >
                                 Revisar Pago
                               </button>
                             ) : (
-                              <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+                              <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>
                                 {order.paymentMethod === "CARD" ? "Auto-aprobado" : "Procesado"}
                               </span>
                             )}
@@ -2633,7 +2712,7 @@ export const SuperAdmin: React.FC = () => {
                     style={{ paddingLeft: "40px" }}
                   />
                 </div>
-                <small style={{ color: "var(--text-muted)", fontSize: "11px", marginTop: "2px" }}>
+                <small style={{ color: "var(--text-muted)", fontSize: "13px", marginTop: "2px" }}>
                   Enlace público: /r/{slug || "slug"}
                 </small>
               </div>
@@ -2868,7 +2947,7 @@ export const SuperAdmin: React.FC = () => {
             </div>
 
             <div style={{ textAlign: "center", marginBottom: "20px", border: "1px solid var(--border-light)", borderRadius: "var(--radius-sm)", padding: "10px", backgroundColor: "var(--bg-tertiary)" }}>
-              <div style={{ fontSize: "11px", fontWeight: "bold", color: "var(--text-muted)", marginBottom: "8px" }}>COMPROBANTE BANCARIO:</div>
+              <div style={{ fontSize: "13px", fontWeight: "bold", color: "var(--text-muted)", marginBottom: "8px" }}>COMPROBANTE BANCARIO:</div>
               {selectedReceiptOrder.paymentReceipt ? (
                 <img
                   src={selectedReceiptOrder.paymentReceipt}
@@ -2927,7 +3006,7 @@ export const SuperAdmin: React.FC = () => {
               </div>
               <div>
                 <h3 style={{ fontSize: "18px", fontWeight: "bold", margin: 0 }}>Aprobar Restaurante</h3>
-                <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: "2px 0 0 0" }}>
+                <p style={{ fontSize: "13px", color: "var(--text-muted)", margin: "2px 0 0 0" }}>
                   Habilitar operaciones y activar credenciales de acceso
                 </p>
               </div>
@@ -2966,7 +3045,7 @@ export const SuperAdmin: React.FC = () => {
               border: "1px solid rgba(16, 185, 129, 0.2)",
               borderRadius: "var(--radius-sm)",
               padding: "12px 14px",
-              fontSize: "12px",
+              fontSize: "13px",
               color: "#059669",
               marginBottom: "25px",
               display: "flex",
@@ -3048,7 +3127,7 @@ export const SuperAdmin: React.FC = () => {
               </div>
               <div>
                 <h3 style={{ fontSize: "18px", fontWeight: "bold", margin: 0 }}>Rechazar Solicitud</h3>
-                <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: "2px 0 0 0" }}>
+                <p style={{ fontSize: "13px", color: "var(--text-muted)", margin: "2px 0 0 0" }}>
                   {selectedRejectRestaurant.name}
                 </p>
               </div>
@@ -3073,7 +3152,7 @@ export const SuperAdmin: React.FC = () => {
               border: "1px solid rgba(239, 68, 68, 0.2)",
               borderRadius: "var(--radius-sm)",
               padding: "12px 14px",
-              fontSize: "12px",
+              fontSize: "13px",
               color: "#dc2626",
               marginBottom: "25px"
             }}>

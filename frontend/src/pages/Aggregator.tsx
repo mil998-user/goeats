@@ -271,11 +271,11 @@ export const Aggregator: React.FC = () => {
 
   const BRAND_LOGOS: Record<string, string> = {
     "el-artesanal": "/logos/el-artesanal.svg",
-    "kfc": "/logos/kfc.svg",
-    "burger-king": "/logos/burger-king.svg",
-    "pollo-campero": "/logos/pollo-campero.svg",
-    "tropiburger": "/logos/tropiburger.svg",
-    "papa-johns": "/logos/papa-johns.svg",
+    "pollo-dorado": "/logos/pollo-dorado.svg",
+    "brasa-burger": "/logos/brasa-burger.svg",
+    "la-granja": "/logos/la-granja.svg",
+    "burger-costena": "/logos/burger-costena.svg",
+    "la-nonna": "/logos/la-nonna.svg",
     "sushi-tokyo": "/logos/sushi-tokyo.svg",
     "salad-green": "/logos/salad-green.svg",
     "tacos-mx": "/logos/tacos-mx.svg",
@@ -290,11 +290,11 @@ export const Aggregator: React.FC = () => {
 
   const BRAND_COVERS: Record<string, string> = {
     "el-artesanal": "https://images.unsplash.com/photo-1550547660-d9450f859349?w=800&auto=format&fit=crop&q=80",
-    "kfc": "https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=800&auto=format&fit=crop&q=80",
-    "burger-king": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&auto=format&fit=crop&q=80",
-    "pollo-campero": "https://images.unsplash.com/photo-1569058242253-92a9c755a0ec?w=800&auto=format&fit=crop&q=80",
-    "tropiburger": "https://images.unsplash.com/photo-1550547660-d9450f859349?w=800&auto=format&fit=crop&q=80",
-    "papa-johns": "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=800&auto=format&fit=crop&q=80",
+    "pollo-dorado": "https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=800&auto=format&fit=crop&q=80",
+    "brasa-burger": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&auto=format&fit=crop&q=80",
+    "la-granja": "https://images.unsplash.com/photo-1569058242253-92a9c755a0ec?w=800&auto=format&fit=crop&q=80",
+    "burger-costena": "https://images.unsplash.com/photo-1550547660-d9450f859349?w=800&auto=format&fit=crop&q=80",
+    "la-nonna": "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=800&auto=format&fit=crop&q=80",
     "sushi-tokyo": "https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=800&auto=format&fit=crop&q=80",
     "salad-green": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&auto=format&fit=crop&q=80",
     "tacos-mx": "https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?w=800&auto=format&fit=crop&q=80",
@@ -527,7 +527,7 @@ export const Aggregator: React.FC = () => {
                 borderRadius: "999px",
                 background: "#fff",
                 color: "#202124",
-                fontSize: "11px",
+                fontSize: "13px",
                 fontWeight: 700,
               }}>
                 {badge}
@@ -567,7 +567,7 @@ export const Aggregator: React.FC = () => {
               }}>
                 {restaurant.name}
               </h3>
-              <p style={{ margin: "5px 0 0", color: "#5f6368", fontSize: "12px" }}>
+              <p style={{ margin: "5px 0 0", color: "#5f6368", fontSize: "13px" }}>
                 {restaurant.category}
               </p>
             </div>
@@ -685,7 +685,7 @@ export const Aggregator: React.FC = () => {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontSize: "12px",
+                    fontSize: "13px",
                     fontWeight: "700",
                     flexShrink: 0,
                     boxShadow: "0 2px 6px rgba(0, 0, 0, 0.18)"
@@ -708,7 +708,7 @@ export const Aggregator: React.FC = () => {
                   >
                     {user.name}
                   </div>
-                  <div style={{ fontSize: "11px", color: "#64748b" }}>
+                  <div style={{ fontSize: "13px", color: "#64748b" }}>
                     {getRoleLabel(user.role)}
                   </div>
                 </div>
@@ -774,7 +774,7 @@ export const Aggregator: React.FC = () => {
                         </div>
                         <div
                           style={{
-                            fontSize: "12px",
+                            fontSize: "13px",
                             color: "#64748b",
                             whiteSpace: "nowrap",
                             overflow: "hidden",
@@ -791,7 +791,7 @@ export const Aggregator: React.FC = () => {
                           display: "inline-block",
                           padding: "3px 8px",
                           borderRadius: "12px",
-                          fontSize: "11px",
+                          fontSize: "13px",
                           fontWeight: "600",
                           backgroundColor: "#eff6ff",
                           color: "#2563eb",
@@ -806,7 +806,7 @@ export const Aggregator: React.FC = () => {
                             display: "inline-block",
                             padding: "3px 8px",
                             borderRadius: "12px",
-                            fontSize: "11px",
+                            fontSize: "13px",
                             fontWeight: "600",
                             backgroundColor: "#eeeeee",
                             color: "#111111",
@@ -899,7 +899,7 @@ export const Aggregator: React.FC = () => {
                           {userPreferences.length > 0 && (
                             <span
                               style={{
-                                fontSize: "11px",
+                                fontSize: "13px",
                                 fontWeight: "700",
                                 backgroundColor: "#eeeeee",
                                 color: "#111111",
@@ -1067,7 +1067,7 @@ export const Aggregator: React.FC = () => {
                   border: "1px solid #cbd5e1",
                   color: "#475569",
                   cursor: "pointer",
-                  fontSize: "12px",
+                  fontSize: "13px",
                   fontWeight: 600,
                   transition: "all 0.2s ease"
                 }}
@@ -1342,7 +1342,7 @@ export const Aggregator: React.FC = () => {
               }}>
                 <div>
                   <div style={{ fontSize: "14px", fontWeight: 600 }}>{user.name}</div>
-                  <div style={{ fontSize: "11px", color: "#5f6368" }}>{user.role}</div>
+                  <div style={{ fontSize: "13px", color: "#5f6368" }}>{user.role}</div>
                 </div>
                 <button
                   onClick={() => { logout(); setMenuOpen(false); }}
@@ -1479,7 +1479,7 @@ export const Aggregator: React.FC = () => {
                   <CategoryIcon size={25} strokeWidth={1.8} color={isSelected ? "#111111" : "#5f6368"} />
                 </div>
                 <span style={{
-                  fontSize: "11px",
+                  fontSize: "13px",
                   fontWeight: isSelected ? "700" : "500",
                   color: isSelected ? "#111111" : "#202124",
                   lineHeight: 1.3,
@@ -1554,7 +1554,7 @@ export const Aggregator: React.FC = () => {
                 borderRadius: "999px",
                 color: activeSubcategory === null ? "#111111" : "#5f6368",
                 background: activeSubcategory === null ? "#f1f1f1" : "#ffffff",
-                fontSize: "12px",
+                fontSize: "13px",
                 fontWeight: 600,
               }}
             >
@@ -1574,7 +1574,7 @@ export const Aggregator: React.FC = () => {
                     borderRadius: "999px",
                     color: isSelected ? "#111111" : "#5f6368",
                     background: isSelected ? "#f1f1f1" : "#ffffff",
-                    fontSize: "12px",
+                    fontSize: "13px",
                     fontWeight: 600,
                   }}
                 >
@@ -1601,7 +1601,7 @@ export const Aggregator: React.FC = () => {
           </div>
         ) : error ? (
           <div style={{ padding: "40px", textAlign: "center", color: "#111111", border: "1px solid #cbd5e1", borderRadius: "12px", marginTop: "20px" }}>
-            <p>Error de conexión: {error}</p>
+            <p data-testid="marketplace-error" style={{ fontSize: "16px" }}>{error}</p>
           </div>
         ) : filteredRestaurants.length === 0 ? (
           <div style={{ padding: "60px 40px", textAlign: "center", color: "#5f6368", border: "1px dashed #cbd5e1", borderRadius: "16px", marginTop: "20px" }}>
@@ -1627,7 +1627,7 @@ export const Aggregator: React.FC = () => {
                         display: "inline-flex",
                         alignItems: "center",
                         gap: "6px",
-                        fontSize: "12px",
+                        fontSize: "13px",
                         fontWeight: 700,
                         color: "#111111",
                         textTransform: "uppercase",
@@ -1646,7 +1646,7 @@ export const Aggregator: React.FC = () => {
                           const CategoryIcon = cat.icon;
                           return (
                             <span key={prefId} style={{
-                              fontSize: "12px",
+                              fontSize: "13px",
                               backgroundColor: "#ffffff",
                               border: "1px solid #d6d6d6",
                               color: "#111111",
@@ -1670,7 +1670,7 @@ export const Aggregator: React.FC = () => {
                         display: "flex",
                         alignItems: "center",
                         gap: "6px",
-                        fontSize: "12px",
+                        fontSize: "13px",
                         color: "#111111",
                         fontWeight: "700",
                         cursor: "pointer",
@@ -1733,7 +1733,7 @@ export const Aggregator: React.FC = () => {
                             color: "#ffffff",
                             padding: "4px 9px",
                             borderRadius: "20px",
-                            fontSize: "11px",
+                            fontSize: "13px",
                             fontWeight: 700,
                             display: "flex",
                             alignItems: "center",
@@ -1775,7 +1775,7 @@ export const Aggregator: React.FC = () => {
                               display: "flex",
                               alignItems: "center",
                               gap: "3px",
-                              fontSize: "12px",
+                              fontSize: "13px",
                               fontWeight: "700",
                               backgroundColor: "#f1f3f4",
                               padding: "2px 6px",
@@ -1785,7 +1785,7 @@ export const Aggregator: React.FC = () => {
                               <span>{rest.rating}</span>
                             </div>
                           </div>
-                          <p style={{ fontSize: "12px", color: "#5f6368", margin: "4px 0 0 0" }}>
+                          <p style={{ fontSize: "13px", color: "#5f6368", margin: "4px 0 0 0" }}>
                             {rest.category} • {rest.deliveryTime} • {rest.deliveryCost}
                           </p>
                         </div>
@@ -1809,7 +1809,7 @@ export const Aggregator: React.FC = () => {
                     Lo más pedido esta semana
                   </h2>
                   <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <span style={{ fontSize: "12px", color: "#5f6368", fontWeight: "600", cursor: "pointer" }}>Ver todos</span>
+                    <span style={{ fontSize: "13px", color: "#5f6368", fontWeight: "600", cursor: "pointer" }}>Ver todos</span>
                     <div style={{ display: "flex", gap: "6px" }}>
                       <button
                         type="button"
@@ -1911,7 +1911,7 @@ export const Aggregator: React.FC = () => {
                             backgroundColor: "#111111",
                             color: "#ffffff",
                             padding: "4px 10px",
-                            fontSize: "11px",
+                            fontSize: "13px",
                             fontWeight: "700",
                             borderTopRightRadius: "4px",
                             borderBottomRightRadius: "4px",
@@ -1985,7 +1985,7 @@ export const Aggregator: React.FC = () => {
                             backgroundColor: "#f1f3f4",
                             padding: "4px 8px",
                             borderRadius: "999px",
-                            fontSize: "12px",
+                            fontSize: "13px",
                             fontWeight: "700",
                             flexShrink: 0,
                             marginLeft: "8px"
@@ -1993,7 +1993,7 @@ export const Aggregator: React.FC = () => {
                             <span>{rest.ordersThisWeek} pedidos</span>
                           </div>
                         </div>
-                        <div style={{ fontSize: "12px", color: "#5f6368", marginTop: "3px" }}>
+                        <div style={{ fontSize: "13px", color: "#5f6368", marginTop: "3px" }}>
                           {rest.category}
                         </div>
                       </div>
@@ -2019,7 +2019,7 @@ export const Aggregator: React.FC = () => {
                     Ofertas de restaurantes
                   </h2>
                   <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <span style={{ fontSize: "12px", color: "#5f6368", fontWeight: "600", cursor: "pointer" }}>Ver todos</span>
+                    <span style={{ fontSize: "13px", color: "#5f6368", fontWeight: "600", cursor: "pointer" }}>Ver todos</span>
                     <div style={{ display: "flex", gap: "6px" }}>
                       <button
                         type="button"
@@ -2119,7 +2119,7 @@ export const Aggregator: React.FC = () => {
                           backgroundColor: "#111111",
                           color: "#ffffff",
                           padding: "4px 10px",
-                          fontSize: "11px",
+                          fontSize: "13px",
                           fontWeight: "700",
                           borderTopRightRadius: "4px",
                           borderBottomRightRadius: "4px",
@@ -2194,7 +2194,7 @@ export const Aggregator: React.FC = () => {
                             backgroundColor: "#f1f3f4",
                             padding: "3px 6px",
                             borderRadius: "12px",
-                            fontSize: "12px",
+                            fontSize: "13px",
                             fontWeight: "700",
                             flexShrink: 0,
                             marginLeft: "8px"
@@ -2203,12 +2203,12 @@ export const Aggregator: React.FC = () => {
                             <span>{rest.rating}</span>
                           </div>
                         </div>
-                        <div style={{ display: "flex", gap: "5px", fontSize: "12px", color: "#5f6368", marginTop: "3px", alignItems: "center" }}>
+                        <div style={{ display: "flex", gap: "5px", fontSize: "13px", color: "#5f6368", marginTop: "3px", alignItems: "center" }}>
                           <span>{rest.reviews}</span>
                           <span>•</span>
                           <span>{rest.deliveryTime}</span>
                         </div>
-                        <div style={{ fontSize: "12px", color: "#80868b", marginTop: "2px" }}>
+                        <div style={{ fontSize: "13px", color: "#80868b", marginTop: "2px" }}>
                           {rest.deliveryCost}
                         </div>
                       </div>
@@ -2267,7 +2267,7 @@ export const Aggregator: React.FC = () => {
                           backgroundColor: "#111111",
                           color: "#ffffff",
                           padding: "4px 12px",
-                          fontSize: "11px",
+                          fontSize: "13px",
                           fontWeight: "700",
                           borderTopRightRadius: "4px",
                           borderBottomRightRadius: "4px",
@@ -2365,7 +2365,7 @@ export const Aggregator: React.FC = () => {
                             backgroundColor: "#f1f3f4",
                             padding: "3px 8px",
                             borderRadius: "12px",
-                            fontSize: "12px",
+                            fontSize: "13px",
                             fontWeight: "700",
                             flexShrink: 0,
                             marginLeft: "8px"
@@ -2383,7 +2383,7 @@ export const Aggregator: React.FC = () => {
                           <span>{rest.reviews}</span>
                         </div>
 
-                        <div style={{ fontSize: "12px", color: "#80868b", marginTop: "3px", display: "flex", alignItems: "center", gap: "6px" }}>
+                        <div style={{ fontSize: "13px", color: "#80868b", marginTop: "3px", display: "flex", alignItems: "center", gap: "6px" }}>
                           <span>{rest.deliveryCost}</span>
                           {rest.specialLabel && (
                             <>
@@ -2394,7 +2394,7 @@ export const Aggregator: React.FC = () => {
                                 padding: "2px 6px",
                                 borderRadius: "4px",
                                 fontWeight: "600",
-                                fontSize: "10px"
+                                fontSize: "13px"
                               }}>{rest.specialLabel}</span>
                             </>
                           )}

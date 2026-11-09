@@ -3,6 +3,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Store, Navigation, Loader2, Search, MapPin, X } from "lucide-react";
 import { systemIconForEmoji, systemTextWithIcons } from "../utils/systemIcons";
+import { escapeHtml } from "../utils/html";
 
 
 interface RestaurantLocationPickerProps {
@@ -368,8 +369,8 @@ export const RestaurantLocationPicker: React.FC<RestaurantLocationPickerProps> =
       // Custom Single Restaurant Marker (Orange / Gold Premium Pin)
       const restPinHtml = `
         <div style="position: relative; display: flex; flex-direction: column; align-items: center; cursor: grab; transform: translate(-50%, -100%);">
-          <div style="background: rgba(20, 24, 33, 0.95); color: #ffd700; padding: 4px 10px; border-radius: 14px; font-weight: 800; font-size: 11px; box-shadow: 0 4px 14px rgba(0,0,0,0.5); white-space: nowrap; margin-bottom: 3px; border: 1px solid rgba(255,215,0,0.4); backdrop-filter: blur(6px);">
-            ${restaurantName}
+          <div style="background: rgba(20, 24, 33, 0.95); color: #ffd700; padding: 4px 10px; border-radius: 14px; font-weight: 800; font-size: 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.5); white-space: nowrap; margin-bottom: 3px; border: 1px solid rgba(255,215,0,0.4); backdrop-filter: blur(6px);">
+            ${escapeHtml(restaurantName)}
           </div>
           <div style="width: 28px; height: 28px; background: #ff9f43; border: 3px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(255,159,67,0.6);">
             <div style="width: 9px; height: 9px; background: #ffffff; border-radius: 50%;"></div>
@@ -463,7 +464,7 @@ export const RestaurantLocationPicker: React.FC<RestaurantLocationPickerProps> =
               border: "1px solid var(--border-light, rgba(255,255,255,0.12))",
               borderRadius: "20px",
               padding: "7px 36px 7px 34px",
-              fontSize: "12.5px",
+              fontSize: "13px",
               color: "#ffffff",
               outline: "none"
             }}
@@ -518,7 +519,7 @@ export const RestaurantLocationPicker: React.FC<RestaurantLocationPickerProps> =
                     style={{
                       padding: "10px 14px",
                       cursor: "pointer",
-                      fontSize: "12px",
+                      fontSize: "13px",
                       color: "#ffffff",
                       borderBottom: i < searchResults.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none",
                       display: "flex",
@@ -540,7 +541,7 @@ export const RestaurantLocationPicker: React.FC<RestaurantLocationPickerProps> =
                   </div>
                 ))
               ) : (
-                <div style={{ padding: "12px 14px", fontSize: "12px", color: "var(--text-muted)", textAlign: "center" }}>
+                <div style={{ padding: "12px 14px", fontSize: "13px", color: "var(--text-muted)", textAlign: "center" }}>
                   No se encontraron resultados exactos. Intenta con el nombre principal de la calle o haz clic en el mapa.
                 </div>
               )}
@@ -558,7 +559,7 @@ export const RestaurantLocationPicker: React.FC<RestaurantLocationPickerProps> =
             border: "none",
             borderRadius: "20px",
             padding: "7px 14px",
-            fontSize: "11.5px",
+            fontSize: "13px",
             fontWeight: "800",
             cursor: "pointer",
             display: "inline-flex",
@@ -593,7 +594,7 @@ export const RestaurantLocationPicker: React.FC<RestaurantLocationPickerProps> =
               borderRadius: "24px",
               border: "1px solid rgba(255, 159, 67, 0.5)",
               boxShadow: "0 4px 14px rgba(0,0,0,0.3)",
-              fontSize: "12px",
+              fontSize: "13px",
               fontWeight: "700",
               cursor: "pointer",
               transition: "all 0.2s ease",
@@ -619,7 +620,7 @@ export const RestaurantLocationPicker: React.FC<RestaurantLocationPickerProps> =
         justifyContent: "space-between",
         flexWrap: "wrap",
         gap: "8px",
-        fontSize: "12px"
+        fontSize: "13px"
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: "6px", flex: "1 1 200px", overflow: "hidden" }}>
           <Store size={15} color="#ff9f43" style={{ flexShrink: 0 }} />
@@ -634,7 +635,7 @@ export const RestaurantLocationPicker: React.FC<RestaurantLocationPickerProps> =
           padding: "3px 10px",
           borderRadius: "16px",
           fontWeight: "800",
-          fontSize: "11px",
+          fontSize: "13px",
           display: "inline-flex",
           alignItems: "center",
           gap: "4px",

@@ -26,6 +26,8 @@ interface Transaction {
   id: number;
   type: "SALE" | "EXPENSE" | "INCOME";
   amount: number;
+  cashAmount?: number;
+  cashTip?: number;
   description: string;
   createdAt: string;
 }
@@ -67,7 +69,10 @@ export const Cash: React.FC = () => {
               id: s.id,
               type: "SALE",
               amount: s.total,
-              description: `Venta #${s.id} (Factura)`,
+              cashAmount: s.paymentCash,
+              // Tip paid in cash: it is in the drawer but belongs to the waiter, not to the sale
+              cashTip: s.paymentMethod === "01" ? Number(s.order?.tipAmount || 0) : 0,
+              description: `Venta #${s.id} (${s.paymentCard > 0 ? "Tarjeta" : "Efectivo"})${Number(s.order?.tipAmount || 0) > 0 ? ` + propina $${Number(s.order.tipAmount).toFixed(2)}` : ""}`,
               createdAt: s.createdAt
             });
           });
@@ -196,19 +201,22 @@ export const Cash: React.FC = () => {
   };
 
   const calculateTotals = () => {
-    if (!activeSession) return { cashSales: 0, expenses: 0, incomes: 0, expected: 0 };
+    if (!activeSession) return { cashSales: 0, cashTips: 0, expenses: 0, incomes: 0, expected: 0 };
     const cashSales = transactions
       .filter(t => t.type === "SALE")
-      .reduce((sum, t) => sum + t.amount, 0);
+      .reduce((sum, t) => sum + (t.cashAmount ?? 0), 0);
+    const cashTips = transactions
+      .filter(t => t.type === "SALE")
+      .reduce((sum, t) => sum + (t.cashTip ?? 0), 0);
     const expenses = transactions
       .filter(t => t.type === "EXPENSE")
       .reduce((sum, t) => sum + t.amount, 0);
     const incomes = transactions
       .filter(t => t.type === "INCOME")
       .reduce((sum, t) => sum + t.amount, 0);
-    const expected = activeSession.openAmount + cashSales - expenses + incomes;
+    const expected = activeSession.openAmount + cashSales + cashTips - expenses + incomes;
 
-    return { cashSales, expenses, incomes, expected };
+    return { cashSales, cashTips, expenses, incomes, expected };
   };
 
   const totals = calculateTotals();
@@ -334,7 +342,7 @@ export const Cash: React.FC = () => {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
                 <div>
                   <span style={{
-                    fontSize: "12px",
+                    fontSize: "13px",
                     fontWeight: 700,
                     textTransform: "uppercase",
                     color: "var(--success)",
@@ -344,9 +352,9 @@ export const Cash: React.FC = () => {
                   }}>
                     Sesión Activa
                   </span>
-                  <h2 style={{ fontSize: "20px", marginTop: "10px" }}>{activeSession.cashRegister.name}</h2>
+                  <h2 style={{ fontSize: "20px", marginTop: "12px" }}>{activeSession.cashRegister.name}</h2>
                 </div>
-                <div style={{ color: "var(--text-muted)", textAlign: "right", fontSize: "12px" }}>
+                <div style={{ color: "var(--text-muted)", textAlign: "right", fontSize: "13px" }}>
                   <div>Abierta por: {activeSession.user.name}</div>
                   <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "4px" }}>
                     <Calendar size={12} />
@@ -362,30 +370,37 @@ export const Cash: React.FC = () => {
                 marginBottom: "25px"
               }}>
                 <div style={{ padding: "15px", backgroundColor: "var(--bg-tertiary)", borderRadius: "var(--radius-sm)" }}>
-                  <div style={{ fontSize: "12px", color: "var(--text-secondary)" }}>Monto Apertura</div>
+                  <div style={{ fontSize: "13px", color: "var(--text-secondary)" }}>Monto Apertura</div>
                   <div style={{ fontSize: "22px", fontWeight: 700, color: "var(--text-primary)", marginTop: "4px" }}>
                     ${activeSession.openAmount.toFixed(2)}
                   </div>
                 </div>
                 <div style={{ padding: "15px", backgroundColor: "var(--bg-tertiary)", borderRadius: "var(--radius-sm)" }}>
-                  <div style={{ fontSize: "12px", color: "var(--text-secondary)" }}>Ventas Efectivo</div>
+                  <div style={{ fontSize: "13px", color: "var(--text-secondary)" }}>Ventas Efectivo</div>
                   <div style={{ fontSize: "22px", fontWeight: 700, color: "var(--success)", marginTop: "4px" }}>
                     +${totals.cashSales.toFixed(2)}
                   </div>
                 </div>
                 <div style={{ padding: "15px", backgroundColor: "var(--bg-tertiary)", borderRadius: "var(--radius-sm)" }}>
-                  <div style={{ fontSize: "12px", color: "var(--text-secondary)" }}>Egresos / Gastos</div>
+                  <div style={{ fontSize: "13px", color: "var(--text-secondary)" }}>Egresos / Gastos</div>
                   <div style={{ fontSize: "22px", fontWeight: 700, color: "var(--danger)", marginTop: "4px" }}>
                     -${totals.expenses.toFixed(2)}
                   </div>
                 </div>
                 <div style={{ padding: "15px", backgroundColor: "var(--bg-tertiary)", borderRadius: "var(--radius-sm)" }}>
-                  <div style={{ fontSize: "12px", color: "var(--text-secondary)" }}>Ingresos Varios</div>
+                  <div style={{ fontSize: "13px", color: "var(--text-secondary)" }}>Ingresos Varios</div>
                   <div style={{ fontSize: "22px", fontWeight: 700, color: "var(--warning)", marginTop: "4px" }}>
                     +${totals.incomes.toFixed(2)}
                   </div>
                 </div>
               </div>
+
+              {totals.cashTips > 0 && (
+                <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: "0 0 15px" }}>
+                  Incluye <strong>${totals.cashTips.toFixed(2)}</strong> de propinas en efectivo para los meseros.
+                  No son ventas ni van en la factura; al entregarlas, regístralas como egreso.
+                </p>
+              )}
 
               <div style={{
                 padding: "20px",
@@ -591,7 +606,7 @@ export const Cash: React.FC = () => {
                     >
                       <div>
                         <div style={{ fontSize: "14px", fontWeight: 600 }}>{tx.description}</div>
-                        <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>
+                        <div style={{ fontSize: "13px", color: "var(--text-muted)", marginTop: "4px" }}>
                           {tx.type === "SALE" ? "Venta (POS)" : tx.type === "EXPENSE" ? "Gasto" : "Ingreso Extra"} • {" "}
                           {new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </div>

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { PlatformBankInfo } from "../components/PlatformBankInfo";
 import { createPortal } from "react-dom";
 import { useAuth } from "../context/AuthContext";
 import { apiRequest } from "../utils/api";
@@ -25,6 +26,9 @@ import { CustomerProfileView } from "../components/CustomerProfileView";
 import { SupportModal } from "../components/SupportModal";
 import { useSocket } from "../context/SocketContext";
 import { systemIconForEmoji } from "../utils/systemIcons";
+import { OrderRatingBox, type OrderRating } from "../components/OrderRatingBox";
+import { MyReservations } from "../components/MyReservations";
+import { CalendarDays } from "lucide-react";
 
 
 interface OrderItem {
@@ -77,7 +81,39 @@ interface Order {
   tableId?: number | null;
   table?: { id: number; number: string; } | null;
   paymentMethod?: "CASH" | "CARD" | "TRANSFER";
+  deliveryPin?: string | null;
+  tipAmount?: number;
+  rating?: OrderRating | null;
 }
+
+type CustomerTab = "orders" | "reservations" | "profile";
+const isCustomerTab = (value: string | null): value is CustomerTab =>
+  value === "orders" || value === "reservations" || value === "profile";
+
+// The customer gives this code to the driver; it stays visible until the order is closed
+const DeliveryPinBox: React.FC<{ pin: string; large?: boolean }> = ({ pin, large }) => (
+  <div
+    data-testid="delivery-pin"
+    style={{
+      border: "2px dashed var(--text-primary)",
+      borderRadius: "8px",
+      padding: large ? "16px" : "12px",
+      textAlign: "center",
+      backgroundColor: "var(--bg-primary)",
+      marginBottom: large ? "20px" : 0,
+    }}
+  >
+    <div style={{ fontSize: "14px", fontWeight: 700, color: "var(--text-secondary)" }}>
+      Código de entrega
+    </div>
+    <div style={{ fontSize: large ? "40px" : "32px", fontWeight: 900, letterSpacing: "12px", color: "var(--text-primary)" }}>
+      {pin}
+    </div>
+    <div style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
+      Dáselo al motorizado solo cuando recibas tu pedido.
+    </div>
+  </div>
+);
 
 interface CustomerStats {
   totalOrders: number;
@@ -94,18 +130,16 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const tabFromUrl = searchParams.get("tab") as "orders" | "profile" | null;
-  const [activeTab, setActiveTab] = useState<"orders" | "profile">(
-    tabFromUrl === "profile" || tabFromUrl === "orders" ? tabFromUrl : defaultTab
-  );
+  const tabFromUrl = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState<CustomerTab>(isCustomerTab(tabFromUrl) ? tabFromUrl : defaultTab);
 
   useEffect(() => {
-    if (tabFromUrl && (tabFromUrl === "orders" || tabFromUrl === "profile")) {
+    if (isCustomerTab(tabFromUrl)) {
       setActiveTab(tabFromUrl);
     }
   }, [tabFromUrl]);
 
-  const handleTabChange = (tab: "orders" | "profile") => {
+  const handleTabChange = (tab: CustomerTab) => {
     setActiveTab(tab);
     setSearchParams({ tab });
   };
@@ -531,6 +565,21 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
 
         <button
           type="button"
+          onClick={() => handleTabChange("reservations")}
+          className="customer-tab-btn"
+          style={{
+            border: "none",
+            backgroundColor: activeTab === "reservations" ? "#ff4757" : "#f1f5f9",
+            color: activeTab === "reservations" ? "#ffffff" : "#475569",
+            boxShadow: activeTab === "reservations" ? "0 4px 12px rgba(255, 71, 87, 0.25)" : "none",
+          }}
+        >
+          <CalendarDays size={16} />
+          <span>Mis Reservas</span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => handleTabChange("profile")}
           className="customer-tab-btn"
           style={{
@@ -566,6 +615,8 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
 
       {activeTab === "profile" ? (
         <CustomerProfileView />
+      ) : activeTab === "reservations" ? (
+        <MyReservations />
       ) : (
         <>
           {error && (
@@ -592,7 +643,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
             backgroundColor: "#fbbf24",
             color: "#78350f",
             fontWeight: 800,
-            fontSize: "11px",
+            fontSize: "13px",
             padding: "4px 10px",
             borderRadius: "50px",
             letterSpacing: "0.5px"
@@ -741,7 +792,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                         <div style={{ fontSize: "22px", fontWeight: "800", color: "#d97706" }}>
                           ${plan.amount.toFixed(2)}
                         </div>
-                        <p style={{ fontSize: "11px", color: "var(--text-muted)", margin: 0 }}>{plan.description}</p>
+                        <p style={{ fontSize: "13px", color: "var(--text-muted)", margin: 0 }}>{plan.description}</p>
                       </div>
                     ))}
                   </div>
@@ -758,14 +809,14 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                   {selectedPlan ? (
                     <form onSubmit={handleBuySubscription}>
                       <div style={{ marginBottom: "12px", padding: "8px 12px", backgroundColor: "var(--bg-secondary)", borderRadius: "4px", border: "1px solid var(--border-light)" }}>
-                        <div style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: "bold" }}>PLAN:</div>
+                        <div style={{ fontSize: "13px", color: "var(--text-muted)", fontWeight: "bold" }}>PLAN:</div>
                         <div style={{ fontWeight: "bold", fontSize: "13px" }}>{selectedPlan.name}</div>
                         <div style={{ fontSize: "16px", fontWeight: "bold", color: "#d97706" }}>${selectedPlan.amount.toFixed(2)}</div>
                       </div>
 
                       {/* Payment Method Selector */}
                       <div style={{ marginBottom: "12px" }}>
-                        <label style={{ fontSize: "11px", fontWeight: "600", display: "block", marginBottom: "6px" }}>Forma de Pago</label>
+                        <label style={{ fontSize: "13px", fontWeight: "600", display: "block", marginBottom: "6px" }}>Forma de Pago</label>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                           <button
                             type="button"
@@ -776,7 +827,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                             }}
                             style={{
                               padding: "6px",
-                              fontSize: "12px",
+                              fontSize: "13px",
                               cursor: "pointer",
                               borderRadius: "4px",
                               border: paymentMethod === "CARD" ? "1px solid #fbbf24" : "1px solid var(--border-light)",
@@ -794,7 +845,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                             }}
                             style={{
                               padding: "6px",
-                              fontSize: "12px",
+                              fontSize: "13px",
                               cursor: "pointer",
                               borderRadius: "4px",
                               border: paymentMethod === "TRANSFER" ? "1px solid #fbbf24" : "1px solid var(--border-light)",
@@ -820,12 +871,12 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                               padding: "8px",
                               borderRadius: "4px",
                               color: "var(--success)",
-                              fontSize: "11px"
+                              fontSize: "13px"
                             }}>
                               <CheckCircle size={14} />
                               <div>
                                 <div style={{ fontWeight: "bold" }}>Pago Aprobado</div>
-                                <div style={{ fontSize: "10px" }}>ID: {payphoneTransactionId}</div>
+                                <div style={{ fontSize: "13px" }}>ID: {payphoneTransactionId}</div>
                               </div>
                             </div>
                           ) : (
@@ -839,7 +890,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                                 color: "#ffffff",
                                 border: "none",
                                 borderRadius: "4px",
-                                fontSize: "12px",
+                                fontSize: "13px",
                                 fontWeight: "bold",
                                 cursor: "pointer"
                               }}
@@ -853,22 +904,10 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                       {/* Transfer flow */}
                       {paymentMethod === "TRANSFER" && (
                         <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "16px" }}>
-                          <div style={{
-                            fontSize: "10px",
-                            backgroundColor: "var(--bg-secondary)",
-                            padding: "8px",
-                            borderRadius: "4px",
-                            border: "1px solid var(--border-light)",
-                            lineHeight: "1.3"
-                          }}>
-                            <strong>Cuentas de GoEats:</strong>
-                            <div>Banco Pichincha - Cta Ahorros</div>
-                            <div>Número: 2201938482</div>
-                            <div>Titular: GoEats SaaS Inc.</div>
-                          </div>
+                          <PlatformBankInfo />
 
                           <div>
-                            <label style={{ fontSize: "10px", fontWeight: "600", display: "block", marginBottom: "4px" }}>Foto Comprobante</label>
+                            <label style={{ fontSize: "13px", fontWeight: "600", display: "block", marginBottom: "4px" }}>Foto Comprobante</label>
                             <input
                               type="file"
                               accept="image/*"
@@ -883,7 +922,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                                   reader.readAsDataURL(file);
                                 }
                               }}
-                              style={{ width: "100%", fontSize: "11px" }}
+                              style={{ width: "100%", fontSize: "13px" }}
                             />
                           </div>
                         </div>
@@ -899,7 +938,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                           color: "#ffffff",
                           border: "none",
                           borderRadius: "4px",
-                          fontSize: "12px",
+                          fontSize: "13px",
                           fontWeight: "bold",
                           cursor: "pointer"
                         }}
@@ -908,7 +947,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                       </button>
                     </form>
                   ) : (
-                    <p style={{ color: "var(--text-secondary)", fontSize: "12px", margin: 0, textAlign: "center", padding: "15px 0" }}>
+                    <p style={{ color: "var(--text-secondary)", fontSize: "13px", margin: 0, textAlign: "center", padding: "15px 0" }}>
                       Selecciona un plan para iniciar tu checkout.
                     </p>
                   )}
@@ -945,7 +984,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
             <ShoppingBag size={24} />
           </div>
           <div>
-            <div style={{ fontSize: "12px", color: "var(--text-muted)", fontWeight: 600 }}>PEDIDOS REALIZADOS</div>
+            <div style={{ fontSize: "13px", color: "var(--text-muted)", fontWeight: 600 }}>PEDIDOS REALIZADOS</div>
             <div style={{ fontSize: "24px", fontWeight: 800, color: "var(--text-primary)" }}>{stats.totalOrders}</div>
           </div>
         </div>
@@ -969,7 +1008,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
             <TrendingUp size={24} />
           </div>
           <div>
-            <div style={{ fontSize: "12px", color: "var(--text-muted)", fontWeight: 600 }}>TOTAL GASTADO</div>
+            <div style={{ fontSize: "13px", color: "var(--text-muted)", fontWeight: 600 }}>TOTAL GASTADO</div>
             <div style={{ fontSize: "24px", fontWeight: 800, color: "var(--text-primary)" }}>${stats.totalSpent.toFixed(2)}</div>
           </div>
         </div>
@@ -993,7 +1032,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
             <Check size={24} />
           </div>
           <div>
-            <div style={{ fontSize: "12px", color: "var(--text-muted)", fontWeight: 600 }}>LOCAL PREFERIDO</div>
+            <div style={{ fontSize: "13px", color: "var(--text-muted)", fontWeight: 600 }}>LOCAL PREFERIDO</div>
             <div style={{ fontSize: "18px", fontWeight: 800, color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "160px" }}>
               {stats.favoriteRestaurant}
             </div>
@@ -1043,7 +1082,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                       <h4 style={{ fontSize: "15px", fontWeight: 700, margin: 0 }}>
                         {order.restaurant.name}
                       </h4>
-                      <div style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "2px" }}>
+                      <div style={{ fontSize: "13px", color: "var(--text-muted)", marginTop: "2px" }}>
                         {new Date(order.createdAt).toLocaleString("es-EC", { dateStyle: "short", timeStyle: "short" })}
                       </div>
                     </div>
@@ -1052,7 +1091,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                       backgroundColor: colors.bg,
                       color: colors.text,
                       border: `1px solid ${colors.border}`,
-                      fontSize: "11px",
+                      fontSize: "13px",
                       fontWeight: 700,
                       padding: "4px 10px",
                       borderRadius: "50px"
@@ -1060,6 +1099,10 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                       {getStatusLabel(order.status)}
                     </span>
                   </div>
+
+                  {active && order.type === "DELIVERY" && order.deliveryPin && (
+                    <DeliveryPinBox pin={order.deliveryPin} />
+                  )}
 
                   {/* Items summary */}
                   <div style={{ fontSize: "13px", color: "var(--text-secondary)", borderTop: "1px solid var(--border-light)", borderBottom: "1px solid var(--border-light)", padding: "10px 0" }}>
@@ -1072,23 +1115,29 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                       </div>
                     ))}
                     {order.shippingCost > 0 ? (
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "var(--text-muted)", marginTop: "6px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", color: "var(--text-muted)", marginTop: "6px" }}>
                         <span>Costo de envío</span>
                         <span>${order.shippingCost.toFixed(2)}</span>
                       </div>
                     ) : (
                       order.type === "DELIVERY" && (
-                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "var(--success)", fontWeight: 600, marginTop: "6px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", color: "var(--success)", fontWeight: 600, marginTop: "6px" }}>
                           <span>Costo de envío</span>
                           <span>Gratis {systemIconForEmoji("✨")}</span>
                         </div>
                       )
                     )}
+                    {Number(order.tipAmount || 0) > 0 && (
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", color: "var(--text-muted)", marginTop: "6px" }}>
+                        <span>Propina al motorizado</span>
+                        <span>${Number(order.tipAmount).toFixed(2)}</span>
+                      </div>
+                    )}
                   </div>
 
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "8px" }}>
                     <div style={{ fontSize: "14px", fontWeight: 800 }}>
-                      Total: <span style={{ color: "var(--accent-primary)" }}>${order.total.toFixed(2)}</span>
+                      Total: <span style={{ color: "var(--accent-primary)" }}>${(order.total + Number(order.tipAmount || 0)).toFixed(2)}</span>
                     </div>
 
                     <div style={{ display: "flex", gap: "8px" }}>
@@ -1101,7 +1150,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                             border: "none",
                             padding: "6px 14px",
                             borderRadius: "4px",
-                            fontSize: "12px",
+                            fontSize: "13px",
                             fontWeight: 600,
                             cursor: "pointer",
                             display: "flex",
@@ -1121,7 +1170,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                             border: "1px solid var(--border-light)",
                             padding: "6px 14px",
                             borderRadius: "4px",
-                            fontSize: "12px",
+                            fontSize: "13px",
                             fontWeight: 600,
                             cursor: "pointer",
                             display: "flex",
@@ -1146,7 +1195,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                           border: "1px solid #cbd5e1",
                           padding: "6px 12px",
                           borderRadius: "4px",
-                          fontSize: "12px",
+                          fontSize: "13px",
                           fontWeight: 600,
                           cursor: "pointer",
                           display: "flex",
@@ -1160,6 +1209,17 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                       </button>
                     </div>
                   </div>
+
+                  {order.status === "DELIVERED" && (
+                    <OrderRatingBox
+                      orderId={order.id}
+                      hasDriver={order.type === "DELIVERY" && !!order.deliveryDriver}
+                      rating={order.rating}
+                      onSaved={(rating) =>
+                        setOrders((list) => list.map((o) => (o.id === order.id ? { ...o, rating } : o)))
+                      }
+                    />
+                  )}
                 </div>
               );
             })}
@@ -1195,6 +1255,11 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
             <p style={{ fontSize: "14px", color: "var(--text-secondary)", margin: "0 0 24px 0" }}>
               {trackingOrder.restaurant.name}
             </p>
+
+            {trackingOrder.type === "DELIVERY" && trackingOrder.deliveryPin &&
+              trackingOrder.status !== "DELIVERED" && trackingOrder.status !== "CANCELLED" && (
+                <DeliveryPinBox pin={trackingOrder.deliveryPin} large />
+              )}
 
             {/* Stepper Progress */}
             <div style={{ display: "flex", flexDirection: "column", gap: "24px", padding: "10px 0" }}>
@@ -1255,7 +1320,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                       }}>
                         {step.title}
                       </h4>
-                      <p style={{ fontSize: "12px", color: "var(--text-secondary)", margin: "2px 0 0 0" }}>
+                      <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: "2px 0 0 0" }}>
                         {step.desc}
                       </p>
                     </div>
@@ -1268,7 +1333,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
             {trackingOrder.type === "DELIVERY" && (
               <div style={{ marginTop: "16px", marginBottom: "12px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                  <label style={{ fontSize: "12.5px", fontWeight: "700", display: "flex", alignItems: "center", gap: "6px", color: "var(--text-primary)", margin: 0 }}>
+                  <label style={{ fontSize: "13px", fontWeight: "700", display: "flex", alignItems: "center", gap: "6px", color: "var(--text-primary)", margin: 0 }}>
                     {systemIconForEmoji("🗺️")} Ruta y Ubicación en Tiempo Real
                   </label>
                   {trackingOrder.status === "DELIVERING" && (
@@ -1276,7 +1341,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                       display: "inline-flex",
                       alignItems: "center",
                       gap: "5px",
-                      fontSize: "11px",
+                      fontSize: "13px",
                       fontWeight: "700",
                       color: "#2ed573",
                       background: "rgba(46, 213, 115, 0.12)",
@@ -1365,8 +1430,8 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
           <div className="global-modal-card" style={{ maxWidth: "380px", padding: "25px" }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px", borderBottom: "1px solid var(--border-light)", paddingBottom: "10px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#ff5a00", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: "bold" }}>P</div>
-                <h3 style={{ fontSize: "1.1rem", fontWeight: "bold", margin: 0, color: "#ff5a00" }}>Pasarela Payphone</h3>
+                <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#ff5a00", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", fontWeight: "bold" }}>P</div>
+                <h3 style={{ fontSize: "1.1rem", fontWeight: "bold", margin: 0, color: "#ff5a00" }}>Payphone: demostración, sin cobro real</h3>
               </div>
               <button
                 type="button"
@@ -1383,17 +1448,17 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                <label style={{ fontSize: "11px", fontWeight: 600 }}>Número de Tarjeta</label>
+                <label style={{ fontSize: "13px", fontWeight: 600 }}>Número de Tarjeta</label>
                 <input type="text" style={{ padding: "8px", borderRadius: "4px", border: "1px solid var(--border-light)", backgroundColor: "var(--bg-primary)", color: "var(--text-primary)" }} placeholder="4111 1111 1111 1111" defaultValue="4111 1111 1111 1111" />
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                  <label style={{ fontSize: "11px", fontWeight: 600 }}>Vencimiento</label>
+                  <label style={{ fontSize: "13px", fontWeight: 600 }}>Vencimiento</label>
                   <input type="text" style={{ padding: "8px", borderRadius: "4px", border: "1px solid var(--border-light)", backgroundColor: "var(--bg-primary)", color: "var(--text-primary)" }} placeholder="12/28" defaultValue="12/28" />
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                  <label style={{ fontSize: "11px", fontWeight: 600 }}>CVV</label>
+                  <label style={{ fontSize: "13px", fontWeight: 600 }}>CVV</label>
                   <input type="password" style={{ padding: "8px", borderRadius: "4px", border: "1px solid var(--border-light)", backgroundColor: "var(--bg-primary)", color: "var(--text-primary)" }} placeholder="123" defaultValue="123" />
                 </div>
               </div>

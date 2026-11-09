@@ -150,7 +150,7 @@ export const FoodPreferencesModal: React.FC<FoodPreferencesModalProps> = ({
               borderRadius: "20px",
               backgroundColor: "#f1f1f1",
               color: "#111111",
-              fontSize: "12px",
+              fontSize: "13px",
               fontWeight: 700,
               marginBottom: "8px",
             }}>
@@ -222,7 +222,7 @@ export const FoodPreferencesModal: React.FC<FoodPreferencesModalProps> = ({
               color: "#111111",
               fontWeight: 700,
               cursor: "pointer",
-              fontSize: "12px",
+              fontSize: "13px",
             }}
           >
             {selected.length === FOOD_PREFERENCE_CATEGORIES.length ? "Deseleccionar todas" : "Seleccionar todas"}
@@ -301,7 +301,7 @@ export const FoodPreferencesModal: React.FC<FoodPreferencesModalProps> = ({
                 </div>
 
                 <div style={{
-                  fontSize: "11px",
+                  fontSize: "13px",
                   color: "#64748b",
                   lineHeight: 1.4
                 }}>

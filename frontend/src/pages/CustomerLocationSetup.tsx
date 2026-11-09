@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Loader2, MapPin, Utensils } from "lucide-react";
 import { LocationPickerMap } from "../components/LocationPickerMap";
 import { useAuth } from "../context/AuthContext";
@@ -14,6 +14,10 @@ interface SelectedLocation {
 export const CustomerLocationSetup: React.FC = () => {
   const navigate = useNavigate();
   const { updateUser } = useAuth();
+  // ?new=1 adds one more saved address (work, family...) instead of the first one
+  const [searchParams] = useSearchParams();
+  const isExtraAddress = searchParams.get("new") === "1";
+  const [label, setLabel] = useState(isExtraAddress ? "" : "Casa");
   const [step, setStep] = useState<1 | 2>(1);
   const [location, setLocation] = useState<SelectedLocation | null>(null);
   const [floorApartment, setFloorApartment] = useState("");
@@ -41,6 +45,24 @@ export const CustomerLocationSetup: React.FC = () => {
     setSaving(true);
     setError(null);
     try {
+      if (isExtraAddress) {
+        const saved = await apiRequest("/orders/customer/addresses", {
+          method: "POST",
+          body: JSON.stringify({
+            label,
+            address: location.address,
+            latitude: location.latitude,
+            longitude: location.longitude,
+            floorApartment,
+            secondaryStreet,
+            references,
+          }),
+        });
+        if (saved?.profile) updateUser(saved.profile);
+        navigate("/customer/profile", { replace: true });
+        return;
+      }
+
       const response = await apiRequest("/auth/profile", {
         method: "PUT",
         body: JSON.stringify({
@@ -76,7 +98,7 @@ export const CustomerLocationSetup: React.FC = () => {
     <main className="customer-location-setup">
       <header className="location-setup-header">
         <div className="location-setup-brand"><Utensils size={19} /> GoEats</div>
-        <span>Configura tu domicilio</span>
+        <span>{isExtraAddress ? "Agrega otra dirección" : "Configura tu domicilio"}</span>
       </header>
 
       <section className="location-setup-card">
@@ -89,7 +111,7 @@ export const CustomerLocationSetup: React.FC = () => {
         {step === 1 ? (
           <>
             <span className="landing-eyebrow landing-eyebrow-dark">Paso 1 de 2</span>
-            <h1>¿Dónde queda tu domicilio?</h1>
+            <h1>{isExtraAddress ? "¿Dónde queda la nueva dirección?" : "¿Dónde queda tu domicilio?"}</h1>
             <p className="location-setup-description">
               Busca tu dirección o mueve el pin del mapa. La usaremos como punto de entrega.
             </p>
@@ -139,6 +161,18 @@ export const CustomerLocationSetup: React.FC = () => {
               />
             )}
 
+            {isExtraAddress && (
+              <label className="location-setup-field">
+                Nombre de esta dirección
+                <input
+                  value={label}
+                  onChange={(event) => setLabel(event.target.value)}
+                  placeholder="Ej. Trabajo, Casa de mi mamá"
+                  maxLength={40}
+                  required
+                />
+              </label>
+            )}
             <label className="location-setup-field">
               Piso / apartamento
               <input
@@ -169,7 +203,7 @@ export const CustomerLocationSetup: React.FC = () => {
 
             {error && <p className="location-setup-error" role="alert">{error}</p>}
             <button className="landing-primary-button location-setup-next" disabled={saving || !location}>
-              {saving ? <><Loader2 className="spin" size={17} /> Guardando dirección...</> : <>Guardar y continuar <ArrowRight size={17} /></>}
+              {saving ? <><Loader2 className="spin" size={17} /> Guardando dirección...</> : <>{isExtraAddress ? "Guardar dirección" : "Guardar y continuar"} <ArrowRight size={17} /></>}
             </button>
           </form>
         )}

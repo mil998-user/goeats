@@ -22,6 +22,7 @@ import {
   LayoutGrid
 } from "lucide-react";
 import { systemIconForEmoji, systemTextWithIcons } from "../utils/systemIcons";
+import { escapeHtml } from "../utils/html";
 
 
 export interface WaiterNotification {
@@ -58,6 +59,7 @@ interface MenuItemVariant {
   id: number;
   name: string;
   price: number;
+  regularPrice?: number | null; // normal price while the dish is on promotion
   stockLimit: number | null;
   options: string | null;
 }
@@ -149,6 +151,9 @@ export const POS: React.FC = () => {
   const [selectedDocTypeId, setSelectedDocTypeId] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("01"); // 01 = Cash, 20 = Card
   const [discount, setDiscount] = useState("0.00");
+  // Optional tip for the waiter: charged with the bill but kept out of the sale and the invoice
+  const [tip, setTip] = useState("0.00");
+  const tipValue = orderType === "DELIVERY" ? 0 : Math.max(0, Math.round((parseFloat(tip) || 0) * 100) / 100);
   const [fiscalEmit, setFiscalEmit] = useState(true);
 
   // Client Search/Register State
@@ -161,6 +166,14 @@ export const POS: React.FC = () => {
   const [newClientAddress, setNewClientAddress] = useState("");
   const [newClientEmail, setNewClientEmail] = useState("");
   const [newClientPhone, setNewClientPhone] = useState("");
+  const [orderCustomer, setOrderCustomer] = useState<{
+    name: string;
+    typeId: string;
+    identification: string;
+    email: string;
+    phone: string;
+    address: string;
+  } | null>(null);
   const [showTransferReceiptModal, setShowTransferReceiptModal] = useState(false);
 
   // Kitchen Notification & Sound State for Waiters
@@ -316,9 +329,8 @@ export const POS: React.FC = () => {
 
       setDocumentTypes([
         { id: 1, name: "FACTURA", code: "01" },
-        { id: 2, name: "BOLETA", code: "02" },
-        { id: 3, name: "TICKET", code: "03" },
-        { id: 4, name: "NOTA DE VENTA", code: "04" },
+        { id: 2, name: "NOTA DE VENTA", code: "02" },
+        { id: 4, name: "TICKET", code: "09" },
       ]);
       setSelectedDocTypeId("1");
 
@@ -689,13 +701,13 @@ export const POS: React.FC = () => {
 
     const itemsHtml = cart.map(i => `
       <tr style="border-bottom: 1px dashed #ccc;">
-        <td style="padding: 6px 0; font-size: 14px;">${i.quantity}x ${i.menuItemName} (${i.name})</td>
+        <td style="padding: 6px 0; font-size: 14px;">${i.quantity}x ${escapeHtml(i.menuItemName)} (${escapeHtml(i.name)})</td>
         <td style="padding: 6px 0; text-align: right; font-size: 14px;">$${(i.price * i.quantity).toFixed(2)}</td>
       </tr>
       ${i.comments ? `
       <tr>
         <td colspan="2" style="font-size: 12px; color: #666; font-style: italic; padding-bottom: 6px;">
-          * Nota: ${i.comments}
+          * Nota: ${escapeHtml(i.comments)}
         </td>
       </tr>
       ` : ""}
@@ -729,7 +741,7 @@ export const POS: React.FC = () => {
             <div><strong>Fecha:</strong> ${dateStr}</div>
             <div><strong>Tipo:</strong> ${orderType === "DINE_IN" ? "SERVICIO EN MESA" : orderType === "TAKEOUT" ? "PARA LLEVAR / TAKEOUT" : "DOMICILIO / DELIVERY"}</div>
             ${selectedTable ? `<div><strong>Mesa:</strong> Mesa ${selectedTable.number}</div>` : ""}
-            <div><strong>Cliente:</strong> ${customerName || "Varios"}</div>
+            <div><strong>Cliente:</strong> ${escapeHtml(customerName || "Varios")}</div>
             ${activeOrderId ? `<div><strong>Nro Pedido:</strong> #${activeOrderId}</div>` : ""}
           </div>
           <table class="table-items">
@@ -766,6 +778,16 @@ export const POS: React.FC = () => {
       if (client) {
         setSelectedClient(client);
         setShowNewClientForm(false);
+      } else if (orderCustomer && orderCustomer.identification === clientSearchIdent.trim()) {
+        // The customer of this order is not yet a billing client of the restaurant: prefill their data
+        setNewClientName(orderCustomer.name);
+        setNewClientTypeId(orderCustomer.typeId);
+        setNewClientIdent(orderCustomer.identification);
+        setNewClientEmail(orderCustomer.email);
+        setNewClientPhone(orderCustomer.phone);
+        setNewClientAddress(orderCustomer.address);
+        setShowNewClientForm(true);
+        setSelectedClient(null);
       } else {
         alert("Cliente no registrado. Ingrese los datos para crearlo.");
         setNewClientIdent(clientSearchIdent);
@@ -804,11 +826,24 @@ export const POS: React.FC = () => {
     setSelectedClient(null);
     setShowNewClientForm(false);
     setClientSearchIdent("");
+    setOrderCustomer(null);
+    // If an app customer placed this order, suggest their ID so the cashier does not retype it
+    if (activeOrderId) {
+      apiRequest(`/orders/${activeOrderId}/billing-customer`)
+        .then((res) => {
+          if (res.customer) {
+            setOrderCustomer(res.customer);
+            setClientSearchIdent(res.customer.identification);
+          }
+        })
+        .catch(() => setOrderCustomer(null));
+    }
     setNewClientName("");
     setNewClientIdent("");
     setNewClientAddress("");
     setNewClientEmail("");
     setNewClientPhone("");
+    setTip("0.00");
     setShowCheckout(true);
   };
 
@@ -820,7 +855,11 @@ export const POS: React.FC = () => {
     }
 
     try {
-      const totalAmt = calculateTotal();
+      if (tipValue > 100) {
+        alert("La propina puede ser de $0 a $100.");
+        return;
+      }
+      const totalAmt = Math.round((calculateTotal() + tipValue) * 100) / 100;
       const body = {
         orderId: activeOrderId.toString(),
         docTypeId: selectedDocTypeId,
@@ -828,6 +867,7 @@ export const POS: React.FC = () => {
         paymentCash: paymentMethod === "01" ? totalAmt : 0,
         paymentCard: paymentMethod === "20" ? totalAmt : 0,
         discount: parseFloat(discount) || 0,
+        tip: tipValue > 0 ? tipValue : undefined,
         clientId: selectedClient?.id || undefined,
         fiscalEmit
       };
@@ -837,9 +877,10 @@ export const POS: React.FC = () => {
         body: JSON.stringify(body)
       });
 
-      alert("Pago procesado con éxito.");
-      if (res.invoice) {
-        alert(`Comprobante electrónico emitido. Clave de Acceso: ${res.invoice.claveAcceso}`);
+      if (res.fiscal && !res.fiscal.success) {
+        alert(`Pago registrado. La factura electrónica no se emitió: ${res.fiscal.error}`);
+      } else {
+        alert("Pago registrado con éxito.");
       }
       
       setShowCheckout(false);
@@ -871,7 +912,7 @@ export const POS: React.FC = () => {
           alignItems: "center",
           gap: "8px",
           borderRadius: "var(--radius-sm)",
-          backgroundColor: unreadNotifsCount > 0 ? "rgba(0, 165, 67, 0.2)" : undefined,
+          backgroundColor: unreadNotifsCount > 0 ? "rgba(17, 17, 17, 0.2)" : undefined,
           borderColor: unreadNotifsCount > 0 ? "var(--accent-primary)" : undefined,
           cursor: "pointer"
         }}
@@ -883,7 +924,7 @@ export const POS: React.FC = () => {
           <span style={{
             backgroundColor: "var(--accent-primary)",
             color: "#ffffff",
-            fontSize: "11px",
+            fontSize: "13px",
             fontWeight: "bold",
             padding: "2px 6px",
             borderRadius: "10px",
@@ -944,7 +985,7 @@ export const POS: React.FC = () => {
                     setNotifications([]);
                     setUnreadNotifsCount(0);
                   }}
-                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: "11px", color: "var(--text-muted)" }}
+                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: "13px", color: "var(--text-muted)" }}
                 >
                   Limpiar
                 </button>
@@ -978,7 +1019,7 @@ export const POS: React.FC = () => {
                     padding: "12px 16px",
                     borderBottom: "1px solid var(--border-light)",
                     cursor: notif.tableId ? "pointer" : "default",
-                    backgroundColor: notif.read ? "transparent" : "rgba(0, 165, 67, 0.08)",
+                    backgroundColor: notif.read ? "transparent" : "rgba(17, 17, 17, 0.08)",
                     display: "flex",
                     flexDirection: "column",
                     gap: "4px",
@@ -987,7 +1028,7 @@ export const POS: React.FC = () => {
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{
-                      fontSize: "10px",
+                      fontSize: "13px",
                       fontWeight: "bold",
                       padding: "2px 8px",
                       borderRadius: "10px",
@@ -996,18 +1037,18 @@ export const POS: React.FC = () => {
                     }}>
                       {notif.type === "ALMOST_READY" ? systemTextWithIcons("🟡 Casi Listo") : systemTextWithIcons("🟢 ¡Listo para Servir!")}
                     </span>
-                    <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
+                    <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>
                       {new Date(notif.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </span>
                   </div>
                   <div style={{ fontSize: "13px", fontWeight: "bold", color: "var(--text-primary)", marginTop: "2px" }}>
                     {notif.title}
                   </div>
-                  <div style={{ fontSize: "12px", color: "var(--text-secondary)", lineHeight: 1.3 }}>
+                  <div style={{ fontSize: "13px", color: "var(--text-secondary)", lineHeight: 1.3 }}>
                     {notif.message}
                   </div>
                   {notif.tableId && (
-                    <div style={{ fontSize: "11px", color: "var(--accent-primary)", fontWeight: 600, marginTop: "4px" }}>
+                    <div style={{ fontSize: "13px", color: "var(--accent-primary)", fontWeight: 600, marginTop: "4px" }}>
                       {systemIconForEmoji("👉")} Click para abrir mesa
                     </div>
                   )}
@@ -1061,7 +1102,7 @@ export const POS: React.FC = () => {
               width: "60px",
               height: "60px",
               borderRadius: "50%",
-              backgroundColor: "rgba(0, 165, 67, 0.1)",
+              backgroundColor: "rgba(17, 17, 17, 0.1)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -1079,7 +1120,7 @@ export const POS: React.FC = () => {
 
             <form onSubmit={handleOpenCashSession} style={{ width: "100%", display: "flex", flexDirection: "column", gap: "15px", marginTop: "10px", textAlign: "left" }}>
               <div className="input-group">
-                <label style={{ fontWeight: 600, fontSize: "12px", color: "var(--text-primary)" }}>Caja Registradora</label>
+                <label style={{ fontWeight: 600, fontSize: "13px", color: "var(--text-primary)" }}>Caja Registradora</label>
                 <select
                   value={selectedRegisterId}
                   onChange={(e) => setSelectedRegisterId(e.target.value)}
@@ -1100,7 +1141,7 @@ export const POS: React.FC = () => {
               </div>
 
               <div className="input-group">
-                <label style={{ fontWeight: 600, fontSize: "12px", color: "var(--text-primary)" }}>Monto Inicial de Apertura ($) *</label>
+                <label style={{ fontWeight: 600, fontSize: "13px", color: "var(--text-primary)" }}>Monto Inicial de Apertura ($) *</label>
                 <input
                   type="number"
                   step="0.01"
@@ -1238,7 +1279,7 @@ export const POS: React.FC = () => {
                               : isAlmostReady
                               ? "rgba(255, 165, 2, 0.15)"
                               : isOccupied
-                              ? "rgba(0, 165, 67, 0.15)"
+                              ? "rgba(17, 17, 17, 0.15)"
                               : "var(--bg-secondary)",
                             border: `2px solid ${
                               isSelected
@@ -1267,7 +1308,7 @@ export const POS: React.FC = () => {
                               right: "-8px",
                               backgroundColor: "var(--success)",
                               color: "#fff",
-                              fontSize: "9px",
+                              fontSize: "13px",
                               fontWeight: "bold",
                               borderRadius: "10px",
                               padding: "2px 6px",
@@ -1287,7 +1328,7 @@ export const POS: React.FC = () => {
                               right: "-8px",
                               backgroundColor: "var(--warning)",
                               color: "#000",
-                              fontSize: "9px",
+                              fontSize: "13px",
                               fontWeight: "bold",
                               borderRadius: "10px",
                               padding: "2px 6px",
@@ -1302,14 +1343,14 @@ export const POS: React.FC = () => {
                           )}
 
                           <span style={{ fontSize: "20px", fontWeight: "bold" }}>{table.number}</span>
-                          <span style={{ fontSize: "10px", opacity: 0.7 }}>Cap. {table.capacity}</span>
+                          <span style={{ fontSize: "13px", opacity: 0.7 }}>Cap. {table.capacity}</span>
                           {isAllReady && (
-                            <span style={{ fontSize: "9px", color: "var(--success)", fontWeight: 700, marginTop: "2px" }}>
+                            <span style={{ fontSize: "13px", color: "var(--success)", fontWeight: 700, marginTop: "2px" }}>
                               Servir {systemIconForEmoji("🛎️")}
                             </span>
                           )}
                           {isAlmostReady && (
-                            <span style={{ fontSize: "9px", color: "var(--warning)", fontWeight: 700, marginTop: "2px" }}>
+                            <span style={{ fontSize: "13px", color: "var(--warning)", fontWeight: 700, marginTop: "2px" }}>
                               Casi listo
                             </span>
                           )}
@@ -1355,7 +1396,7 @@ export const POS: React.FC = () => {
                         backgroundColor: isSelected
                           ? "var(--accent-primary)"
                           : isPending
-                          ? "rgba(0, 165, 67, 0.05)"
+                          ? "rgba(17, 17, 17, 0.05)"
                           : "var(--bg-secondary)",
                         border: `1px solid ${
                           isSelected
@@ -1379,22 +1420,22 @@ export const POS: React.FC = () => {
                           ${order.total.toFixed(2)}
                         </span>
                       </div>
-                      <div style={{ fontSize: "12px", opacity: 0.9 }}>
+                      <div style={{ fontSize: "13px", opacity: 0.9 }}>
                         <strong>Cliente:</strong> {order.customerName}
                       </div>
                       {order.deliveryAddress && (
-                        <div style={{ fontSize: "11px", opacity: 0.7, textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap", width: "100%" }}>
+                        <div style={{ fontSize: "13px", opacity: 0.7, textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap", width: "100%" }}>
                           <strong>Dirección:</strong> {order.deliveryAddress}
                         </div>
                       )}
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", marginTop: "5px" }}>
                         {order.status === "PENDING" && order.paymentMethodString === "TRANSFER" && (
-                          <span style={{ fontSize: "10px", color: isSelected ? "#ffffff" : "var(--accent-primary)", fontWeight: "bold" }}>
+                          <span style={{ fontSize: "13px", color: isSelected ? "#ffffff" : "var(--accent-primary)", fontWeight: "bold" }}>
                             TRANSFERENCIA POR CONFIRMAR
                           </span>
                         )}
                         <span style={{
-                          fontSize: "10px",
+                          fontSize: "13px",
                           fontWeight: "bold",
                           backgroundColor: isSelected ? "rgba(255,255,255,0.2)" : "var(--bg-tertiary)",
                           padding: "2px 8px",
@@ -1420,8 +1461,8 @@ export const POS: React.FC = () => {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                backgroundColor: "rgba(0, 165, 67, 0.08)",
-                border: "1px solid rgba(0, 165, 67, 0.25)",
+                backgroundColor: "rgba(17, 17, 17, 0.08)",
+                border: "1px solid rgba(17, 17, 17, 0.25)",
                 borderRadius: "var(--radius-md)",
                 padding: "8px 14px",
                 gap: "10px"
@@ -1430,7 +1471,7 @@ export const POS: React.FC = () => {
                   <span style={{ fontSize: "16px" }}>{systemIconForEmoji("🪑")}</span>
                   <div>
                     <strong style={{ fontSize: "13px", color: "var(--text-primary)" }}>Mesa {selectedTable.number}</strong>
-                    <span style={{ fontSize: "11px", color: "var(--text-secondary)", marginLeft: "6px" }}>
+                    <span style={{ fontSize: "13px", color: "var(--text-secondary)", marginLeft: "6px" }}>
                       ({selectedTable.status === "OCCUPIED" ? "En Servicio" : "Libre"})
                     </span>
                   </div>
@@ -1439,7 +1480,7 @@ export const POS: React.FC = () => {
                   type="button"
                   onClick={() => setActiveMobileTab("tables")}
                   style={{
-                    fontSize: "11px",
+                    fontSize: "13px",
                     fontWeight: 700,
                     color: "var(--accent-primary)",
                     backgroundColor: "var(--bg-secondary)",
@@ -1465,13 +1506,13 @@ export const POS: React.FC = () => {
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <span style={{ fontSize: "16px" }}>{systemIconForEmoji("⚠️")}</span>
-                  <span style={{ fontSize: "12px", color: "var(--warning)", fontWeight: 700 }}>Ninguna mesa seleccionada</span>
+                  <span style={{ fontSize: "13px", color: "var(--warning)", fontWeight: 700 }}>Ninguna mesa seleccionada</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setActiveMobileTab("tables")}
                   style={{
-                    fontSize: "11px",
+                    fontSize: "13px",
                     fontWeight: 700,
                     color: "#ffffff",
                     backgroundColor: "var(--warning)",
@@ -1671,9 +1712,8 @@ export const POS: React.FC = () => {
                                 <ShoppingBag size={32} />
                               </div>
                             )}
-                            {/* Promotional badge simulation */}
-                            {item.id % 4 === 0 && (
-                              <span className="pos-dish-card-tag">10% Off</span>
+                            {item.variants[0]?.regularPrice && (
+                              <span className="pos-dish-card-tag">Promo</span>
                             )}
                           </div>
 
@@ -1684,6 +1724,9 @@ export const POS: React.FC = () => {
                             <div className="pos-dish-card-meta">
                               <span className="pos-dish-card-price">
                                 ${item.variants[0]?.price.toFixed(2) || "0.00"}
+                                {item.variants[0]?.regularPrice && (
+                                  <s style={{ marginLeft: "6px", fontSize: "0.8em", opacity: 0.7, fontWeight: 400 }}>${item.variants[0].regularPrice.toFixed(2)}</s>
+                                )}
                               </span>
                               <span className={`pos-dish-card-diet ${isVeg ? "veg" : "non-veg"}`}>
                                 {isVeg ? systemTextWithIcons("🥬 Veg") : systemTextWithIcons("🍗 Carnes")}
@@ -1740,7 +1783,7 @@ export const POS: React.FC = () => {
 
                   if (occupiedTables.length === 0) {
                     return (
-                      <div style={{ fontSize: "12px", color: "var(--text-secondary)", fontStyle: "italic", padding: "10px 0" }}>
+                      <div style={{ fontSize: "13px", color: "var(--text-secondary)", fontStyle: "italic", padding: "10px 0" }}>
                         No hay mesas ocupadas actualmente.
                       </div>
                     );
@@ -1788,11 +1831,11 @@ export const POS: React.FC = () => {
                           <span className="pos-table-pill-name">Mesa {table.number}</span>
                           <span className="pos-table-pill-status">{table.areaName}</span>
                           {isAllReady ? (
-                            <span style={{ color: "var(--success)", fontWeight: "bold", fontSize: "11px" }}>
+                            <span style={{ color: "var(--success)", fontWeight: "bold", fontSize: "13px" }}>
                               {systemIconForEmoji("🛎️")} ¡Listo para servir!
                             </span>
                           ) : isAlmostReady ? (
-                            <span style={{ color: "var(--warning)", fontWeight: "bold", fontSize: "11px" }}>
+                            <span style={{ color: "var(--warning)", fontWeight: "bold", fontSize: "13px" }}>
                               {systemIconForEmoji("⏳")} Casi listo ({readiness.readyItems}/{readiness.totalItems})
                             </span>
                           ) : (
@@ -1834,14 +1877,14 @@ export const POS: React.FC = () => {
             <h2 style={{ fontSize: "20px", margin: 0 }}>
               {selectedTable ? `Mesa ${selectedTable.number}` : "Pedido Externo"}
             </h2>
-            <p style={{ color: "var(--text-secondary)", fontSize: "12px", margin: 0 }}>
+            <p style={{ color: "var(--text-secondary)", fontSize: "13px", margin: 0 }}>
               {selectedTable ? "Servicio en Mesa" : `Cliente: ${customerName}`}
             </p>
             {selectedTable && tableReadinessMap[selectedTable.id] && (
               <div style={{ marginTop: "6px" }}>
                 {tableReadinessMap[selectedTable.id].status === "ALL_READY" || tableReadinessMap[selectedTable.id].status === "CALL_WAITER" ? (
                   <span style={{
-                    fontSize: "11px",
+                    fontSize: "13px",
                     fontWeight: "bold",
                     color: "var(--success)",
                     backgroundColor: "rgba(46, 213, 115, 0.15)",
@@ -1855,7 +1898,7 @@ export const POS: React.FC = () => {
                   </span>
                 ) : (
                   <span style={{
-                    fontSize: "11px",
+                    fontSize: "13px",
                     fontWeight: "bold",
                     color: "var(--warning)",
                     backgroundColor: "rgba(255, 165, 2, 0.15)",
@@ -1879,7 +1922,7 @@ export const POS: React.FC = () => {
               style={{
                 display: "none",
                 padding: "6px 12px",
-                fontSize: "12px",
+                fontSize: "13px",
                 borderRadius: "var(--radius-sm)",
                 fontWeight: 600,
                 cursor: "pointer"
@@ -1932,7 +1975,7 @@ export const POS: React.FC = () => {
         <div style={{ padding: "5px 20px 10px 20px" }}>
           {orderType !== "DINE_IN" && (
             <div className="input-group" style={{ marginBottom: "10px", gap: "4px" }}>
-              <label style={{ fontSize: "11px", color: "var(--text-muted)" }}>Nombre de Cliente</label>
+              <label style={{ fontSize: "13px", color: "var(--text-muted)" }}>Nombre de Cliente</label>
               <input
                 type="text"
                 className="input-field"
@@ -1946,7 +1989,7 @@ export const POS: React.FC = () => {
           {orderType === "DELIVERY" && (
             <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "10px" }}>
               <div className="input-group" style={{ marginBottom: 0, gap: "4px" }}>
-                <label style={{ fontSize: "11px", color: "var(--text-muted)" }}>Dirección de Entrega</label>
+                <label style={{ fontSize: "13px", color: "var(--text-muted)" }}>Dirección de Entrega</label>
                 <input
                   type="text"
                   className="input-field"
@@ -1957,7 +2000,7 @@ export const POS: React.FC = () => {
                 />
               </div>
               <div className="input-group" style={{ marginBottom: 0, gap: "4px" }}>
-                <label style={{ fontSize: "11px", color: "var(--text-muted)" }}>Referencia de Entrega (Opcional)</label>
+                <label style={{ fontSize: "13px", color: "var(--text-muted)" }}>Referencia de Entrega (Opcional)</label>
                 <input
                   type="text"
                   className="input-field"
@@ -1968,7 +2011,7 @@ export const POS: React.FC = () => {
                 />
               </div>
               <div className="input-group" style={{ marginBottom: 0, gap: "4px" }}>
-                <label style={{ fontSize: "11px", color: "var(--text-muted)" }}>Teléfono</label>
+                <label style={{ fontSize: "13px", color: "var(--text-muted)" }}>Teléfono</label>
                 <input
                   type="text"
                   className="input-field"
@@ -1984,7 +2027,7 @@ export const POS: React.FC = () => {
           {/* Transfer receipt check banner (security feature) */}
           {activeOrderObj && activeOrderObj.status === "PENDING" && activeOrderObj.paymentMethodString === "TRANSFER" && (
             <div style={{
-              backgroundColor: "rgba(0, 165, 67, 0.05)",
+              backgroundColor: "rgba(17, 17, 17, 0.05)",
               border: "1px solid var(--accent-primary)",
               padding: "10px",
               borderRadius: "var(--radius-sm)",
@@ -1992,11 +2035,11 @@ export const POS: React.FC = () => {
               flexDirection: "column",
               gap: "6px"
             }}>
-              <div style={{ fontSize: "12px", fontWeight: "bold", color: "var(--accent-primary)", display: "flex", alignItems: "center", gap: "6px" }}>
+              <div style={{ fontSize: "13px", fontWeight: "bold", color: "var(--accent-primary)", display: "flex", alignItems: "center", gap: "6px" }}>
                 <span>{systemIconForEmoji("⚠️")} Comprobante por Verificar</span>
               </div>
               {user?.role === "MOZO" ? (
-                <div style={{ fontSize: "11px", color: "var(--text-secondary)", fontStyle: "italic" }}>
+                <div style={{ fontSize: "13px", color: "var(--text-secondary)", fontStyle: "italic" }}>
                   Pendiente de verificación por caja {systemIconForEmoji("🖥️")}
                 </div>
               ) : (
@@ -2004,7 +2047,7 @@ export const POS: React.FC = () => {
                   type="button"
                   onClick={() => setShowTransferReceiptModal(true)}
                   className="glow-btn"
-                  style={{ padding: "6px 12px", fontSize: "11px", backgroundColor: "var(--accent-primary)" }}
+                  style={{ padding: "6px 12px", fontSize: "13px", backgroundColor: "var(--accent-primary)" }}
                 >
                   Revisar Pago
                 </button>
@@ -2031,7 +2074,7 @@ export const POS: React.FC = () => {
             }}>
               <ShoppingBag size={48} style={{ opacity: 0.15, marginBottom: "15px" }} />
               <p>Comanda vacía.</p>
-              <p style={{ fontSize: "11px", opacity: 0.7 }}>Seleccione platos del menú para agregarlos.</p>
+              <p style={{ fontSize: "13px", opacity: 0.7 }}>Seleccione platos del menú para agregarlos.</p>
             </div>
           ) : (
             cart.map(item => (
@@ -2050,7 +2093,7 @@ export const POS: React.FC = () => {
                   <div style={{ fontSize: "13px", fontWeight: "bold", color: "var(--text-primary)" }}>
                     {item.menuItemName}
                   </div>
-                  <div style={{ fontSize: "11px", color: "var(--text-secondary)" }}>
+                  <div style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
                     {item.name} • ${item.price.toFixed(2)}
                   </div>
                   
@@ -2064,7 +2107,7 @@ export const POS: React.FC = () => {
                       setCart(prev => prev.map(i => i.variantId === item.variantId ? { ...i, comments: val } : i));
                     }}
                     style={{
-                      fontSize: "11px",
+                      fontSize: "13px",
                       color: "var(--text-muted)",
                       width: "100%",
                       marginTop: "4px",
@@ -2183,7 +2226,7 @@ export const POS: React.FC = () => {
                   padding: "12px",
                   fontSize: "14px",
                   fontWeight: 700,
-                  backgroundColor: user?.role === "MOZO" ? undefined : "rgba(0, 165, 67, 0.08)",
+                  backgroundColor: user?.role === "MOZO" ? undefined : "rgba(17, 17, 17, 0.08)",
                   borderColor: "var(--accent-primary)",
                   color: user?.role === "MOZO" ? "#ffffff" : "var(--accent-primary)"
                 }}
@@ -2201,12 +2244,12 @@ export const POS: React.FC = () => {
                     activeOrderObj.status === "PENDING" && activeOrderObj.paymentMethodString === "TRANSFER" ? (
                       <div style={{
                         flex: 1,
-                        backgroundColor: "rgba(0, 165, 67, 0.05)",
+                        backgroundColor: "rgba(17, 17, 17, 0.05)",
                         border: "1px solid var(--accent-primary)",
                         color: "var(--accent-primary)",
                         padding: "10px",
                         borderRadius: "var(--radius-sm)",
-                        fontSize: "12px",
+                        fontSize: "13px",
                         fontWeight: "bold",
                         textAlign: "center",
                         display: "flex",
@@ -2223,7 +2266,7 @@ export const POS: React.FC = () => {
                         color: "var(--accent-primary)",
                         padding: "10px",
                         borderRadius: "var(--radius-sm)",
-                        fontSize: "12px",
+                        fontSize: "13px",
                         fontWeight: "bold",
                         textAlign: "center",
                         display: "flex",
@@ -2231,6 +2274,23 @@ export const POS: React.FC = () => {
                         justifyContent: "center"
                       }}>
                         ORDEN CANCELADA
+                      </div>
+                    ) : activeOrderObj.type === "DELIVERY" && activeOrderObj.paymentStatus !== "APPROVED" && !activeOrderObj.payphoneTransactionId ? (
+                      <div style={{
+                        flex: 1,
+                        backgroundColor: "var(--bg-tertiary)",
+                        border: "1px solid var(--border-color)",
+                        color: "var(--text-secondary)",
+                        padding: "10px",
+                        borderRadius: "var(--radius-sm)",
+                        fontSize: "13px",
+                        fontWeight: "bold",
+                        textAlign: "center",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center"
+                      }}>
+                        SE COBRA AL ENTREGAR
                       </div>
                     ) : activeOrderObj.paymentStatus === "APPROVED" || activeOrderObj.payphoneTransactionId ? (
                       <div style={{
@@ -2240,7 +2300,7 @@ export const POS: React.FC = () => {
                         color: "var(--success)",
                         padding: "10px",
                         borderRadius: "var(--radius-sm)",
-                        fontSize: "12px",
+                        fontSize: "13px",
                         fontWeight: "bold",
                         textAlign: "center",
                         display: "flex",
@@ -2314,7 +2374,7 @@ export const POS: React.FC = () => {
                       setShowNewClientForm(true);
                       setNewClientTypeId("05");
                     }}
-                    style={{ fontSize: "11px", color: "var(--accent-primary)", fontWeight: "bold", background: "none", border: "none", cursor: "pointer" }}
+                    style={{ fontSize: "13px", color: "var(--accent-primary)", fontWeight: "bold", background: "none", border: "none", cursor: "pointer" }}
                   >
                     + Registrar Nuevo Cliente
                   </button>
@@ -2341,6 +2401,11 @@ export const POS: React.FC = () => {
                   </button>
                 </div>
               )}
+              {!showNewClientForm && !selectedClient && orderCustomer && (
+                <p role="status" style={{ fontSize: "12px", color: "var(--text-secondary)", margin: "0 0 10px" }}>
+                  Pedido hecho desde la app por {orderCustomer.name}. Pulsa la lupa para usar sus datos.
+                </p>
+              )}
 
               {/* Client Selection Status */}
               {selectedClient ? (
@@ -2365,7 +2430,7 @@ export const POS: React.FC = () => {
                       setSelectedClient(null);
                       setClientSearchIdent("");
                     }}
-                    style={{ fontSize: "11px", color: "var(--danger)", fontWeight: "bold", cursor: "pointer", background: "none", border: "none" }}
+                    style={{ fontSize: "13px", color: "var(--danger)", fontWeight: "bold", cursor: "pointer", background: "none", border: "none" }}
                   >
                     [ Quitar ]
                   </button>
@@ -2374,7 +2439,7 @@ export const POS: React.FC = () => {
                 !showNewClientForm && (
                   <div style={{
                     padding: "10px",
-                    backgroundColor: "rgba(0, 165, 67, 0.03)",
+                    backgroundColor: "rgba(17, 17, 17, 0.03)",
                     border: "1px dashed var(--border-light)",
                     borderRadius: "var(--radius-sm)",
                     fontSize: "13px",
@@ -2391,7 +2456,7 @@ export const POS: React.FC = () => {
 
               {showNewClientForm && (
                 <form onSubmit={handleRegisterClient} style={{ marginTop: "15px", display: "flex", flexDirection: "column", gap: "10px" }}>
-                  <h4 style={{ fontSize: "12px", color: "var(--text-muted)", margin: 0 }}>Registro de Nuevo Cliente</h4>
+                  <h4 style={{ fontSize: "13px", color: "var(--text-muted)", margin: 0 }}>Registro de Nuevo Cliente</h4>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                     <input
                       type="text"
@@ -2508,8 +2573,9 @@ export const POS: React.FC = () => {
 
             {/* Discount */}
             <div className="input-group" style={{ marginBottom: "20px" }}>
-              <label>Descuento Especial (USD)</label>
+              <label htmlFor="pos-discount">Descuento Especial (USD)</label>
               <input
+                id="pos-discount"
                 type="number"
                 step="0.01"
                 min="0"
@@ -2518,6 +2584,23 @@ export const POS: React.FC = () => {
                 onChange={(e) => setDiscount(e.target.value)}
               />
             </div>
+
+            {orderType !== "DELIVERY" && (
+              <div className="input-group" style={{ marginBottom: "20px" }}>
+                <label htmlFor="pos-tip">Propina para el mesero (opcional, no va en la factura)</label>
+                <input
+                  id="pos-tip"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="100"
+                  inputMode="decimal"
+                  className="input-field"
+                  value={tip}
+                  onChange={(e) => setTip(e.target.value)}
+                />
+              </div>
+            )}
 
             {/* SRI electronic toggle */}
             <div style={{
@@ -2549,14 +2632,15 @@ export const POS: React.FC = () => {
               alignItems: "center"
             }}>
               <div>
-                <div style={{ fontSize: "12px", color: "var(--text-secondary)" }}>Total a Pagar</div>
+                <div style={{ fontSize: "13px", color: "var(--text-secondary)" }}>Total a Pagar</div>
                 <div style={{ fontSize: "32px", fontWeight: 800, color: "var(--success)" }}>
-                  ${calculateTotal().toFixed(2)}
+                  ${(calculateTotal() + tipValue).toFixed(2)}
                 </div>
               </div>
-              <div style={{ fontSize: "12px", color: "var(--text-muted)", textAlign: "right" }}>
+              <div style={{ fontSize: "13px", color: "var(--text-muted)", textAlign: "right" }}>
                 <div>Subtotal: ${calculateSubtotal().toFixed(2)}</div>
                 <div>Desc: -${(parseFloat(discount) || 0).toFixed(2)}</div>
+                {tipValue > 0 && <div>Propina: +${tipValue.toFixed(2)}</div>}
               </div>
             </div>
 
@@ -2584,7 +2668,7 @@ export const POS: React.FC = () => {
       {showTransferReceiptModal && activeOrderObj && (
         <div className="global-modal-overlay">
           <div className="global-modal-card" style={{ maxWidth: "550px" }}>
-            <h2 style={{ fontSize: "20px", borderBottom: "1px solid var(--border-light)", paddingBottom: "10px", margin: 0 }}>
+            <h2 style={{ fontSize: "20px", borderBottom: "1px solid var(--border-light)", paddingBottom: "12px", margin: 0 }}>
               Verificar Comprobante de Transferencia
             </h2>
 
@@ -2722,7 +2806,7 @@ export const POS: React.FC = () => {
                   <div style={{ fontWeight: 800, fontSize: "14px", lineHeight: 1.1 }}>
                     ${calculateTotal().toFixed(2)}
                   </div>
-                  <div style={{ fontSize: "11px", opacity: 0.9 }}>
+                  <div style={{ fontSize: "13px", opacity: 0.9 }}>
                     {selectedTable ? `Mesa ${selectedTable.number}` : "Pedido"} • {cart.length} {cart.length === 1 ? "plato" : "platos"}
                   </div>
                 </div>
@@ -2784,7 +2868,7 @@ export const POS: React.FC = () => {
               color: "#fff",
               padding: "4px 12px",
               borderRadius: "20px",
-              fontSize: "0.8rem",
+              fontSize: "0.85rem",
               fontWeight: "800",
               letterSpacing: "1px",
               marginBottom: "8px"

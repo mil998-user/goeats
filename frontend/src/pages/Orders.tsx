@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../utils/api";
 import { useSocket } from "../context/SocketContext";
 import { useAuth } from "../context/AuthContext";
+import { OrderStaffLine } from "../components/OrderStaffLine";
 import {
   Search,
   Eye,
@@ -15,6 +16,7 @@ import {
   Clock,
   Printer
 } from "lucide-react";
+import { escapeHtml } from "../utils/html";
 
 export const Orders: React.FC = () => {
   const navigate = useNavigate();
@@ -108,6 +110,28 @@ export const Orders: React.FC = () => {
     }
   };
 
+  const handleAttend = async (orderId: number) => {
+    try {
+      await apiRequest(`/orders/${orderId}/attend`, { method: "POST" });
+      fetchOrders();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "No se pudo tomar el pedido.");
+      fetchOrders();
+    }
+  };
+
+  const handleMarkDelivered = async (orderId: number) => {
+    try {
+      await apiRequest(`/orders/${orderId}/status`, {
+        method: "PUT",
+        body: JSON.stringify({ status: "DELIVERED" })
+      });
+      fetchOrders();
+    } catch (err: any) {
+      alert("Error al cerrar el pedido: " + err.message);
+    }
+  };
+
   const handlePrintComanda = (order: any) => {
     const printWindow = window.open("", "_blank");
     if (!printWindow) {
@@ -117,13 +141,13 @@ export const Orders: React.FC = () => {
 
     const itemsHtml = order.items.map((i: any) => `
       <tr style="border-bottom: 1px dashed #ccc;">
-        <td style="padding: 6px 0; font-size: 14px;">${i.quantity}x ${i.variant?.menuItem?.name || "Plato"} (${i.variant?.name || "Porción"})</td>
+        <td style="padding: 6px 0; font-size: 14px;">${i.quantity}x ${escapeHtml(i.variant?.menuItem?.name || "Plato")} (${escapeHtml(i.variant?.name || "Porción")})</td>
         <td style="padding: 6px 0; text-align: right; font-size: 14px;">$${(i.price * i.quantity).toFixed(2)}</td>
       </tr>
       ${i.comments ? `
       <tr>
         <td colspan="2" style="font-size: 12px; color: #666; font-style: italic; padding-bottom: 6px;">
-          * Nota: ${i.comments}
+          * Nota: ${escapeHtml(i.comments)}
         </td>
       </tr>
       ` : ""}
@@ -157,7 +181,7 @@ export const Orders: React.FC = () => {
             <div><strong>Fecha:</strong> ${dateStr}</div>
             <div><strong>Tipo:</strong> ${order.type === "DINE_IN" ? "SERVICIO EN MESA" : order.type === "TAKEOUT" ? "PARA LLEVAR / TAKEOUT" : "DOMICILIO / DELIVERY"}</div>
             ${order.table ? `<div><strong>Mesa:</strong> Mesa ${order.table.number}</div>` : ""}
-            <div><strong>Cliente:</strong> ${order.customerName || "Varios"}</div>
+            <div><strong>Cliente:</strong> ${escapeHtml(order.customerName || "Varios")}</div>
             <div><strong>Nro Pedido:</strong> #${order.id}</div>
           </div>
           <table class="table-items">
@@ -212,7 +236,7 @@ export const Orders: React.FC = () => {
       case "DELIVERING":
         return { backgroundColor: "rgba(108, 92, 231, 0.1)", color: "#6c5ce7" };
       case "DELIVERED":
-        return { backgroundColor: "rgba(0, 165, 67, 0.1)", color: "var(--accent-primary)" };
+        return { backgroundColor: "rgba(17, 17, 17, 0.1)", color: "var(--accent-primary)" };
       case "CANCELLED":
         return { backgroundColor: "rgba(255, 71, 87, 0.1)", color: "#ff4757" };
       default:
@@ -236,19 +260,19 @@ export const Orders: React.FC = () => {
     switch (type) {
       case "DINE_IN":
         return (
-          <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", fontWeight: 700, color: "#0984e3", backgroundColor: "rgba(9, 132, 227, 0.08)", padding: "3px 8px", borderRadius: "12px" }}>
+          <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "13px", fontWeight: 700, color: "#0984e3", backgroundColor: "rgba(9, 132, 227, 0.08)", padding: "3px 8px", borderRadius: "12px" }}>
             <Utensils size={12} /> Mesa
           </span>
         );
       case "TAKEOUT":
         return (
-          <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", fontWeight: 700, color: "#e67e22", backgroundColor: "rgba(230, 126, 34, 0.08)", padding: "3px 8px", borderRadius: "12px" }}>
+          <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "13px", fontWeight: 700, color: "#e67e22", backgroundColor: "rgba(230, 126, 34, 0.08)", padding: "3px 8px", borderRadius: "12px" }}>
             <ShoppingBag size={12} /> Llevar
           </span>
         );
       case "DELIVERY":
         return (
-          <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", fontWeight: 700, color: "#6c5ce7", backgroundColor: "rgba(108, 92, 231, 0.08)", padding: "3px 8px", borderRadius: "12px" }}>
+          <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "13px", fontWeight: 700, color: "#6c5ce7", backgroundColor: "rgba(108, 92, 231, 0.08)", padding: "3px 8px", borderRadius: "12px" }}>
             <Truck size={12} /> Domicilio
           </span>
         );
@@ -331,7 +355,7 @@ export const Orders: React.FC = () => {
         </div>
 
         {/* Tab Filters */}
-        <div style={{ display: "flex", gap: "10px", borderBottom: "1px solid var(--border-light)", paddingBottom: "10px", overflowX: "auto" }}>
+        <div className="scrollable-tabs" style={{ display: "flex", gap: "10px", borderBottom: "1px solid var(--border-light)", paddingBottom: "10px", overflowX: "auto" }}>
           {[
             { id: "ALL", label: "Todos" },
             { id: "DINE_IN", label: "Mesas" },
@@ -396,7 +420,7 @@ export const Orders: React.FC = () => {
                       #{order.id}
                     </span>
                     {getOrderTypeBadge(order.type)}
-                    <span style={{ fontSize: "11px", color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: "3px" }}>
+                    <span style={{ fontSize: "13px", color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: "3px" }}>
                       <Clock size={12} /> {dateStr}
                     </span>
                   </div>
@@ -404,18 +428,19 @@ export const Orders: React.FC = () => {
                     <User size={14} style={{ color: "var(--text-muted)" }} />
                     {order.customerName}
                     {order.table && (
-                      <span style={{ color: "var(--text-muted)", fontSize: "12px", fontWeight: "normal" }}>
+                      <span style={{ color: "var(--text-muted)", fontSize: "13px", fontWeight: "normal" }}>
                         (Mesa {order.table.number})
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
+                  <div style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
                     {order.items.length} platos • Total: <strong style={{ color: "var(--accent-primary)" }}>${order.total.toFixed(2)}</strong>
                   </div>
+                  <OrderStaffLine order={order} canAttend={user?.role === "MOZO"} onAttend={handleAttend} />
                 </div>
 
                 {/* Center Side: Platos list preview */}
-                <div style={{ flex: 1, minWidth: "250px", fontSize: "12px", color: "var(--text-secondary)", borderLeft: "1px solid var(--border-light)", paddingLeft: "20px" }}>
+                <div style={{ flex: 1, minWidth: "250px", fontSize: "13px", color: "var(--text-secondary)", borderLeft: "1px solid var(--border-light)", paddingLeft: "20px" }}>
                   <ul style={{ margin: 0, paddingLeft: "15px", listStyleType: "circle" }}>
                     {order.items.slice(0, 3).map((item: any) => (
                       <li key={item.id}>
@@ -436,7 +461,7 @@ export const Orders: React.FC = () => {
                   <span style={{
                     padding: "6px 12px",
                     borderRadius: "20px",
-                    fontSize: "12px",
+                    fontSize: "13px",
                     fontWeight: 700,
                     ...badgeStyle
                   }}>
@@ -476,7 +501,7 @@ export const Orders: React.FC = () => {
                           backgroundColor: "rgba(255, 159, 67, 0.1)",
                           border: "1px solid rgba(255, 159, 67, 0.2)",
                           color: "#ff9f43",
-                          fontSize: "12px",
+                          fontSize: "13px",
                           fontWeight: 600,
                           cursor: "pointer"
                         }}
@@ -498,13 +523,41 @@ export const Orders: React.FC = () => {
                           backgroundColor: "var(--accent-primary)",
                           border: "none",
                           color: "#ffffff",
-                          fontSize: "12px",
+                          fontSize: "13px",
                           fontWeight: 600,
                           cursor: "pointer"
                         }}
                       >
                         <DollarSign size={14} /> Cobrar
                       </button>
+                    )}
+
+                    {/* Close a paid order the customer already received */}
+                    {!isUnpaid && order.status === "READY" && order.type !== "DELIVERY" && (
+                      <button
+                        onClick={() => handleMarkDelivered(order.id)}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "5px",
+                          padding: "6px 12px",
+                          borderRadius: "var(--radius-sm)",
+                          backgroundColor: "var(--accent-primary)",
+                          border: "none",
+                          color: "#ffffff",
+                          fontSize: "13px",
+                          fontWeight: 600,
+                          cursor: "pointer"
+                        }}
+                      >
+                        Marcar entregado
+                      </button>
+                    )}
+
+                    {order.paymentStatus === "REFUND_PENDING" && (
+                      <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--danger)", alignSelf: "center" }}>
+                        Reembolso pendiente
+                      </span>
                     )}
                   </div>
                 </div>
@@ -518,7 +571,7 @@ export const Orders: React.FC = () => {
       {selectedOrderForReceipt && (
         <div className="global-modal-overlay">
           <div className="global-modal-card" style={{ maxWidth: "500px" }}>
-            <h2 style={{ fontSize: "20px", fontWeight: "bold", borderBottom: "1px solid var(--border-light)", paddingBottom: "10px", margin: 0, color: "var(--text-primary)" }}>
+            <h2 style={{ fontSize: "20px", fontWeight: "bold", borderBottom: "1px solid var(--border-light)", paddingBottom: "12px", margin: 0, color: "var(--text-primary)" }}>
               Comprobante de Transferencia Bancaria
             </h2>
 

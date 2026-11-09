@@ -16,6 +16,8 @@ import {
   CreditCard,
   QrCode
 } from "lucide-react";
+import { escapeHtml } from "../utils/html";
+import { TableGroupActions } from "../components/TableGroupActions";
 
 export const TablesPage: React.FC = () => {
   const navigate = useNavigate();
@@ -32,6 +34,7 @@ export const TablesPage: React.FC = () => {
   const [qrTable, setQrTable] = useState<any | null>(null);
   const [restaurantInfo, setRestaurantInfo] = useState<any | null>(null);
   const [suggestedNetworkIp, setSuggestedNetworkIp] = useState<string | null>(null);
+  const [tableNotice, setTableNotice] = useState<string | null>(null);
 
   const fetchData = async (isManual = false) => {
     if (isManual) setRefreshing(true);
@@ -83,11 +86,13 @@ export const TablesPage: React.FC = () => {
       socket.on("new-order", handleSocketUpdate);
       socket.on("order-status-updated", handleSocketUpdate);
       socket.on("order-cancelled", handleSocketUpdate);
+      socket.on("tables-updated", handleSocketUpdate);
 
       return () => {
         socket.off("new-order", handleSocketUpdate);
         socket.off("order-status-updated", handleSocketUpdate);
         socket.off("order-cancelled", handleSocketUpdate);
+        socket.off("tables-updated", handleSocketUpdate);
       };
     }
   }, [socket, selectedAreaId]);
@@ -115,7 +120,18 @@ export const TablesPage: React.FC = () => {
     return activeOrders.find((o) => o.tableId === tableId);
   };
 
+  const allTables: any[] = diningAreas.flatMap((a) => a.tables || []);
+  const findTable = (id: number | null | undefined) => allTables.find((t) => t.id === id);
+
   const handleTableClick = (table: any) => {
+    // A joined table shares the bill of its main table
+    if (table.joinedToId) {
+      const main = findTable(table.joinedToId);
+      if (main) {
+        setSelectedTable(main);
+        return;
+      }
+    }
     if (table.status === "FREE") {
       if (user?.role === "RESTAURANT_OWNER") {
         alert("El administrador no puede iniciar pedidos en el POS.");
@@ -140,13 +156,13 @@ export const TablesPage: React.FC = () => {
 
     const itemsHtml = order.items.map((i: any) => `
       <tr style="border-bottom: 1px dashed #ccc;">
-        <td style="padding: 6px 0; font-size: 14px;">${i.quantity}x ${i.variant?.menuItem?.name || "Plato"} (${i.variant?.name || "Porción"})</td>
+        <td style="padding: 6px 0; font-size: 14px;">${i.quantity}x ${escapeHtml(i.variant?.menuItem?.name || "Plato")} (${escapeHtml(i.variant?.name || "Porción")})</td>
         <td style="padding: 6px 0; text-align: right; font-size: 14px;">$${(i.price * i.quantity).toFixed(2)}</td>
       </tr>
       ${i.comments ? `
       <tr>
         <td colspan="2" style="font-size: 12px; color: #666; font-style: italic; padding-bottom: 6px;">
-          * Nota: ${i.comments}
+          * Nota: ${escapeHtml(i.comments)}
         </td>
       </tr>
       ` : ""}
@@ -179,7 +195,7 @@ export const TablesPage: React.FC = () => {
           <div class="details">
             <div><strong>Fecha:</strong> ${dateStr}</div>
             <div><strong>Mesa:</strong> Mesa ${selectedTable?.number || ""}</div>
-            <div><strong>Cliente:</strong> ${order.customerName || "Varios"}</div>
+            <div><strong>Cliente:</strong> ${escapeHtml(order.customerName || "Varios")}</div>
             <div><strong>Nro Pedido:</strong> #${order.id}</div>
           </div>
           <table class="table-items">
@@ -216,9 +232,9 @@ export const TablesPage: React.FC = () => {
       <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "clamp(12px, 3vw, 24px)", overflowY: "auto" }}>
         
         {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
-          <div>
-            <h1 style={{ fontSize: "24px", fontWeight: 800, letterSpacing: "-0.5px", color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "10px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px", marginBottom: "24px", flexShrink: 0 }}>
+          <div style={{ minWidth: 0 }}>
+            <h1 style={{ fontSize: "24px", fontWeight: 800, letterSpacing: "-0.5px", color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "12px" }}>
               <Utensils size={28} className="text-accent" style={{ color: "var(--accent-primary)" }} />
               Servicios de Mesa
             </h1>
@@ -227,7 +243,7 @@ export const TablesPage: React.FC = () => {
             </p>
           </div>
           
-          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
             <button
               onClick={() => {
                 setQrTable(null);
@@ -237,7 +253,8 @@ export const TablesPage: React.FC = () => {
               style={{
                 padding: "8px 16px",
                 fontSize: "13px",
-                height: "38px",
+                minHeight: "38px",
+                whiteSpace: "nowrap",
                 display: "flex",
                 alignItems: "center",
                 gap: "6px"
@@ -251,7 +268,7 @@ export const TablesPage: React.FC = () => {
             <button 
               onClick={() => fetchData(true)} 
               className="secondary-btn" 
-              style={{ padding: "8px 16px", fontSize: "13px", height: "38px" }}
+              style={{ padding: "8px 16px", fontSize: "13px", minHeight: "38px", whiteSpace: "nowrap" }}
               disabled={refreshing}
             >
               <RefreshCw size={16} className={refreshing ? "spin" : ""} style={{ marginRight: "4px" }} />
@@ -262,7 +279,7 @@ export const TablesPage: React.FC = () => {
 
         {/* Salones Tab bar */}
         {diningAreas.length > 0 ? (
-          <div style={{ display: "flex", gap: "10px", marginBottom: "24px", overflowX: "auto", paddingBottom: "8px" }}>
+          <div style={{ display: "flex", gap: "10px", marginBottom: "24px", overflowX: "auto", paddingBottom: "8px", flexShrink: 0 }}>
             {diningAreas.map((area) => {
               const isActive = area.id === selectedAreaId;
               const occupiedCount = area.tables?.filter((t: any) => t.status === "OCCUPIED").length || 0;
@@ -287,6 +304,7 @@ export const TablesPage: React.FC = () => {
                     alignItems: "center",
                     gap: "8px",
                     whiteSpace: "nowrap",
+                    flexShrink: 0,
                     backgroundColor: isActive ? "var(--accent-glow)" : "var(--bg-secondary)",
                     color: isActive ? "var(--accent-primary)" : "var(--text-secondary)",
                     border: isActive ? "1px solid var(--accent-primary)" : "1px solid var(--border-light)"
@@ -294,7 +312,7 @@ export const TablesPage: React.FC = () => {
                 >
                   {area.name}
                   <span style={{
-                    fontSize: "11px",
+                    fontSize: "13px",
                     padding: "2px 6px",
                     borderRadius: "10px",
                     backgroundColor: isActive ? "var(--accent-primary)" : "var(--bg-tertiary)",
@@ -356,7 +374,7 @@ export const TablesPage: React.FC = () => {
                       ? "rgba(255, 71, 87, 0.02)" 
                       : "var(--bg-secondary)",
                     transform: isSelected ? "translateY(-2px)" : "none",
-                    boxShadow: isSelected ? "0 4px 12px rgba(0, 165, 67, 0.15)" : "none"
+                    boxShadow: isSelected ? "0 4px 12px rgba(17, 17, 17, 0.15)" : "none"
                   }}
                 >
                   {/* Top: Table Number & Capacity */}
@@ -366,7 +384,7 @@ export const TablesPage: React.FC = () => {
                         Mesa {table.number}
                       </h3>
                       <span style={{
-                        fontSize: "11px",
+                        fontSize: "13px",
                         color: "var(--text-secondary)",
                         display: "flex",
                         alignItems: "center",
@@ -375,6 +393,11 @@ export const TablesPage: React.FC = () => {
                       }}>
                         <Users size={12} /> Cap. {table.capacity}
                       </span>
+                      {table.joinedToId && (
+                        <span data-testid={`joined-${table.id}`} style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-primary)", display: "block", marginTop: "2px" }}>
+                          Unida a Mesa {findTable(table.joinedToId)?.number || "?"}
+                        </span>
+                      )}
                     </div>
 
                     {/* Status Badge & QR Button */}
@@ -391,7 +414,7 @@ export const TablesPage: React.FC = () => {
                           border: "1px solid var(--border-light)",
                           borderRadius: "6px",
                           padding: "2px 6px",
-                          fontSize: "11px",
+                          fontSize: "13px",
                           fontWeight: 700,
                           cursor: "pointer",
                           display: "flex",
@@ -406,7 +429,7 @@ export const TablesPage: React.FC = () => {
                       </button>
 
                       <span style={{
-                        fontSize: "10px",
+                        fontSize: "13px",
                         fontWeight: 700,
                         padding: "2px 8px",
                         borderRadius: "20px",
@@ -422,14 +445,14 @@ export const TablesPage: React.FC = () => {
                   {/* Bottom: Client Name / Order Total if occupied */}
                   {isOccupied && order && (
                     <div style={{ marginTop: "16px", borderTop: "1px dashed var(--border-light)", paddingTop: "10px" }}>
-                      <p style={{ fontSize: "11px", color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={order.customerName}>
+                      <p style={{ fontSize: "13px", color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={order.customerName}>
                         {order.customerName || "Cliente"}
                       </p>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "2px" }}>
                         <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--accent-primary)" }}>
                           ${order.total.toFixed(2)}
                         </span>
-                        <span style={{ fontSize: "10px", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "2px" }}>
+                        <span style={{ fontSize: "13px", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "2px" }}>
                           <Clock size={10} />
                           {(() => {
                             const minutes = Math.floor((Date.now() - new Date(order.createdAt).getTime()) / 60000);
@@ -443,7 +466,7 @@ export const TablesPage: React.FC = () => {
                   {!isOccupied && (
                     <div style={{ marginTop: "16px", display: "flex", justifyContent: "flex-end" }}>
                       <span className="text-accent" style={{
-                        fontSize: "11px",
+                        fontSize: "13px",
                         fontWeight: 600,
                         color: "var(--text-muted)",
                         display: "flex",
@@ -490,11 +513,11 @@ export const TablesPage: React.FC = () => {
                   Mesa {selectedTable.number}
                 </h2>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "4px" }}>
-                  <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
+                  <span style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
                     Pedido #{selectedTableOrder.id}
                   </span>
                   <span style={{ width: "4px", height: "4px", borderRadius: "50%", backgroundColor: "var(--border-hover)" }} />
-                  <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--accent-primary)" }}>
+                  <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--accent-primary)" }}>
                     {selectedTableOrder.customerName || "Varios"}
                   </span>
                 </div>
@@ -509,7 +532,7 @@ export const TablesPage: React.FC = () => {
 
             {/* Platos / Items List */}
             <div style={{ flex: 1, overflowY: "auto", padding: "20px" }}>
-              <h3 style={{ fontSize: "12px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "12px", letterSpacing: "0.5px" }}>
+              <h3 style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "12px", letterSpacing: "0.5px" }}>
                 Consumos de la Mesa
               </h3>
               
@@ -529,17 +552,17 @@ export const TablesPage: React.FC = () => {
                       <p style={{ fontSize: "13px", fontWeight: 600, color: "var(--text-primary)" }}>
                         {item.variant?.menuItem?.name || "Producto"}
                       </p>
-                      <p style={{ fontSize: "11px", color: "var(--text-secondary)" }}>
+                      <p style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
                         Porción: {item.variant?.name || "Regular"}
                       </p>
                       {item.comments && (
-                        <p style={{ fontSize: "11px", color: "var(--warning)", fontStyle: "italic", marginTop: "2px" }}>
+                        <p style={{ fontSize: "13px", color: "var(--warning)", fontStyle: "italic", marginTop: "2px" }}>
                           * {item.comments}
                         </p>
                       )}
                     </div>
                     <div style={{ textAlign: "right" }}>
-                      <span style={{ fontSize: "12px", color: "var(--text-secondary)" }}>
+                      <span style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
                         {item.quantity}x
                       </span>
                       <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-primary)", marginTop: "2px" }}>
@@ -561,14 +584,32 @@ export const TablesPage: React.FC = () => {
                 </span>
               </div>
 
+              {(user?.role === "MOZO" || user?.role === "CAJERO") && (
+                <TableGroupActions
+                  table={selectedTable}
+                  orderId={selectedTableOrder.id}
+                  allTables={allTables}
+                  onChanged={(message) => {
+                    setTableNotice(message);
+                    setTimeout(() => setTableNotice(null), 6000);
+                    fetchData(true);
+                  }}
+                />
+              )}
+              {tableNotice && (
+                <p role="status" style={{ fontSize: "13px", fontWeight: 700, color: "var(--success)", margin: "0 0 12px" }}>
+                  {tableNotice}
+                </p>
+              )}
+
               {/* Action Buttons */}
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                
+
                 {user?.role === "MOZO" && (
                   <button
                     onClick={() => navigate(`/pos?orderId=${selectedTableOrder.id}`)}
                     className="secondary-btn"
-                    style={{ width: "100%", padding: "10px", fontSize: "14px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
+                    style={{ width: "100%", padding: "12px", fontSize: "14px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
                   >
                     <PlusCircle size={16} />
                     Agregar más productos
@@ -587,8 +628,8 @@ export const TablesPage: React.FC = () => {
                 )}
 
                 {(user?.role === "RESTAURANT_OWNER" || user?.role === "PRODUCCION") && (
-                  <div style={{ backgroundColor: "rgba(0, 165, 67, 0.05)", borderRadius: "var(--radius-md)", padding: "10px", border: "1px solid var(--accent-glow)", marginBottom: "8px" }}>
-                    <p style={{ fontSize: "11px", color: "var(--text-secondary)", textAlign: "center" }}>
+                  <div style={{ backgroundColor: "rgba(17, 17, 17, 0.05)", borderRadius: "var(--radius-md)", padding: "10px", border: "1px solid var(--accent-glow)", marginBottom: "8px" }}>
+                    <p style={{ fontSize: "13px", color: "var(--text-secondary)", textAlign: "center" }}>
                       Acceso de lectura. Las modificaciones y el cobro deben realizarse desde la cuenta del personal autorizado.
                     </p>
                   </div>
@@ -597,7 +638,7 @@ export const TablesPage: React.FC = () => {
                 <button
                   onClick={() => handlePrintComanda(selectedTableOrder)}
                   className="secondary-btn"
-                  style={{ width: "100%", padding: "10px", fontSize: "14px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
+                  style={{ width: "100%", padding: "12px", fontSize: "14px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
                 >
                   <Printer size={16} />
                   Imprimir Comanda / Pre-cuenta
