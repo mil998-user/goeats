@@ -2,8 +2,8 @@
 
 > **Documento Vivo** — Este archivo se actualiza con cada mejora del sistema para mantener el contexto completo.
 > 
-> **Última actualización:** 2026-08-31
-> **Versión:** 0.6.0 (Lógica Financiera de Repartidores, Sistema Antifraude y Documentación Modular)
+> **Última actualización:** 2026-11-08
+> **Versión:** 0.7.12 (Testing)
 
 ---
 
@@ -488,6 +488,236 @@ SISTEMA ACTUAL (Single-Tenant)          SISTEMA NUEVO (Multi-Tenant SaaS)
 ---
 
 ## 📝 Historial de Cambios
+
+### v0.7.13 — 2026-11-09 (Base de datos del equipo)
+- ✅ **Base compartida en la nube (TiDB Cloud Starter, gratis y sin tarjeta) y base local con un comando.** Ya no se copia `backend/db-data` entre compañeros. Guía completa en `docs/BASE_DE_DATOS_EQUIPO.md`.
+- ✅ **Conexión validada al arrancar** (`backend/src/config/databaseUrl.ts`):
+  - `DATABASE_URL` es obligatoria. Antes, si faltaba, se conectaba a `localhost:3306`.
+  - Contra una base remota exige `sslaccept=strict` con el certificado `certs/ca.pem`. Sin eso, Prisma acepta cualquier certificado.
+- ✅ **Protección de la base compartida:**
+  - `scripts/reset.ts`, el botón "Vaciar Sistema", `seed_maku.ts` y `db:local` solo corren contra una base local.
+  - El seed pide las contraseñas demo del `.env` en una base remota y lo revisa antes de escribir nada.
+- ✅ **Comandos nuevos:**
+  - `npm run db:check`: muestra a qué base apunta, si va cifrada y si faltan migraciones. No escribe nada.
+  - `npm run db:local`: crea la carpeta de datos, levanta MySQL solo para la propia PC, aplica migraciones y siembra si está vacía. Se puede repetir.
+- ✅ **Probado** en una base aparte (puerto 3311):
+  - instalación desde cero (37 s) y segunda corrida sin volver a sembrar;
+  - `db:check` local;
+  - rechazo de URL remota sin SSL, del reseteo, del seed sin contraseñas y de `db:local` remoto;
+  - conexión cifrada con certificado relativo; `strict` rechaza un certificado que no es del servidor.
+- ✅ **Base compartida creada y cargada** en TiDB Cloud (`goeats-db`, AWS N. Virginia, límite de gasto $0):
+  - las 5 migraciones pasaron sin cambios y `prisma migrate diff` no encuentra diferencias con el esquema;
+  - 45 tablas, 71 llaves foráneas, 15 restaurantes, 78 platos y 17 cuentas;
+  - las cuentas demo usan contraseñas aleatorias del `.env`; ninguna usa las conocidas del código;
+  - backend levantado contra TiDB: el inicio de sesión responde 200 y el catálogo público trae los 15 restaurantes, en unos 2 s por la distancia al servidor.
+
+### v0.7.12 — 2026-11-08 (Testing)
+- ✅ **Pruebas automáticas en el repo** (`backend/tests/api/`, con `node:test` y sin dependencias nuevas):
+  - **Seguridad:** sesiones, roles, aislamiento entre restaurantes y datos públicos del catálogo.
+  - **Dinero:** el precio lo pone el servidor; propina con tope y fuera del total; calificar solo pedidos entregados y propios.
+  - **Reservas:** validaciones, privacidad del teléfono y que nadie cancele reservas ajenas.
+- ✅ **Cómo correrlas:** `API_URL=http://127.0.0.1:5001 TEST_OWNER_USER=... TEST_OWNER_PASSWORD=... npm run test:api`.
+  - Opcionales: `TEST_OTHER_OWNER_USER` y `TEST_OTHER_OWNER_PASSWORD`.
+  - Requieren Node 22 o más y solo funcionan contra una base de prueba local; se niegan a correr contra otra máquina salvo con `TEST_ALLOW_REMOTE=1`.
+  - Resultado: 15/15.
+- ✅ **Corrección en las pruebas:** `configError` vale `false` en lugar de `null`, porque `node:test` toma `skip: null` como prueba omitida.
+- ⏳ **Celular real**: pasos en `practicas/2026-11-08/prueba-celular-real.md`. En la red local el GPS del navegador no funciona sin HTTPS.
+- ✅ **Recorrido manual en la base local (2026-11-09)**: con las 4 migraciones aplicadas, un pedido a domicilio completo pasó por cliente, cocina, administrador y motorizado. Salieron y se corrigieron 2 errores:
+  - **Confirmación del pedido** (`PublicCatalog.tsx`): el total no incluía la propina. Ahora muestra la propina y el "Total a pagar", igual que Mis pedidos.
+  - **Calificar el pedido** (`OrderRatingBox.tsx`): si el motorizado calificaba al cliente primero, el cliente ya no podía calificar, porque ambas notas van en el mismo registro. Ahora se toma como calificado solo si tiene estrellas para el local.
+  - **Nota del pedido en mesa** (`PublicCatalog.tsx`): un pedido hecho con el QR de la mesa llegaba a cocina con la distancia, "Efectivo/Contraentrega" y la referencia del domicilio. Ahora dice "En Mesa. Pago en caja."
+- ✅ **Segundo recorrido (salón):** reserva confirmada con mesa asignada, pedido desde el QR de la mesa, llamado al mesero con espera de 10 min, alta de mesero y cajero desde Ajustes, unir, separar y cambiar de mesa, apertura de caja, bloqueo de cobro mientras la cocina no termina y cobro con descuento y propina.
+- ✅ **Corregidos después del segundo recorrido:**
+  - **Carrito al iniciar sesión.**
+    - El carrito se guarda en `sessionStorage` (`goeats_cart_<slug>`), así que sobrevive al inicio de sesión o al registro.
+    - Al cargar el catálogo se quitan los platos que ya no existen y se actualizan los precios.
+    - El login vuelve al restaurante (o a la mesa del QR) con `returnTo`. `Auth.tsx` solo acepta rutas `/r/<slug>` o `/r/<slug>/mesa/<n>`, para que nadie use el enlace para mandar al cliente a otro sitio.
+    - Al cerrar sesión se borran los carritos guardados, porque en un equipo compartido la siguiente persona no debe ver el carrito anterior.
+  - **Cédula en caja.**
+    - Nueva ruta `GET /api/orders/:id/billing-customer`, solo para el dueño y el cajero del local que recibió el pedido.
+    - Devuelve nombre, cédula o RUC, correo, teléfono y dirección del cliente de la app. A otro local le responde 404 y al cliente 403.
+    - En el POS, al abrir el cobro se llena la cédula. Si el cliente aún no está en la lista de clientes del local, el alta de cliente nuevo sale ya llena.
+    - `seguridad.test.mjs` prueba estos permisos.
+  - **Propina en efectivo en la caja.**
+    - La propina cobrada en efectivo ya suma en el efectivo esperado, tanto en la pantalla de caja como en el cierre (`closeCashSession`, campo `cashTips` del resumen).
+    - La pantalla avisa que son propinas para los meseros: no son ventas ni van en la factura. Al entregarlas se registran como egreso.
+- ⚠️ **Regla de saldo para la demo:** con "Con recarga", ningún motorizado puede conseguir saldo, porque la tarjeta está bloqueada en el servidor y falta la cuenta bancaria para transferencias. En la base local se dejó "Con límite de deuda" desde Configuración de Tarifas hasta que los jefes decidan.
+
+### v0.7.11 — 2026-11-08 (Pedidos de los jefes)
+- ✅ **Migración** `20261108120000_bloque10_calificaciones_reservas_mesas`. Agrega:
+  - **Restaurant:** `waiterCallEnabled`, `waiterCallWaitMin`, `payBeforeEating` y `reservationsEnabled`.
+  - **User:** `lastLat`, `lastLng` y `lastLocationAt`.
+  - **Table:** `joinedToId`.
+  - **Order:** `tipAmount`, `readyAt` y `dispatchAlertAt`.
+  - **OrderItem:** `readyAt`.
+  - **DeliveryRate:** `dispatchRadiusKm` (5) y `dispatchWaitMin` (3).
+  - **Modelos nuevos:** `OrderRating` y `Reservation`. El teléfono de la reserva se guarda cifrado con `encryptSecret`.
+  - Cada quien debe aplicarla en su base.
+- ✅ **Pago Plus del motorizado**: `getDeliveryPayout` e `isPlusDelivery` en `delivery.controller.ts` hacen la cuenta en un solo lugar.
+  - Plus usa la distancia real, ya no 2,5 km fijos.
+  - En efectivo descuenta la comisión retenida.
+  - En línea devuelve lo pagado en el local.
+- ✅ **Cupones**: se quitan los códigos de ejemplo HOLA30 y LOJALOVE de `LandingExperience.tsx`. La página muestra las promociones reales de los locales y la oferta Plus.
+- ✅ **Calificaciones** (`modules/ratings`):
+  - El cliente califica un pedido entregado: local, motorizado y comentario. Solo una vez; de 1 a 5 estrellas; comentario de hasta 500 caracteres sin caracteres de control.
+  - El motorizado califica al cliente, y el cliente no ve esa nota.
+  - El promedio se muestra en el catálogo, la lista pública, Mis pedidos, el panel del motorizado, la lista de motorizados del administrador y Reportes.
+  - Componentes: `Stars.tsx`, `OrderRatingBox.tsx`, `RateCustomerModal.tsx` y `RestaurantRatings.tsx`.
+- ✅ **Propina**:
+  - **Domicilio:** montos fijos en el catálogo; se guarda en `tipAmount`. En línea se acredita a la billetera del motorizado; en efectivo la cobra él.
+  - **Caja:** campo en el cobro del POS (`tip` en `POST /api/sales`, máximo $100). No entra en la venta ni en la factura.
+  - Propinas por mesero en Reportes.
+- ✅ **Mesas**: `POST /api/tables/:id/join` y `/:id/separate`, y `changeTable` reescrito.
+  - `utils/tables.ts` con `releaseTable` y `resolveOrderTable`: un pedido por QR a una mesa unida va a la principal.
+  - En `TablesPage.tsx` (`TableGroupActions.tsx`) el mesero y la caja pueden unir, separar y cambiar de mesa.
+- ✅ **Reservas** (`modules/reservations`):
+  - El cliente reserva desde el catálogo (`ReserveTable.tsx`), con al menos 30 minutos de anticipación y hasta 60 días, de 1 a 30 personas y un máximo de 3 abiertas por local. Las ve y cancela en "Mis reservas".
+  - El local las gestiona en `/reservations`, con el aviso `reservation-updated` por socket.
+- ✅ **Cocina**: `GET /api/kitchen/history?hours=` (máximo 72 h) y pestaña Historial (`KitchenHistory.tsx`) con los minutos de cada plato y el promedio.
+- ✅ **Llamar al mesero**: cada local lo activa o desactiva y fija la espera entre llamados, de 0 a 30 min. Si se repite antes, responde 429 con el tiempo que falta. Pedir la cuenta espera 2 min como máximo.
+- ✅ **Motorizado cercano** (`delivery/dispatch.ts`):
+  - Mientras dura la espera, el pedido listo solo lo ven los motorizados dentro del radio; después lo ven todos.
+  - Si nadie lo toma, el vigilante (cada 30 s) avisa al administrador por el socket `dispatch-alert` (sala `admins`).
+  - La pantalla del motorizado envía su ubicación cada 60 s, aunque no tenga pedido, y muestra la distancia, "Pedido cercano" y la propina.
+  - El administrador configura el radio y la espera en la tarifa, y ve los pedidos listos sin motorizado (`UnassignedDeliveries.tsx`, `GET /api/delivery/unassigned`).
+- ✅ **Pagar antes de comer** (`payBeforeEating`): el pedido de mesa queda pendiente y pasa a cocina al cobrarlo, sin liberar la mesa. El catálogo lo avisa en la mesa.
+- ✅ **Errores encontrados y corregidos**:
+  - Una actualización parcial del restaurante borraba `mapLatitude` y `mapLongitude`.
+  - Los reportes de "hoy" dejaban fuera ventas por la zona horaria; ahora `getReportRange` usa días de Ecuador (UTC-5).
+  - `POST /delivery/location` aceptaba coordenadas fuera de rango.
+  - `RouteMap.tsx`: si el mapa se cerraba mientras se acercaba a la ruta, Leaflet fallaba (`_leaflet_pos`). Ese `fitBounds` ya no usa animación.
+  - El seed tenía contraseñas fijas. Ahora lee `SEED_ADMIN_PASSWORD`, `SEED_DRIVER_PASSWORD` y `SEED_OWNER_PASSWORD`; en producción son obligatorias.
+- ✅ **POS**: el descuento tiene `id="pos-discount"` y su etiqueta asociada, para no confundirlo con la propina.
+- ✅ **Pruebas**:
+  - API del bloque 10: 129/129.
+  - Navegador y celular del bloque 10: 44/44.
+  - Regresión completa (servidor, navegador, celular y pedido completo), bloques 0 a 10: 24/24 grupos sin fallas.
+  - `backend/tests/api/` (`npm run test:api`): pruebas automáticas del repo. Seguridad, dinero y reservas.
+  - Informe en `practicas/2026-11-08/`.
+- ⚠️ **Por decidir con los jefes**: valores finales de radio y espera, si la espera del mesero de 10 a 20 min es entre llamados (así quedó), IVA, regla de saldo y billetera del cliente.
+
+### v0.7.10 — 2026-11-07 (Prueba completa)
+- ✅ **Prueba de punta a punta de los bloques 0 a 8**: API 640/640, navegador 147/147, pedido completo 14/14, rutas por rol 114 pantallas y responsividad 147 pantallas (Android 360, iPhone 390, tablet 768). Cada grupo arranca con datos limpios. Informe en `practicas/2026-11-07/prueba-completa.md`.
+- ✅ **Celular**: `Reports.tsx` (filtro de fechas que baja de línea; clase `reports-grid`, una columna en 900 px o menos), `TablesPage.tsx` (encabezado y pestañas del salón), `Settings.tsx` (encabezados de salones; tablas de personal, cajas e inventario con `mobile-cards`), `Orders.tsx` (pestañas con `scrollable-tabs`), `.customer-dashboard-tabs` que baja de línea.
+- ✅ **Tablas como tarjetas en todas las páginas**: nuevo `components/MobileTableLabels.tsx`, montado en `AppLayout`, pone `data-label` a las celdas de `table.mobile-cards` (reemplaza el efecto que había en `SuperAdmin.tsx`; ignora celdas con `colSpan`).
+- ✅ **Tamaño táctil**: en `index.css`, con `(max-width: 1024px) and (pointer: coarse)`, botones, `select` y `.glow-btn` de al menos 40 px. Campos con `max-width: 100%` en celular. Etiquetas de mapas a 12 px.
+- ✅ **Plus**: `PlusPromo.tsx` pide `/saas/plans` solo con sesión (antes dejaba un 401 en la consola).
+- ⚠️ **Observado**: en una vuelta el backend de prueba dejó de responder a mitad del recorrido; no se repitió.
+
+### v0.7.9 — 2026-11-07 (Demo presentable)
+- ✅ **A14**: `PUBLIC_RESTAURANT` en `restaurants.controller.ts`: lista pública, catálogo, pedido público y llamar al mesero exigen `isActive` y estado `APPROVED` o `ACTIVE`. Aprobar activa al dueño aunque no tenga correo.
+- ✅ **A15**: `utils/api.ts` ya no devuelve restaurantes ni sesiones inventadas sin servidor; lanza `OFFLINE_MESSAGE`. Los errores 502 a 504 del proxy también.
+- ✅ **Cuentas bancarias**: `PublicCatalog.tsx` ofrece transferencia solo con `bankAccountsJson` del local. Nuevo `components/PlatformBankInfo.tsx`, que lee `VITE_PLATFORM_BANK_*`, para recargas, billetera y Plus.
+- ✅ **A16 y M4**: Sandbox y "Vaciar Sistema" solo con `import.meta.env.DEV`. Tablas del admin con clase `mobile-cards` (tarjetas en celular).
+- ✅ **M3**: aviso de notificaciones en `#layout-notices` (`App.tsx`), dentro del flujo y no flotante; cierre recordado en `localStorage` (`goeats_push_notice_closed`).
+- ✅ **M18 y M19**: `public/manifest.webmanifest`, íconos en `public/icons/` y viewport sin bloqueo de zoom.
+- ✅ **B8**: seeds y `Aggregator.tsx` con locales inventados (`pollo-dorado`, `brasa-burger`, `la-granja`, `burger-costena`, `la-nonna`) y logos nuevos.
+- ✅ **Blanco y negro**: `--accent-primary` #111111; los tonos verdes fijos pasan a negro translúcido. Letra mínima de 12 px y campos de 16 px en celular. Menú del dueño y pestañas adaptados al celular.
+- ⚠️ **Pendiente**: cuenta bancaria real de GoEats e ícono definitivo.
+
+### v0.7.8 — 2026-11-07 (Restaurante)
+- ✅ **A17**: `DELETE /auth/account` y `/auth/profile` responden 409 si el dueño es el único activo de su local.
+- ✅ **A20**: `Restaurant.taxRate` (0, 5, 12 o 15; 15 por defecto), editable en Ajustes. `sales.controller.ts` lo usa con todos los platos y la venta guarda su tasa.
+- ✅ **Mesero**: `POST /orders/:id/attend` (solo MOZO) toma un pedido sin mesero; editar o cambiar el estado también lo asigna si estaba vacío.
+- ✅ **Cocinero**: `OrderItem.preparedById`, puesto al pasar un plato a preparación o listo, o al marcar todo el pedido listo. `GET /reports/waiters` devuelve también `cooks`. Componente `OrderStaffLine`.
+- ✅ **Personal**: `DELETE /auth/staff/:id` desactiva a quien tiene historial y elimina a quien no.
+- ✅ **Promociones**: `MenuItemVariant.promoPrice` y `promoEndsAt`, validados en `utils/promotions.ts`. El catálogo público y `/menu/categories` (POS) devuelven el precio vigente y `regularPrice`; el editor (`?includeHidden=true`) ve los campos crudos. Los pedidos se cobran con `getEffectivePrice`.
+- ⚠️ **Migración**: `20261107230000_restaurante_iva_promos_personal`, aplicada solo en la copia de prueba.
+- ⚠️ **Por confirmar**: tasa de IVA.
+
+### v0.7.7 — 2026-11-07 (Motorizado)
+- ✅ **Regla de saldo**: `DeliveryRate.balanceRule` es `PREPAID` (recarga) o `DEBT_LIMIT` (negativo hasta `maxDebtLimit`). La aplica `deliveryWallet.ts` al tomar, y `/delivery/wallet` devuelve `canTakeOrders`.
+- ✅ **Traslado**: `Order.pickedUpAt` y `POST /delivery/start/:id`.
+- ✅ **Pasar y cancelar**: `POST /delivery/pass/:id` y `/delivery/cancel/:id`, antes de retirar y con motivo. Devuelven la comisión.
+- ✅ **Entregas con problema**: `POST /delivery/complete/:id` con `withoutPin` y motivo; `POST /delivery/no-show/:id` después de retirar, sin mover dinero.
+- ✅ **Incidencias**: modelo `DeliveryIncident`; `GET /delivery/incidents` y `POST /delivery/incidents/:id/review` para el administrador. Pantallas `DriverOrderActions` y `DeliveryIncidentsPanel`.
+- ✅ **Devolución de comisión**: `refundTakeCommission` devuelve lo cobrado menos lo ya devuelto, también al cancelar desde el local.
+- ⚠️ **Migración**: `20261107200000_motorizado_incidencias`, aplicada solo en la copia de prueba.
+- ⚠️ **Por confirmar**: regla de saldo y tiempo de espera cuando el cliente no sale.
+
+### v0.7.6 — 2026-11-07 (Cliente)
+- ✅ **Código de entrega**: se ve en Mis pedidos, en el seguimiento y al recargar el catálogo.
+- ✅ **Registro**: `/login` ofrece "Registrarse" al cliente. Acepta cédula o RUC (`isValidRuc`, `getSameIdentityValues` en `utils/validation.ts`) y una persona tiene una sola cuenta.
+- ✅ **Sesión vencida**: `apiRequest` avisa con `goeats:session-expired` y `AuthContext` lleva al login. La sesión se lee antes del primer dibujo.
+- ✅ **Platos**: `MenuItem.isActive` oculta un plato del catálogo y la caja. Los platos con pedidos no se borran y `OrderItem` usa `onDelete: Restrict`.
+- ✅ **Direcciones**: modelo `CustomerAddress` y rutas `/api/orders/customer/addresses`. La principal se copia a los campos de entrega del usuario. Pantallas `SavedAddresses`, `CustomerLocationSetup?new=1` y selector en `PublicCatalog`.
+- ✅ **Datos**: Mis pedidos ya no envía ganancias del motorizado ni comisiones. `errorHandler` responde 409 a datos repetidos.
+- ⚠️ **Migración**: `20261107120000_direcciones_y_platos_ocultos`, aplicada solo en la copia de prueba.
+- ⚠️ **Por confirmar**: si una misma cédula puede tener cuenta de cliente y de motorizado.
+
+### v0.7.5 — 2026-11-07 (Pedido Correcto y Caja que Cobra)
+- ✅ **Estados**: `backend/src/utils/orderRules.ts` define los cambios permitidos, quién verifica pagos y cuándo se cobra o se cancela.
+- ✅ **Cobro**: `emitSale` funciona sin emisor, calcula el monto en el servidor y no repite ventas ni números. La factura electrónica sigue necesitando emisor.
+- ✅ **Caja**: el cierre y la pantalla cuentan solo efectivo, con descuentos aplicados una vez.
+- ✅ **Motorizado**: solo ve pedidos `READY`. Tomar y entregar son atómicos, y solo se toman domicilios.
+- ✅ **Cancelación**: devuelve la comisión del motorizado (`COMMISSION_REFUND`) y marca `REFUND_PENDING` si el pedido estaba pagado.
+- ✅ **PIN**: `hideDeliveryPin` lo retira de las respuestas y eventos al personal y al motorizado.
+- ✅ **Edición**: valida cantidades, bloquea pedidos cerrados y conserva el avance de los platos sin cambios.
+- ✅ **Pantallas**: `POS` usa los comprobantes de la base y avisa si la factura no se emitió. `Orders` agrega "Marcar entregado" y "Reembolso pendiente". `RouteMap` ignora rutas que llegan tarde.
+- ⚠️ **Reglas por confirmar**: mesa solo se cobra cuando cocina terminó, domicilios fuera de caja y pedidos cobrados sin cancelación.
+- ⚠️ **Falta**: pantalla de datos de facturación, inventario de pedidos pagados en línea y devolución real de dinero.
+
+### v0.7.4 — 2026-11-06 (Protección de Cuentas y Datos)
+- ✅ **Mapa**: `backend/src/utils/maps.ts` solo guarda enlaces o iframes de Google Maps. `PublicCatalog` ya no usa `dangerouslySetInnerHTML`.
+- ✅ **Límite de intentos**: `backend/src/utils/rateLimit.ts` cubre login, PIN de entrega, registros, ingreso social, tickets, pedidos públicos, llamadas al mesero y búsqueda de mapas.
+- ✅ **Sesiones**: `getSessionUser` en `middlewares/auth.ts` revisa la cuenta en cada petición y en cada conexión de tiempo real.
+- ✅ **Registros**: `validation.ts` valida clave, cédula, correo, teléfono y usuario.
+- ✅ **Cifrado**: `backend/src/utils/secrets.ts` guarda `payphoneToken` con AES-256-GCM usando `DATA_ENCRYPTION_KEY`. La firma del SRI se descifra al usarla si llega cifrada.
+- ✅ **Fugas**: `hideRestaurantSecrets` retira token y firma de las respuestas. Cambiar el estado de un pedido ya no envía el hash de la clave del cliente.
+- ✅ **Soporte**: 5 tickets por hora, campos validados y texto escapado.
+- ✅ **Pantallas**: `frontend/src/utils/html.ts` escapa datos en comandas y mapas. Los accesos rápidos solo aparecen en desarrollo.
+- ✅ **Servidor**: cabeceras de seguridad, cuerpos pequeños en rutas públicas y errores 500 sin detalles.
+- ⚠️ **Variables nuevas**: `DATA_ENCRYPTION_KEY`, obligatoria en producción, y `TRUST_PROXY` al publicar detrás de un proxy.
+- ⚠️ **Por definir**: cifrar la cédula, cerrar sesiones al cambiar la clave, CSP y registro de extranjeros.
+
+### v0.7.3 — 2026-11-06 (Dinero Validado en el Servidor)
+- ✅ **Envío**: `createPublicOrder` calcula el costo con `backend/src/utils/shipping.ts`. La web usa la misma fórmula en `frontend/src/utils/shipping.ts`, y el catálogo público entrega `deliveryRate`.
+- ✅ **Tarjeta**: solo con `ALLOW_SIMULATED_PAYMENTS=true` y siempre como simulación.
+- ✅ **Plus**: `toggle-plus` solo cancela; activarlo exige comprar un plan.
+- ✅ **Recargas**: `/saas/purchase` toma el monto de `SaaSPlan`, valida rol y tipo, y la aprobación no acredita dos veces.
+- ✅ **Validaciones**: `backend/src/utils/validation.ts` se usa en precios, caja, tarifas, recargas, planes y compras. El pedido público valida tipo, pago, dirección, teléfono, coordenadas y cantidad.
+- ⚠️ **Por definir**: la distancia es en línea recta, y sin ubicación se cobran 2,5 km.
+
+### v0.7.2 — 2026-11-06 (Bloque 1 de Seguridad)
+- ✅ **Claves fuera del código**: se quitaron la contraseña SMTP y las claves JWT por defecto. `JWT_SECRET` es obligatorio y en producción debe tener al menos 32 caracteres.
+- ✅ **Configuración de correo**: ya no reemplaza `JWT_SECRET` ni `DATABASE_URL` del `.env`.
+- ✅ **Tiempo real con sesión**: la lógica está en `backend/src/config/socket.ts`. Socket.io exige token, el servidor asigna la sala del restaurante y `join-order` valida quién puede entrar. Se quitaron los envíos a todos los conectados.
+- ✅ **Ubicación del motorizado**: solo el motorizado asignado puede actualizarla.
+- ✅ **`/reset-database`**: solo `SUPER_ADMIN`, con `ALLOW_DATABASE_RESET=true` y confirmación VACIAR.
+- ✅ **Catálogo público**: no entrega `payphoneToken`. `wifiPassword` solo sale con un `tableId` válido del restaurante.
+- ⚠️ **Pendiente**: cambiar la contraseña SMTP en el proveedor, porque sigue en el historial de Git. Las cuentas bancarias siguen visibles en el catálogo para pagos por transferencia.
+
+### v0.7.1 — 2026-11-06 (Aislamiento entre Restaurantes)
+- ✅ **Restaurante desde el token**: `tenantMiddleware` usa siempre el `restaurantId` del token. Si `x-restaurant-id` dice otro, responde 403. Solo `SUPER_ADMIN` puede elegir restaurante con esa cabecera.
+- ✅ **Clientes y motorizados**: ya no entran a las rutas de restaurante.
+- ✅ **Roles en rutas de lectura**: pedidos, caja, ventas, clientes, inventario, menú, reportes, compras y mesas. Mozo: pedidos, cajas, sesión activa, clientes, menú y mesas. Cocina: sus rutas de `/kitchen`.
+- ✅ **Prueba en copia aislada**: 148 de 148 comprobaciones por API, pedido completo por pantalla y 114 rutas en web y celular emulado, sin errores 500.
+- ✅ **Plan de tres semanas**: agregado a `docs/PLAN_EQUIPO_MVP.md`, con prototipo e idea de negocio el 20 de noviembre y MVP con testing el 27.
+- ⚠️ **Sigue pendiente**: Socket.io sin login y `/reset-database`.
+
+### v0.7.0 — 2026-11-06 (Orden del Proyecto, Plan del Equipo y Migración Única)
+- ✅ **Orden del proyecto**: el sistema PHP pasó a `legacy/sistema-php/`, la documentación suelta a `docs/`, los scripts a `backend/scripts/` y los seeds y SQL a `backend/prisma/seeds/` y `backend/prisma/sql/`. No se borró ningún archivo.
+- ✅ **Plan del equipo**: se creó `docs/PLAN_EQUIPO_MVP.md` con fases, reglas de trabajo, supuestos y dudas para los jefes.
+- ✅ **Migración única (local, sin subir)**: se creó `20261106120000_estructura_unica`, que crea 40 tablas y coincide con `schema.prisma`. Las 4 migraciones anteriores están en `backend/prisma/migraciones_anteriores/`.
+- ✅ **Prueba local**: migración, datos de prueba, backend y web iniciados correctamente en la PC de Deyvi.
+- ⚠️ **Pendientes detectados**:
+  - `/reset-database` permite entrar a un dueño y borra tablas sin filtrar por restaurante.
+  - `backend/src/services/email.ts` contiene credenciales SMTP escritas en el código como valor por defecto.
+  - La migración anterior `20260712163449_init` usaba tablas en minúsculas y podría fallar en Linux; falta comprobarlo.
+  - Los datos de prueba no crean cliente, mesero, cocina ni caja, e incluyen marcas reales.
+  - Una ruta inexistente regresa al inicio, sin página 404.
+  - La web genera un archivo JavaScript de 1,5 MB, que puede tardar en cargar en celulares.
+- ✅ **Test end to end en web y celular emulado**: realizado en una copia aislada, sin cambiar código. El pedido a domicilio completo funciona.
+- ⚠️ **Errores críticos del test** (pendientes de corregir):
+  - La caja no puede cobrar: nada crea el `Issuer` de facturación.
+  - `x-restaurant-id` manda sobre el token, y clientes y motorizados pueden leer datos de restaurantes. Corregido en v0.7.1.
+  - Socket.io entrega pedidos y PIN sin login.
+  - `mapIframe` permite ejecutar código en el navegador de los visitantes.
+  - El envío, la tarjeta, Plus y las recargas no se validan en el servidor.
+  - Credenciales SMTP y clave JWT por defecto en el código, también en `backend/src/config/env.ts`.
+  - La regla de saldo negativo hasta -$50 no se cumple, porque tomar un pedido exige $0.50.
+
+---
 
 ### v0.6.0 — 2026-08-31 (Lógica Financiera de Repartidores, Sistema Antifraude y Documentación Modular)
 - ✅ **Lógica Financiera y Antifraude para Motorizados (Modelo Zaymi)**:

@@ -11,6 +11,7 @@ docs/
 ├── README.md                          <- Este archivo (Índice Maestro y Guía de Navegación)
 ├── SISTEMA_GOEATS_DOCUMENTACION.md    <- Documentación general del sistema
 ├── historial_de_cambios.md            <- Registro de cambios y mejoras
+├── PLAN_EQUIPO_MVP.md                 <- Plan del equipo por fases, reglas de trabajo y dudas abiertas
 │
 ├── repartidores/                      <- Lógica financiera, operativa y antifraude de motorizados
 │   ├── 01_logica_financiera.md        <- Fórmulas matemáticas, deudas, comisiones y balance antifraude
