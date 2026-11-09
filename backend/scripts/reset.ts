@@ -1,4 +1,9 @@
+import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
+import { assertLocalDatabase } from "../src/config/databaseUrl";
+
+// Borra pedidos y ventas: nunca contra la base compartida.
+assertLocalDatabase("El reseteo de la base");
 
 const prisma = new PrismaClient();
 
