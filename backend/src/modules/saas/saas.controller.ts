@@ -1,6 +1,12 @@
 import { Request, Response, NextFunction } from "express";
 import { prisma } from "../../config/database";
 import { safeDeleteUser } from "../auth/user-cleanup.service";
+import { parseAmount, simulatedPaymentsAllowed } from "../../utils/validation";
+
+const PURCHASE_ROLE_BY_TYPE: Record<string, string> = {
+  RECHARGE: "MOTORIZADO",
+  PLUS_SUBSCRIPTION: "CUSTOMER",
+};
 
 // 1. Submit purchase request for recharge or subscription (Driver or Customer)
 export async function submitSaaSOrder(req: Request, res: Response, next: NextFunction) {
@@ -10,14 +16,29 @@ export async function submitSaaSOrder(req: Request, res: Response, next: NextFun
       return res.status(401).json({ success: false, message: "No autorizado" });
     }
 
-    const { type, planName, amount, paymentMethod, paymentReceipt, payphoneTransactionId } = req.body;
+    const { type, planName, paymentMethod, paymentReceipt, payphoneTransactionId } = req.body;
 
-    if (!type || !planName || !amount || !paymentMethod) {
+    if (typeof type !== "string" || typeof planName !== "string" || !paymentMethod) {
       return res.status(400).json({ success: false, message: "Faltan campos requeridos" });
     }
 
+    if (PURCHASE_ROLE_BY_TYPE[type] !== req.user?.role) {
+      return res.status(403).json({ success: false, message: "Este plan no corresponde a tu cuenta" });
+    }
+
+    // The price always comes from the plan, never from the browser
+    const plan = await prisma.saaSPlan.findFirst({ where: { name: planName, type } });
+    if (!plan) {
+      return res.status(400).json({ success: false, message: "El plan seleccionado no existe" });
+    }
+    const amount = plan.amount;
+
     // If Card (Payphone) -> Approve immediately
     if (paymentMethod === "CARD") {
+      if (!simulatedPaymentsAllowed()) {
+        return res.status(400).json({ success: false, message: "El pago con tarjeta aún no está disponible." });
+      }
+
       if (!payphoneTransactionId) {
         return res.status(400).json({ success: false, message: "ID de transacción de tarjeta requerido" });
       }
@@ -29,7 +50,7 @@ export async function submitSaaSOrder(req: Request, res: Response, next: NextFun
             userId,
             type,
             planName,
-            amount: parseFloat(amount),
+            amount,
             paymentMethod,
             payphoneTransactionId,
             status: "APPROVED"
@@ -41,7 +62,7 @@ export async function submitSaaSOrder(req: Request, res: Response, next: NextFun
           await tx.user.update({
             where: { id: userId },
             data: {
-              walletBalance: { increment: parseFloat(amount) }
+              walletBalance: { increment: amount }
             }
           });
 
@@ -49,7 +70,7 @@ export async function submitSaaSOrder(req: Request, res: Response, next: NextFun
           await tx.walletTransaction.create({
             data: {
               userId,
-              amount: parseFloat(amount),
+              amount,
               type: "RECHARGE",
               description: `Recarga aprobada al instante - ${planName} (Tarjeta)`
             }
@@ -79,7 +100,7 @@ export async function submitSaaSOrder(req: Request, res: Response, next: NextFun
           userId,
           type,
           planName,
-          amount: parseFloat(amount),
+          amount,
           paymentMethod,
           paymentReceipt,
           status: "PENDING"
@@ -141,12 +162,13 @@ export async function approveSaaSOrder(req: Request, res: Response, next: NextFu
     }
 
     // Start database transaction
-    await prisma.$transaction(async (tx) => {
-      // 1. Mark as APPROVED
-      await tx.saaSOrder.update({
-        where: { id: orderId },
+    const approved = await prisma.$transaction(async (tx) => {
+      // 1. Mark as APPROVED, only once even with simultaneous requests
+      const marked = await tx.saaSOrder.updateMany({
+        where: { id: orderId, status: "PENDING" },
         data: { status: "APPROVED" }
       });
+      if (marked.count === 0) return false;
 
       // 2. Grant benefit
       if (order.type === "RECHARGE") {
@@ -174,7 +196,13 @@ export async function approveSaaSOrder(req: Request, res: Response, next: NextFu
           data: { isPlus: true }
         });
       }
+
+      return true;
     });
+
+    if (!approved) {
+      return res.status(400).json({ success: false, message: "El pedido ya no está pendiente" });
+    }
 
     return res.status(200).json({ success: true, message: "Pedido aprobado con éxito y beneficio otorgado." });
   } catch (error) {
@@ -365,11 +393,16 @@ export async function createSaaSPlan(req: Request, res: Response, next: NextFunc
       return res.status(400).json({ success: false, message: "Faltan campos requeridos" });
     }
 
+    const parsedPlanAmount = parseAmount(amount);
+    if (parsedPlanAmount === null || !PURCHASE_ROLE_BY_TYPE[type]) {
+      return res.status(400).json({ success: false, message: "Monto o tipo de plan inválido" });
+    }
+
     const plan = await prisma.saaSPlan.create({
       data: {
         name,
         type,
-        amount: parseFloat(amount),
+        amount: parsedPlanAmount,
         period: period || null,
         discount: discount || null,
         description
@@ -398,12 +431,17 @@ export async function updateSaaSPlan(req: Request, res: Response, next: NextFunc
       return res.status(400).json({ success: false, message: "Faltan campos requeridos" });
     }
 
+    const parsedPlanAmount = parseAmount(amount);
+    if (parsedPlanAmount === null || !PURCHASE_ROLE_BY_TYPE[type]) {
+      return res.status(400).json({ success: false, message: "Monto o tipo de plan inválido" });
+    }
+
     const plan = await prisma.saaSPlan.update({
       where: { id },
       data: {
         name,
         type,
-        amount: parseFloat(amount),
+        amount: parsedPlanAmount,
         period: period || null,
         discount: discount || null,
         description

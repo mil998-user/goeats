@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { prisma } from "../../config/database";
+import { parseAmount } from "../../utils/validation";
+import { readPromo, toSaleVariant } from "../../utils/promotions";
 
 // CATEGORIES
 
@@ -10,10 +12,13 @@ export async function getMenuCategories(req: Request, res: Response, next: NextF
       return res.status(400).json({ success: false, message: "Restaurant context is required" });
     }
 
+    // The menu editor asks for hidden dishes too; the POS only gets what can be sold
+    const includeHidden = req.query.includeHidden === "true";
     const categories = await prisma.menuCategory.findMany({
       where: { restaurantId },
       include: {
         items: {
+          where: includeHidden ? undefined : { isActive: true },
           include: {
             variants: {
               include: {
@@ -28,7 +33,20 @@ export async function getMenuCategories(req: Request, res: Response, next: NextF
       },
     });
 
-    return res.status(200).json({ success: true, categories });
+    if (includeHidden) {
+      return res.status(200).json({ success: true, categories });
+    }
+
+    // The POS sells at the price of today, promotion included
+    const now = new Date();
+    const forSale = categories.map((category) => ({
+      ...category,
+      items: category.items.map((item) => ({
+        ...item,
+        variants: item.variants.map((variant) => toSaleVariant(variant, now)),
+      })),
+    }));
+    return res.status(200).json({ success: true, categories: forSale });
   } catch (error) {
     next(error);
   }
@@ -86,6 +104,23 @@ export async function updateMenuCategory(req: Request, res: Response, next: Next
   }
 }
 
+// Deleting a dish erases it from every past order (A13), so dishes already ordered stay
+async function hasOrderHistory(where: { variantId?: number; menuItemId?: number; categoryId?: number }) {
+  const count = await prisma.orderItem.count({
+    where: {
+      variant: where.variantId
+        ? { id: where.variantId }
+        : where.menuItemId
+        ? { menuItemId: where.menuItemId }
+        : { menuItem: { categoryId: where.categoryId } },
+    },
+  });
+  return count > 0;
+}
+
+const ORDER_HISTORY_MESSAGE =
+  "Ya hay pedidos con este plato, así que no se borra para no dañar el historial. Usa \"Ocultar\" para quitarlo del menú.";
+
 export async function deleteMenuCategory(req: Request, res: Response, next: NextFunction) {
   try {
     const id = parseInt(req.params.id, 10);
@@ -98,6 +133,10 @@ export async function deleteMenuCategory(req: Request, res: Response, next: Next
     const category = await prisma.menuCategory.findFirst({ where: { id, restaurantId } });
     if (!category) {
       return res.status(404).json({ success: false, message: "Menu category not found" });
+    }
+
+    if (await hasOrderHistory({ categoryId: id })) {
+      return res.status(409).json({ success: false, message: "Esta categoría tiene platos que ya se pidieron y no se puede borrar." });
     }
 
     await prisma.menuCategory.delete({ where: { id } });
@@ -160,10 +199,13 @@ export async function updateMenuItem(req: Request, res: Response, next: NextFunc
   try {
     const id = parseInt(req.params.id, 10);
     const restaurantId = req.restaurantId;
-    const { name, description, image, categoryId, productionAreaId } = req.body;
+    const { name, description, image, categoryId, productionAreaId, isActive } = req.body;
 
     if (isNaN(id) || !restaurantId) {
       return res.status(400).json({ success: false, message: "Invalid ID or restaurant context missing" });
+    }
+    if (isActive !== undefined && typeof isActive !== "boolean") {
+      return res.status(400).json({ success: false, message: "isActive debe ser verdadero o falso" });
     }
 
     // Verify item belongs to restaurant
@@ -200,6 +242,7 @@ export async function updateMenuItem(req: Request, res: Response, next: NextFunc
         image,
         categoryId: categoryId ? parseInt(categoryId, 10) : undefined,
         productionAreaId: productionAreaId !== undefined ? (productionAreaId ? parseInt(productionAreaId, 10) : null) : undefined,
+        isActive,
       },
     });
 
@@ -225,6 +268,10 @@ export async function deleteMenuItem(req: Request, res: Response, next: NextFunc
       return res.status(404).json({ success: false, message: "Menu item not found" });
     }
 
+    if (await hasOrderHistory({ menuItemId: id })) {
+      return res.status(409).json({ success: false, message: ORDER_HISTORY_MESSAGE });
+    }
+
     await prisma.menuItem.delete({ where: { id } });
 
     return res.status(200).json({ success: true, message: "Menu item deleted successfully" });
@@ -247,6 +294,16 @@ export async function createVariant(req: Request, res: Response, next: NextFunct
       return res.status(400).json({ success: false, message: "Name, price, and menuItemId are required" });
     }
 
+    const parsedPrice = parseAmount(price);
+    if (parsedPrice === null) {
+      return res.status(400).json({ success: false, message: "Price must be a valid amount" });
+    }
+
+    const promo = readPromo(req.body, parsedPrice);
+    if (promo && "error" in promo) {
+      return res.status(400).json({ success: false, message: promo.error });
+    }
+
     // Verify menu item belongs to restaurant
     const item = await prisma.menuItem.findFirst({
       where: { id: parseInt(menuItemId, 10), category: { restaurantId } },
@@ -259,7 +316,9 @@ export async function createVariant(req: Request, res: Response, next: NextFunct
       data: {
         name,
         code,
-        price: parseFloat(price),
+        price: parsedPrice,
+        promoPrice: promo ? promo.promoPrice : null,
+        promoEndsAt: promo ? promo.promoEndsAt : null,
         stockLimit: stockLimit ? parseInt(stockLimit, 10) : null,
         options: options ? (typeof options === "string" ? options : JSON.stringify(options)) : null,
         menuItemId: item.id,
@@ -278,6 +337,10 @@ export async function updateVariant(req: Request, res: Response, next: NextFunct
     const restaurantId = req.restaurantId;
     const { name, code, price, stockLimit, options } = req.body;
 
+    if (price !== undefined && price !== null && price !== "" && parseAmount(price) === null) {
+      return res.status(400).json({ success: false, message: "Price must be a valid amount" });
+    }
+
     if (isNaN(id) || !restaurantId) {
       return res.status(400).json({ success: false, message: "Invalid ID or restaurant context missing" });
     }
@@ -289,12 +352,20 @@ export async function updateVariant(req: Request, res: Response, next: NextFunct
       return res.status(404).json({ success: false, message: "Variant not found" });
     }
 
+    const newPrice = price ? Number(price) : variant.price;
+    const promo = readPromo(req.body, newPrice);
+    if (promo && "error" in promo) {
+      return res.status(400).json({ success: false, message: promo.error });
+    }
+
     const updatedVariant = await prisma.menuItemVariant.update({
       where: { id },
       data: {
         name,
         code,
         price: price ? parseFloat(price) : undefined,
+        promoPrice: promo ? promo.promoPrice : undefined,
+        promoEndsAt: promo ? promo.promoEndsAt : undefined,
         stockLimit: stockLimit !== undefined ? (stockLimit ? parseInt(stockLimit, 10) : null) : undefined,
         options: options !== undefined ? (options ? (typeof options === "string" ? options : JSON.stringify(options)) : null) : undefined,
       },
@@ -320,6 +391,10 @@ export async function deleteVariant(req: Request, res: Response, next: NextFunct
     });
     if (!variant) {
       return res.status(404).json({ success: false, message: "Variant not found" });
+    }
+
+    if (await hasOrderHistory({ variantId: id })) {
+      return res.status(409).json({ success: false, message: ORDER_HISTORY_MESSAGE });
     }
 
     await prisma.menuItemVariant.delete({ where: { id } });

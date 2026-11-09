@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { prisma } from "../../config/database";
+import { parseAmount } from "../../utils/validation";
 
 // CASH REGISTERS
 
@@ -185,7 +186,10 @@ export async function openCashSession(req: Request, res: Response, next: NextFun
     }
 
     const parsedRegisterId = parseInt(cashRegisterId, 10);
-    const parsedOpenAmount = parseFloat(openAmount);
+    const parsedOpenAmount = parseAmount(openAmount, { allowZero: true });
+    if (parsedOpenAmount === null) {
+      return res.status(400).json({ success: false, message: "openAmount must be a valid amount" });
+    }
 
     // Verify register belongs to restaurant
     const register = await prisma.cashRegister.findFirst({
@@ -254,7 +258,10 @@ export async function closeCashSession(req: Request, res: Response, next: NextFu
       return res.status(400).json({ success: false, message: "closeAmount is required" });
     }
 
-    const parsedCloseAmount = parseFloat(closeAmount);
+    const parsedCloseAmount = parseAmount(closeAmount, { allowZero: true });
+    if (parsedCloseAmount === null) {
+      return res.status(400).json({ success: false, message: "closeAmount must be a valid amount" });
+    }
 
     // Find the active open session
     const session = await prisma.cashSession.findFirst({
@@ -265,7 +272,7 @@ export async function closeCashSession(req: Request, res: Response, next: NextFu
       },
       orderBy: { openTime: "desc" },
       include: {
-        sales: true,
+        sales: { include: { order: { select: { tipAmount: true } } } },
         expenses: true,
         incomes: true,
       },
@@ -278,12 +285,17 @@ export async function closeCashSession(req: Request, res: Response, next: NextFu
     // Calculate system amount: openAmount + totalSales(cash) - totalExpenses + totalIncomes
     const cashSalesTotal = session.sales
       .filter((s) => s.paymentMethod === "01") // Cash sales only
-      .reduce((sum, s) => sum + s.paymentCash - s.discount, 0);
+      .reduce((sum, s) => sum + s.paymentCash, 0);
 
     const expensesTotal = session.expenses.reduce((sum, e) => sum + e.amount, 0);
     const incomesTotal = session.incomes.reduce((sum, i) => sum + i.amount, 0);
 
-    const systemAmount = session.openAmount + cashSalesTotal - expensesTotal + incomesTotal;
+    // Cash tips stay in the drawer until handed to the waiter (then registered as an expense)
+    const cashTipsTotal = session.sales
+      .filter((s) => s.paymentMethod === "01")
+      .reduce((sum, s) => sum + (s.order?.tipAmount ?? 0), 0);
+
+    const systemAmount = session.openAmount + cashSalesTotal + cashTipsTotal - expensesTotal + incomesTotal;
 
     const updatedSession = await prisma.cashSession.update({
       where: { id: session.id },
@@ -315,6 +327,7 @@ export async function closeCashSession(req: Request, res: Response, next: NextFu
       summary: {
         openAmount: session.openAmount,
         cashSales: cashSalesTotal,
+        cashTips: cashTipsTotal,
         expenses: expensesTotal,
         incomes: incomesTotal,
         expectedSystemAmount: systemAmount,
@@ -334,11 +347,12 @@ export async function createExpense(req: Request, res: Response, next: NextFunct
     const restaurantId = req.restaurantId;
     const userId = req.user?.userId;
     const { amount, description, category } = req.body;
+    const parsedAmount = parseAmount(amount);
 
     if (!restaurantId || !userId) {
       return res.status(400).json({ success: false, message: "Restaurant context and user auth required" });
     }
-    if (!amount || !description || !category) {
+    if (parsedAmount === null || !description || !category) {
       return res.status(400).json({ success: false, message: "Amount, description, and category are required" });
     }
 
@@ -358,7 +372,7 @@ export async function createExpense(req: Request, res: Response, next: NextFunct
       data: {
         cashSessionId: session.id,
         userId,
-        amount: parseFloat(amount),
+        amount: parsedAmount,
         description,
         category,
         restaurantId,
@@ -378,11 +392,12 @@ export async function createIncome(req: Request, res: Response, next: NextFuncti
     const restaurantId = req.restaurantId;
     const userId = req.user?.userId;
     const { amount, description } = req.body;
+    const parsedAmount = parseAmount(amount);
 
     if (!restaurantId || !userId) {
       return res.status(400).json({ success: false, message: "Restaurant context and user auth required" });
     }
-    if (!amount || !description) {
+    if (parsedAmount === null || !description) {
       return res.status(400).json({ success: false, message: "Amount and description are required" });
     }
 
@@ -402,7 +417,7 @@ export async function createIncome(req: Request, res: Response, next: NextFuncti
       data: {
         cashSessionId: session.id,
         userId,
-        amount: parseFloat(amount),
+        amount: parsedAmount,
         description,
         restaurantId,
       },

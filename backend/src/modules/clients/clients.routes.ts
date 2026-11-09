@@ -11,7 +11,7 @@ const router = Router();
 router.use(authMiddleware);
 router.use(tenantMiddleware);
 
-router.get("/", getClients);
+router.get("/", authorize([Role.RESTAURANT_OWNER, Role.CAJERO, Role.MOZO]), getClients);
 router.get("/platform-customers", authorize([Role.RESTAURANT_OWNER]), getPlatformCustomers);
 router.post("/", authorize([Role.RESTAURANT_OWNER, Role.CAJERO, Role.MOZO]), createClient);
 router.put("/:id", authorize([Role.RESTAURANT_OWNER, Role.CAJERO, Role.MOZO]), updateClient);

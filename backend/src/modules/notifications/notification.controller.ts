@@ -269,8 +269,6 @@ export async function saveEmailConfig(req: Request, res: Response, next: NextFun
     if (smtpUser !== undefined) updateEnvVar("SMTP_USER", smtpUser);
     if (smtpPass !== undefined) updateEnvVar("SMTP_PASS", smtpPass);
 
-    updateEnvVar("DATABASE_URL", "mysql://root:@127.0.0.1:3309/goeats");
-    updateEnvVar("JWT_SECRET", "2GrGBfroFwsse0krmg4geOjlUp/UvjQWrpgsgiyh1BM=");
 
     fs.writeFileSync(envPath, envContent.trim() + "\n", "utf8");
 

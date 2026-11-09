@@ -1,5 +1,18 @@
 import { Request, Response } from "express";
 import { NotificationService } from "../notifications/notification.service";
+import { escapeHtml, isValidEmail } from "../../utils/validation";
+
+const MAX_LENGTH = { name: 150, phone: 30, category: 100, subject: 200, message: 5000, orderId: 20, restaurantName: 191 };
+
+function getTicketError(fields: Record<string, unknown>) {
+  for (const [field, max] of Object.entries(MAX_LENGTH)) {
+    const value = fields[field];
+    if (value === undefined || value === null) continue;
+    if (typeof value !== "string" && typeof value !== "number") return "Los datos del formulario no son válidos.";
+    if (String(value).length > max) return `El campo ${field} no puede superar ${max} caracteres.`;
+  }
+  return isValidEmail(fields.email) ? null : "El correo no es válido.";
+}
 
 export class SupportController {
   public static async createTicket(req: Request, res: Response) {
@@ -22,6 +35,23 @@ export class SupportController {
           error: "Los campos Nombre, Correo y Mensaje son obligatorios.",
         });
       }
+
+      const ticketError = getTicketError(req.body);
+      if (ticketError) {
+        return res.status(400).json({ success: false, error: ticketError });
+      }
+
+      // Everything below goes inside HTML emails
+      const safeName = escapeHtml(name);
+      const safeEmail = escapeHtml(email);
+      const safePhone = escapeHtml(phone);
+      const safeCategory = escapeHtml(category);
+      const safeSubject = escapeHtml(subject);
+      const safeOrderId = escapeHtml(orderId);
+      const safeRestaurantName = escapeHtml(restaurantName);
+      const messageText = String(message);
+      const safeMessage = escapeHtml(messageText);
+      const safeMessagePreview = escapeHtml(messageText.length > 200 ? `${messageText.substring(0, 200)}...` : messageText);
 
       // Role badge colors & text
       let roleLabel = "Cliente Comensal";
@@ -67,33 +97,33 @@ export class SupportController {
     <div class="content">
       <div class="field">
         <div class="field-label">Solicitante</div>
-        <div class="field-value">${name} &bull; <a href="mailto:${email}" style="color: #3b82f6;">${email}</a></div>
+        <div class="field-value">${safeName} &bull; <a href="mailto:${safeEmail}" style="color: #3b82f6;">${safeEmail}</a></div>
       </div>
       ${phone ? `
       <div class="field">
         <div class="field-label">Teléfono / WhatsApp</div>
-        <div class="field-value"><a href="https://wa.me/${phone.replace(/[^0-9]/g, "")}" style="color: #10b981; text-decoration: none;"> +${phone} (Clic para chatear)</a></div>
+        <div class="field-value"><a href="https://wa.me/${String(phone).replace(/[^0-9]/g, "")}" style="color: #10b981; text-decoration: none;"> +${safePhone} (Clic para chatear)</a></div>
       </div>` : ""}
       <div class="field">
         <div class="field-label">Categoría &bull; Asunto</div>
-        <div class="field-value"><strong>[${category}]</strong> ${subject || "Sin asunto específico"}</div>
+        <div class="field-value"><strong>[${safeCategory}]</strong> ${safeSubject || "Sin asunto específico"}</div>
       </div>
       ${orderId ? `
       <div class="field">
         <div class="field-label">Número de Pedido Asociado</div>
-        <div class="field-value" style="font-weight: 700; color: #ff4757;">#${orderId}</div>
+        <div class="field-value" style="font-weight: 700; color: #ff4757;">#${safeOrderId}</div>
       </div>` : ""}
       ${restaurantName ? `
       <div class="field">
         <div class="field-label">Restaurante</div>
-        <div class="field-value">${restaurantName}</div>
+        <div class="field-value">${safeRestaurantName}</div>
       </div>` : ""}
       <div class="field">
         <div class="field-label">Mensaje o Detalle del Problema</div>
-        <div class="message-box">${message}</div>
+        <div class="message-box">${safeMessage}</div>
       </div>
       <div style="text-align: center;">
-        <a href="mailto:${email}?subject=RE: [Ticket %23${ticketCode}] ${encodeURIComponent(subject || category)}" class="btn">Responder al Usuario</a>
+        <a href="mailto:${safeEmail}?subject=RE: [Ticket %23${ticketCode}] ${encodeURIComponent(subject || category)}" class="btn">Responder al Usuario</a>
       </div>
     </div>
     <div class="footer">
@@ -126,18 +156,18 @@ export class SupportController {
       <p style="margin: 8px 0 0 0; opacity: 0.9; font-size: 14px;">Centro de Ayuda GoEats</p>
     </div>
     <div class="content">
-      <p>Hola <strong>${name}</strong>,</p>
+      <p>Hola <strong>${safeName}</strong>,</p>
       <p>Te confirmamos que hemos recibido tu solicitud de soporte con éxito. Un agente de nuestro equipo revisará tu caso a la mayor brevedad posible.</p>
       
       <div class="ticket-badge">
         <div style="font-size: 12px; color: #64748b; font-weight: 600;">CÓDIGO DE TICKET</div>
         <div style="font-size: 20px; font-weight: 800; color: #ff4757;">#${ticketCode}</div>
-        <div style="font-size: 13px; color: #334155; margin-top: 4px;"><strong>Categoría:</strong> ${category}</div>
+        <div style="font-size: 13px; color: #334155; margin-top: 4px;"><strong>Categoría:</strong> ${safeCategory}</div>
       </div>
 
       <p style="font-size: 14px; color: #64748b;">
         <strong>Resumen de tu mensaje:</strong><br>
-        <em>"${message.length > 200 ? message.substring(0, 200) + '...' : message}"</em>
+        <em>"${safeMessagePreview}"</em>
       </p>
 
       <p style="font-size: 14px; margin-top: 25px;">
@@ -186,7 +216,7 @@ export class SupportController {
       console.error("[SupportController] Error procesando ticket:", error);
       return res.status(500).json({
         success: false,
-        error: error.message || "Error al procesar la solicitud de soporte",
+        error: "Error al procesar la solicitud de soporte",
       });
     }
   }

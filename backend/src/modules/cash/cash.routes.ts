@@ -23,13 +23,13 @@ router.use(authMiddleware);
 router.use(tenantMiddleware);
 
 // Cash registers CRUD
-router.get("/registers", getCashRegisters);
+router.get("/registers", authorize([Role.RESTAURANT_OWNER, Role.CAJERO, Role.MOZO]), getCashRegisters);
 router.post("/registers", authorize([Role.RESTAURANT_OWNER]), createCashRegister);
 router.put("/registers/:id", authorize([Role.RESTAURANT_OWNER]), updateCashRegister);
 router.delete("/registers/:id", authorize([Role.RESTAURANT_OWNER]), deleteCashRegister);
 
 // Sessions
-router.get("/sessions/active", getActiveSession);
+router.get("/sessions/active", authorize([Role.RESTAURANT_OWNER, Role.CAJERO, Role.MOZO]), getActiveSession);
 router.post("/sessions/open", authorize([Role.RESTAURANT_OWNER, Role.CAJERO]), openCashSession);
 router.post("/sessions/close", authorize([Role.RESTAURANT_OWNER, Role.CAJERO]), closeCashSession);
 
@@ -38,6 +38,6 @@ router.post("/expenses", authorize([Role.RESTAURANT_OWNER, Role.CAJERO]), create
 router.post("/incomes", authorize([Role.RESTAURANT_OWNER, Role.CAJERO]), createIncome);
 
 // Transactions details
-router.get("/sessions/:id/transactions", getSessionTransactions);
+router.get("/sessions/:id/transactions", authorize([Role.RESTAURANT_OWNER, Role.CAJERO]), getSessionTransactions);
 
 export default router;

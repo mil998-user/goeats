@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import os from "os";
 import { prisma } from "../../config/database";
+import { OrderType } from "@prisma/client";
+import { OPEN_TABLE_STATUSES, releaseTable } from "../../utils/tables";
 
 function getLocalIpAddress(): string {
   try {
@@ -274,6 +276,94 @@ export async function deleteTable(req: Request, res: Response, next: NextFunctio
     await prisma.table.delete({ where: { id } });
 
     return res.status(200).json({ success: true, message: "Table deleted successfully" });
+  } catch (error) {
+    next(error);
+  }
+}
+
+
+// JOIN TABLES
+// A group that needs more seats: the table joins a main table and its open orders move there.
+// The bill is charged once at the main table, and paying it frees the whole group
+export async function joinTable(req: Request, res: Response, next: NextFunction) {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const mainId = parseInt(req.body?.intoTableId, 10);
+    const restaurantId = req.restaurantId;
+    if (isNaN(id) || isNaN(mainId) || !restaurantId) {
+      return res.status(400).json({ success: false, message: "Elige la mesa principal." });
+    }
+    if (id === mainId) {
+      return res.status(400).json({ success: false, message: "Una mesa no se puede unir consigo misma." });
+    }
+
+    const [table, main] = await Promise.all([
+      prisma.table.findFirst({ where: { id, diningArea: { restaurantId } }, include: { joinedTables: { select: { id: true } } } }),
+      prisma.table.findFirst({ where: { id: mainId, diningArea: { restaurantId } } }),
+    ]);
+    if (!table || !main) {
+      return res.status(404).json({ success: false, message: "Mesa no encontrada en este restaurante." });
+    }
+    if (main.joinedToId) {
+      return res.status(400).json({ success: false, message: "La mesa principal ya está unida a otra. Elige la principal del grupo." });
+    }
+    if (table.joinedToId) {
+      return res.status(400).json({ success: false, message: "Esta mesa ya está unida a otra. Sepárala primero." });
+    }
+    if (table.joinedTables.length > 0) {
+      return res.status(400).json({ success: false, message: "Esta mesa es principal de un grupo. Une las otras mesas a ella." });
+    }
+
+    const moved = await prisma.$transaction(async (tx) => {
+      const result = await tx.order.updateMany({
+        where: { tableId: id, type: OrderType.DINE_IN, status: { in: OPEN_TABLE_STATUSES } },
+        data: { tableId: mainId },
+      });
+      await tx.table.update({ where: { id }, data: { joinedToId: mainId, status: "OCCUPIED" } });
+      await tx.table.update({ where: { id: mainId }, data: { status: "OCCUPIED" } });
+      return result.count;
+    });
+
+    const io = req.app.get("io");
+    if (io) io.to(`restaurant-${restaurantId}`).emit("tables-updated", { tableId: id, mainTableId: mainId });
+
+    return res.status(200).json({
+      success: true,
+      message: moved > 0
+        ? `Mesa ${table.number} unida a la mesa ${main.number}. Sus pedidos pasaron a la mesa ${main.number}.`
+        : `Mesa ${table.number} unida a la mesa ${main.number}.`,
+      movedOrders: moved,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// The joined table goes back to being its own table. Its orders stay on the main table's bill
+export async function separateTable(req: Request, res: Response, next: NextFunction) {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const restaurantId = req.restaurantId;
+    if (isNaN(id) || !restaurantId) {
+      return res.status(400).json({ success: false, message: "Mesa no válida." });
+    }
+    const table = await prisma.table.findFirst({ where: { id, diningArea: { restaurantId } } });
+    if (!table) {
+      return res.status(404).json({ success: false, message: "Mesa no encontrada en este restaurante." });
+    }
+    if (!table.joinedToId) {
+      return res.status(400).json({ success: false, message: "Esta mesa no está unida a otra." });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.table.update({ where: { id }, data: { joinedToId: null } });
+      await releaseTable(tx, id);
+    });
+
+    const io = req.app.get("io");
+    if (io) io.to(`restaurant-${restaurantId}`).emit("tables-updated", { tableId: id });
+
+    return res.status(200).json({ success: true, message: `Mesa ${table.number} separada.` });
   } catch (error) {
     next(error);
   }

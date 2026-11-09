@@ -1,11 +1,71 @@
+import { getEffectivePrice, isPromoActive, toSaleVariant } from "../../utils/promotions";
 import { Request, Response, NextFunction } from "express";
 import { prisma } from "../../config/database";
-import { OrderType, OrderStatus, OrderItemStatus } from "@prisma/client";
-import jwt from "jsonwebtoken";
-import { env } from "../../config/env";
-import { TokenPayload } from "../../middlewares/auth";
-import { NotificationService } from "../notifications/notification.service";
+import { OrderType, OrderStatus, OrderItemStatus, RestaurantStatus } from "@prisma/client";
 
+// Only approved, active restaurants are visible to the public (marketplace, catalog, QR)
+const PUBLIC_RESTAURANT = { isActive: true, status: { in: [RestaurantStatus.APPROVED, RestaurantStatus.ACTIVE] } };
+import { getSessionUser } from "../../middlewares/auth";
+import { NotificationService } from "../notifications/notification.service";
+import { getActiveDeliveryRate } from "../delivery/delivery.controller";
+import { calculateShippingCost, getShippingDistanceKm } from "../../utils/shipping";
+import { getRestaurantAverages } from "../ratings/ratings.controller";
+import { parseAmount, simulatedPaymentsAllowed } from "../../utils/validation";
+import { hideRestaurantSecrets } from "../../utils/safeRestaurant";
+import { hideDeliveryPin, MAX_TIP } from "../../utils/orderRules";
+import { resolveOrderTable } from "../../utils/tables";
+import { canEncryptSecrets, encryptSecret } from "../../utils/secrets";
+import { buildMapIframe, getMapEmbedUrl, isGoogleMapsLink } from "../../utils/maps";
+
+const MAX_MAP_REDIRECTS = 5;
+const MAP_LOOKUP_TIMEOUT_MS = 8000;
+
+// Every hop is checked, so a link can't redirect the server to another host
+async function followMapsLink(startUrl: string) {
+  let currentUrl = startUrl;
+
+  for (let hop = 0; hop <= MAX_MAP_REDIRECTS; hop += 1) {
+    const response = await fetch(currentUrl, {
+      method: "GET",
+      redirect: "manual",
+      signal: AbortSignal.timeout(MAP_LOOKUP_TIMEOUT_MS),
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "es,en;q=0.9",
+      },
+    });
+
+    const location = response.headers.get("location");
+    if (response.status < 300 || response.status >= 400 || !location) {
+      return { resolvedUrl: currentUrl, htmlBody: await response.text() };
+    }
+
+    const nextUrl = new URL(location, currentUrl).toString();
+    if (!isGoogleMapsLink(nextUrl)) {
+      return { resolvedUrl: currentUrl, htmlBody: "" };
+    }
+    currentUrl = nextUrl;
+  }
+
+  return { resolvedUrl: currentUrl, htmlBody: "" };
+}
+
+// Only Google Maps links and embeds are stored, always rebuilt by the server
+function normalizeMapValue(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return { value: null };
+  if (/<iframe\b/i.test(trimmed)) {
+    const embedUrl = getMapEmbedUrl(trimmed);
+    return embedUrl ? { value: buildMapIframe(embedUrl) } : { error: true };
+  }
+  return isGoogleMapsLink(trimmed) ? { value: trimmed } : { error: true };
+}
+
+
+// IVA rates a restaurant can choose. 15 % is the general rate in Ecuador
+export const TAX_RATES = [0, 5, 12, 15] as const;
 
 export async function getAllRestaurants(req: Request, res: Response, next: NextFunction) {
   try {
@@ -19,7 +79,7 @@ export async function getAllRestaurants(req: Request, res: Response, next: NextF
       },
     });
 
-    return res.status(200).json({ success: true, restaurants });
+    return res.status(200).json({ success: true, restaurants: restaurants.map(hideRestaurantSecrets) });
   } catch (error) {
     next(error);
   }
@@ -50,7 +110,7 @@ export async function getRestaurantById(req: Request, res: Response, next: NextF
       return res.status(404).json({ success: false, message: "Restaurant not found" });
     }
 
-    return res.status(200).json({ success: true, restaurant });
+    return res.status(200).json({ success: true, restaurant: hideRestaurantSecrets(restaurant) });
   } catch (error) {
     next(error);
   }
@@ -89,19 +149,61 @@ export async function updateRestaurant(req: Request, res: Response, next: NextFu
       faqsJson,
       samePriceAsLocal,
       promoText,
+      taxRate,
+      waiterCallEnabled,
+      waiterCallWaitMin,
+      payBeforeEating,
+      reservationsEnabled,
       categoryIds,
       subcategoryIds,
     } = req.body;
+
+    // Restaurant options: only real booleans, and a waiter call wait from 0 to 30 minutes
+    for (const [label, value] of [["llamado al mesero", waiterCallEnabled], ["pagar antes de comer", payBeforeEating], ["reservas", reservationsEnabled]] as const) {
+      if (value !== undefined && typeof value !== "boolean") {
+        return res.status(400).json({ success: false, message: `La opción de ${label} no es válida.` });
+      }
+    }
+    if (waiterCallWaitMin !== undefined && !(Number.isInteger(waiterCallWaitMin) && waiterCallWaitMin >= 0 && waiterCallWaitMin <= 30)) {
+      return res.status(400).json({ success: false, message: "La espera entre llamados debe ser de 0 a 30 minutos." });
+    }
 
     if (typeof promoText === "string" && promoText.length > 191) {
       return res.status(400).json({ success: false, message: "La oferta no puede superar 191 caracteres." });
     }
 
+    if (taxRate !== undefined && !(typeof taxRate === "number" && (TAX_RATES as readonly number[]).includes(taxRate))) {
+      return res.status(400).json({ success: false, message: "La tasa de IVA debe ser 0, 5, 12 o 15 %." });
+    }
+
     const parsedLat = (mapLatitude !== undefined && mapLatitude !== null && mapLatitude !== "") ? parseFloat(mapLatitude) : null;
     const parsedLng = (mapLongitude !== undefined && mapLongitude !== null && mapLongitude !== "") ? parseFloat(mapLongitude) : null;
-    let finalMapIframe = mapIframe;
+    const hasInvalidCoordinates =
+      (parsedLat !== null && (!Number.isFinite(parsedLat) || Math.abs(parsedLat) > 90)) ||
+      (parsedLng !== null && (!Number.isFinite(parsedLng) || Math.abs(parsedLng) > 180));
+    if (hasInvalidCoordinates) {
+      return res.status(400).json({ success: false, message: "Las coordenadas del mapa no son válidas." });
+    }
+
+    let finalMapIframe: string | null | undefined = undefined;
+    if (typeof mapIframe === "string") {
+      const normalized = normalizeMapValue(mapIframe);
+      if (normalized.error) {
+        return res.status(400).json({ success: false, message: "El mapa debe ser un enlace o iframe de Google Maps." });
+      }
+      finalMapIframe = normalized.value;
+    }
     if (parsedLat && parsedLng && (!finalMapIframe || !finalMapIframe.includes("<iframe"))) {
-      finalMapIframe = `<iframe src="https://maps.google.com/maps?q=${parsedLat},${parsedLng}&z=16&output=embed" width="100%" height="300" style="border:0;" allowfullscreen="" loading="lazy"></iframe>`;
+      finalMapIframe = buildMapIframe(`https://maps.google.com/maps?q=${parsedLat},${parsedLng}&z=16&output=embed`);
+    }
+
+    // The field comes empty when the owner doesn't replace the saved token
+    const newPayphoneToken = typeof payphoneToken === "string" ? payphoneToken.trim() : "";
+    if (newPayphoneToken && !canEncryptSecrets()) {
+      return res.status(400).json({
+        success: false,
+        message: "No se puede guardar el token: falta configurar DATA_ENCRYPTION_KEY en el servidor.",
+      });
     }
 
     const restaurant = await prisma.restaurant.update({
@@ -114,18 +216,24 @@ export async function updateRestaurant(req: Request, res: Response, next: NextFu
         wifiSsid,
         wifiPassword,
         qrOrderingEnabled,
-        payphoneToken,
+        payphoneToken: newPayphoneToken ? encryptSecret(newPayphoneToken) : undefined,
         bankAccountsJson,
         coverImage,
         description,
-        mapLatitude: parsedLat,
-        mapLongitude: parsedLng,
+        // A partial update (for example, only one option) keeps the saved location
+        mapLatitude: mapLatitude === undefined ? undefined : parsedLat,
+        mapLongitude: mapLongitude === undefined ? undefined : parsedLng,
         mapIframe: finalMapIframe,
         reference,
         openingHours,
         faqsJson,
         samePriceAsLocal: typeof samePriceAsLocal === "boolean" ? samePriceAsLocal : undefined,
         promoText: typeof promoText === "string" ? (promoText.trim() || null) : undefined,
+        taxRate,
+        waiterCallEnabled,
+        waiterCallWaitMin,
+        payBeforeEating,
+        reservationsEnabled,
         categories: categoryIds ? { set: categoryIds.map((cid: number) => ({ id: cid })) } : undefined,
         subcategories: subcategoryIds ? { set: subcategoryIds.map((sid: number) => ({ id: sid })) } : undefined,
         isActive: req.user?.role === "SUPER_ADMIN" ? isActive : undefined, // Only SuperAdmin can activate/deactivate
@@ -140,14 +248,13 @@ export async function updateRestaurant(req: Request, res: Response, next: NextFu
     });
 
     // Notificaciones por cambio de estado del restaurante (Sección 4 y 5 del Plan)
+    if (req.user?.role === "SUPER_ADMIN" && (req.body.status === "APPROVED" || req.body.status === "ACTIVE")) {
+      await prisma.user.updateMany({ where: { restaurantId: restaurant.id, role: "RESTAURANT_OWNER" }, data: { isActive: true } });
+    }
     if (req.body.status && restaurant.users.length > 0) {
       const owner = restaurant.users[0];
       if (owner.email) {
         if (req.body.status === "APPROVED") {
-          await prisma.user.updateMany({
-            where: { restaurantId: restaurant.id, role: "RESTAURANT_OWNER" },
-            data: { isActive: true },
-          });
           NotificationService.notifyRestaurantApproved(
             { id: restaurant.id, name: restaurant.name },
             { id: owner.id, name: owner.name, email: owner.email }
@@ -174,7 +281,7 @@ export async function updateRestaurant(req: Request, res: Response, next: NextFu
     return res.status(200).json({
       success: true,
       message: "Restaurant configuration updated successfully",
-      restaurant,
+      restaurant: hideRestaurantSecrets(restaurant),
     });
   } catch (error) {
     next(error);
@@ -185,7 +292,7 @@ export async function getPublicRestaurantCatalog(req: Request, res: Response, ne
   try {
     const { slug } = req.params;
     const restaurant = await prisma.restaurant.findUnique({
-      where: { slug: slug.toLowerCase().trim(), isActive: true },
+      where: { slug: slug.toLowerCase().trim(), ...PUBLIC_RESTAURANT },
       select: {
         id: true,
         name: true,
@@ -196,7 +303,10 @@ export async function getPublicRestaurantCatalog(req: Request, res: Response, ne
         wifiSsid: true,
         wifiPassword: true,
         qrOrderingEnabled: true,
-        payphoneToken: true,
+        waiterCallEnabled: true,
+        waiterCallWaitMin: true,
+        payBeforeEating: true,
+        reservationsEnabled: true,
         bankAccountsJson: true,
         coverImage: true,
         description: true,
@@ -234,20 +344,41 @@ export async function getPublicRestaurantCatalog(req: Request, res: Response, ne
       where: { restaurantId: restaurant.id },
       include: {
         items: {
+          where: { isActive: true },
           include: {
             variants: {
-              select: { id: true, name: true, price: true, stockLimit: true, options: true },
+              select: { id: true, name: true, price: true, promoPrice: true, promoEndsAt: true, stockLimit: true, options: true },
             },
           },
         },
       },
     });
 
+    // The Wi-Fi password is only for people at a table of this restaurant
+    const tableId = Number(req.query.tableId);
+    const isAtTable = diningAreas.some((area) => area.tables.some((table) => table.id === tableId));
+    const { basePrice, pricePerKm } = await getActiveDeliveryRate();
+    const now = new Date();
+    const rating = (await getRestaurantAverages([restaurant.id])).get(restaurant.id);
+
     return res.status(200).json({
       success: true,
-      restaurant,
+      restaurant: {
+        ...restaurant,
+        wifiPassword: isAtTable ? restaurant.wifiPassword : null,
+        ratingAverage: rating?.average ?? null,
+        ratingCount: rating?.count ?? 0,
+      },
       diningAreas,
-      menuCategories,
+      // Buyers see the price of today; during a promotion, also the normal one
+      menuCategories: menuCategories.map((category) => ({
+        ...category,
+        items: category.items.map((item) => ({
+          ...item,
+          variants: item.variants.map((variant) => toSaleVariant(variant, now)),
+        })),
+      })),
+      deliveryRate: { basePrice, pricePerKm },
     });
   } catch (error) {
     next(error);
@@ -261,7 +392,7 @@ export async function getPublicRestaurantList(req: Request, res: Response, next:
     startOfWeek.setHours(0, 0, 0, 0);
 
     const restaurants = await prisma.restaurant.findMany({
-      where: { isActive: true },
+      where: PUBLIC_RESTAURANT,
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
@@ -297,10 +428,29 @@ export async function getPublicRestaurantList(req: Request, res: Response, next:
       weeklyOrderCounts.map((entry) => [entry.restaurantId, entry._count._all])
     );
 
+    // Restaurants with a dish on promotion today appear among the offers
+    const now = new Date();
+    const promoDishes = await prisma.menuItemVariant.findMany({
+      where: {
+        promoPrice: { not: null },
+        promoEndsAt: { gt: now },
+        menuItem: { isActive: true, category: { restaurantId: { in: restaurants.map((restaurant) => restaurant.id) } } },
+      },
+      select: { price: true, promoPrice: true, promoEndsAt: true, menuItem: { select: { category: { select: { restaurantId: true } } } } },
+    });
+    const withPromo = new Set(
+      promoDishes.filter((dish) => isPromoActive(dish, now)).map((dish) => dish.menuItem.category.restaurantId)
+    );
+
+    const ratings = await getRestaurantAverages(restaurants.map((restaurant) => restaurant.id));
+
     return res.status(200).json({
       success: true,
       restaurants: restaurants.map((restaurant) => ({
         ...restaurant,
+        ratingAverage: ratings.get(restaurant.id)?.average ?? null,
+        ratingCount: ratings.get(restaurant.id)?.count ?? 0,
+        promoText: restaurant.promoText || (withPromo.has(restaurant.id) ? "Platos en promoción" : null),
         ordersThisWeek: orderCountByRestaurantId.get(restaurant.id) || 0,
       })),
     });
@@ -324,14 +474,14 @@ export async function createPublicOrder(req: Request, res: Response, next: NextF
       deliveryPhone, 
       deliveryLat, 
       deliveryLng, 
-      shippingCost, 
       paymentMethod, 
       paymentReceipt, 
-      payphoneTransactionId 
+      payphoneTransactionId,
+      tipAmount 
     } = req.body;
 
     const restaurant = await prisma.restaurant.findUnique({
-      where: { slug: slug.toLowerCase().trim(), isActive: true }
+      where: { slug: slug.toLowerCase().trim(), ...PUBLIC_RESTAURANT }
     });
 
     if (!restaurant) {
@@ -342,8 +492,43 @@ export async function createPublicOrder(req: Request, res: Response, next: NextF
       return res.status(400).json({ success: false, message: "Type, customerName, and non-empty items are required" });
     }
 
-    // Convert type string to enum if it matches
+    if (type !== "DINE_IN" && type !== "TAKEOUT" && type !== "DELIVERY") {
+      return res.status(400).json({ success: false, message: "Invalid order type" });
+    }
+
     const typeEnum = type === "DINE_IN" ? OrderType.DINE_IN : (type === "TAKEOUT" ? OrderType.TAKEOUT : OrderType.DELIVERY);
+    const method = paymentMethod || "CASH";
+
+    if (method !== "CASH" && method !== "CARD" && method !== "TRANSFER") {
+      return res.status(400).json({ success: false, message: "Invalid payment method" });
+    }
+
+    if (typeEnum === OrderType.DELIVERY && (!deliveryAddress || !deliveryPhone)) {
+      return res.status(400).json({ success: false, message: "Delivery address and phone are required" });
+    }
+
+    const parsedDeliveryLat = typeEnum === OrderType.DELIVERY && deliveryLat != null ? Number(deliveryLat) : null;
+    const parsedDeliveryLng = typeEnum === OrderType.DELIVERY && deliveryLng != null ? Number(deliveryLng) : null;
+    const hasInvalidCoordinates =
+      (parsedDeliveryLat !== null && !(Math.abs(parsedDeliveryLat) <= 90)) ||
+      (parsedDeliveryLng !== null && !(Math.abs(parsedDeliveryLng) <= 180));
+
+    if (hasInvalidCoordinates) {
+      return res.status(400).json({ success: false, message: "Invalid delivery coordinates" });
+    }
+
+    if (typeEnum !== OrderType.DINE_IN && method === "CARD") {
+      if (!simulatedPaymentsAllowed()) {
+        return res.status(400).json({ success: false, message: "El pago con tarjeta aún no está disponible." });
+      }
+      if (!payphoneTransactionId) {
+        return res.status(400).json({ success: false, message: "Card transaction ID is required" });
+      }
+    }
+
+    if (typeEnum !== OrderType.DINE_IN && method === "TRANSFER" && !paymentReceipt) {
+      return res.status(400).json({ success: false, message: "Payment receipt is required" });
+    }
 
     if (typeEnum === OrderType.DINE_IN) {
       if (!restaurant.qrOrderingEnabled) {
@@ -354,13 +539,23 @@ export async function createPublicOrder(req: Request, res: Response, next: NextF
       }
     }
 
+    // Optional tip for the driver, only on deliveries. It is not part of the total nor of the IVA
+    let tip = 0;
+    if (typeEnum === OrderType.DELIVERY && tipAmount !== undefined && tipAmount !== null && tipAmount !== "" && Number(tipAmount) !== 0) {
+      const parsedTip = parseAmount(tipAmount);
+      if (parsedTip === null || parsedTip > MAX_TIP) {
+        return res.status(400).json({ success: false, message: `La propina debe ser de $0 a ${MAX_TIP}.` });
+      }
+      tip = parsedTip;
+    }
+
     let initialStatus: OrderStatus = OrderStatus.PENDING;
     let finalPaymentStatus = "PENDING";
 
     if (typeEnum === OrderType.DINE_IN) {
-      initialStatus = OrderStatus.PREPARING;
+      // A restaurant that charges first keeps the table order waiting for the register
+      initialStatus = restaurant.payBeforeEating ? OrderStatus.PENDING : OrderStatus.PREPARING;
     } else {
-      const method = paymentMethod || "CASH";
       if (method === "CASH" || method === "CARD") {
         initialStatus = OrderStatus.PREPARING;
         if (method === "CARD") {
@@ -378,20 +573,30 @@ export async function createPublicOrder(req: Request, res: Response, next: NextF
 
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith("Bearer ")) {
-      const token = authHeader.split(" ")[1];
-      try {
-        const decoded = jwt.verify(token, env.JWT_SECRET) as TokenPayload;
-        customerId = decoded.userId;
-        
+      const session = await getSessionUser(authHeader.split(" ")[1]);
+      if (session) {
+        customerId = session.userId;
+
         const orderingUser = await prisma.user.findUnique({
           where: { id: customerId }
         });
         if (orderingUser && orderingUser.isPlus) {
           isPlusClient = true;
         }
-      } catch (err) {
-        // ignore invalid token
       }
+    }
+
+    // The server decides the shipping price, the browser only shows it
+    let costEnvio = 0;
+    if (typeEnum === OrderType.DELIVERY && !isPlusClient) {
+      const rate = await getActiveDeliveryRate();
+      const distanceKm = getShippingDistanceKm(
+        restaurant.mapLatitude,
+        restaurant.mapLongitude,
+        parsedDeliveryLat,
+        parsedDeliveryLng
+      );
+      costEnvio = calculateShippingCost(rate, distanceKm);
     }
 
     // Run transaction
@@ -401,21 +606,22 @@ export async function createPublicOrder(req: Request, res: Response, next: NextF
 
       for (const item of items) {
         const variantId = parseInt(item.variantId, 10);
-        const quantity = parseFloat(item.quantity);
+        const quantity = Number(item.quantity);
 
-        if (isNaN(quantity) || quantity <= 0) {
-          throw new Error("Item quantity must be a positive number greater than 0");
+        if (!Number.isInteger(quantity) || quantity <= 0 || quantity > 99) {
+          throw new Error("Item quantity must be a whole number between 1 and 99");
         }
 
         const variant = await tx.menuItemVariant.findFirst({
-          where: { id: variantId, menuItem: { category: { restaurantId: restaurant.id } } },
+          where: { id: variantId, menuItem: { isActive: true, category: { restaurantId: restaurant.id } } },
         });
 
         if (!variant) {
-          throw new Error(`Variant ID ${variantId} not found in this restaurant`);
+          throw new Error("Uno de los platos ya no está disponible. Actualiza el menú e inténtalo de nuevo.");
         }
 
-        const price = variant.price;
+        // The server charges the promotion while it lasts
+        const price = getEffectivePrice(variant);
         const subtotal = price * quantity;
         calculatedTotal += subtotal;
 
@@ -428,39 +634,38 @@ export async function createPublicOrder(req: Request, res: Response, next: NextF
         });
       }
 
-      // Dine-in table handling
+      // Dine-in table handling. A joined table sends the order to the main table of the group
+      let orderTableId: number | null = null;
       if (typeEnum === OrderType.DINE_IN && tableId) {
         const parsedTableId = parseInt(tableId, 10);
-        const table = await tx.table.findFirst({
-          where: { id: parsedTableId, diningArea: { restaurantId: restaurant.id } },
-        });
+        orderTableId = await resolveOrderTable(tx, parsedTableId, restaurant.id);
 
-        if (!table) {
+        if (!orderTableId) {
           throw new Error(`Table ID ${parsedTableId} not found`);
         }
 
         // Set table status to occupied
         await tx.table.update({
-          where: { id: parsedTableId },
+          where: { id: orderTableId },
           data: { status: "OCCUPIED" },
         });
       }
 
       // Create the order
-      const costEnvio = (typeEnum === OrderType.DELIVERY && !isPlusClient) ? parseFloat(shippingCost || 0) : 0;
       const generatedPin = typeEnum === OrderType.DELIVERY ? Math.floor(1000 + Math.random() * 9000).toString() : null;
 
       const newOrder = await tx.order.create({
         data: {
           type: typeEnum,
           status: initialStatus,
-          tableId: typeEnum === OrderType.DINE_IN && tableId ? parseInt(tableId, 10) : null,
+          tableId: orderTableId,
           mozoId: null, // public order has no waiter
           customerId: customerId, // link to customer if authenticated
           customerName,
           comments,
           shippingCost: costEnvio,
           total: calculatedTotal + costEnvio,
+          tipAmount: tip,
           deliveryAddress: typeEnum === OrderType.DELIVERY 
             ? (deliveryReference && !deliveryAddress?.includes("Ref:") ? `${deliveryAddress} (Ref: ${deliveryReference})` : deliveryAddress)
             : null,
@@ -468,11 +673,11 @@ export async function createPublicOrder(req: Request, res: Response, next: NextF
             ? (deliveryReference || deliveryObservation || null)
             : null,
           deliveryPhone: typeEnum === OrderType.DELIVERY ? deliveryPhone : null,
-          deliveryLat: (typeEnum === OrderType.DELIVERY && deliveryLat) ? parseFloat(deliveryLat) : null,
-          deliveryLng: (typeEnum === OrderType.DELIVERY && deliveryLng) ? parseFloat(deliveryLng) : null,
+          deliveryLat: parsedDeliveryLat,
+          deliveryLng: parsedDeliveryLng,
           deliveryPin: generatedPin,
           restaurantId: restaurant.id,
-          paymentMethodString: paymentMethod || "CASH",
+          paymentMethodString: method,
           paymentReceipt: paymentReceipt || null,
           paymentStatus: finalPaymentStatus,
           payphoneTransactionId: payphoneTransactionId || null,
@@ -504,7 +709,7 @@ export async function createPublicOrder(req: Request, res: Response, next: NextF
     // Send real-time Socket notification to kitchen and cashiers
     const io = req.app.get("io");
     if (io) {
-      io.to(`restaurant-${restaurant.id}`).emit("new-order", order);
+      io.to(`restaurant-${restaurant.id}`).emit("new-order", hideDeliveryPin(order));
       console.log(`[Socket] Emitted public new-order for restaurant-${restaurant.id}`);
     }
 
@@ -543,13 +748,33 @@ export async function createPublicOrder(req: Request, res: Response, next: NextF
   }
 }
 
+// Last call of each table, so a table waits the time its restaurant chose before calling again.
+// In memory: it resets on restart, which only means one extra call is let through
+const lastTableCalls = new Map<string, number>();
+const MAX_TRACKED_TABLE_CALLS = 20000;
+
+function getCallWaitSeconds(key: string, waitMinutes: number, now = Date.now()) {
+  const last = lastTableCalls.get(key);
+  if (!last || waitMinutes <= 0) return 0;
+  return Math.max(0, Math.ceil((last + waitMinutes * 60000 - now) / 1000));
+}
+
+function rememberTableCall(key: string, now = Date.now()) {
+  if (lastTableCalls.size >= MAX_TRACKED_TABLE_CALLS) {
+    const oldest = lastTableCalls.keys().next().value;
+    if (oldest !== undefined) lastTableCalls.delete(oldest);
+  }
+  lastTableCalls.delete(key);
+  lastTableCalls.set(key, now);
+}
+
 export async function callWaiterFromTable(req: Request, res: Response, next: NextFunction) {
   try {
     const { slug } = req.params;
     const { tableId, action } = req.body; // action: "CALL" | "BILL"
 
     const restaurant = await prisma.restaurant.findUnique({
-      where: { slug: slug.toLowerCase().trim(), isActive: true },
+      where: { slug: slug.toLowerCase().trim(), ...PUBLIC_RESTAURANT },
     });
 
     if (!restaurant) {
@@ -571,6 +796,26 @@ export async function callWaiterFromTable(req: Request, res: Response, next: Nex
     }
 
     const isBill = action === "BILL";
+    if (!isBill && !restaurant.waiterCallEnabled) {
+      return res.status(400).json({ success: false, message: "Este restaurante no tiene activado el llamado al mesero." });
+    }
+
+    const callKey = `${restaurant.id}:${table.id}:${isBill ? "BILL" : "CALL"}`;
+    // The bill can be asked again sooner: 2 minutes at most
+    const waitSeconds = getCallWaitSeconds(callKey, isBill ? Math.min(2, restaurant.waiterCallWaitMin) : restaurant.waiterCallWaitMin);
+    if (waitSeconds > 0) {
+      const minutes = Math.ceil(waitSeconds / 60);
+      res.setHeader("Retry-After", String(waitSeconds));
+      return res.status(429).json({
+        success: false,
+        retryAfterSeconds: waitSeconds,
+        message: isBill
+          ? `Ya pediste la cuenta. Podrás volver a pedirla en ${minutes} min.`
+          : `Ya avisamos al mesero. Podrás volver a llamar en ${minutes} min.`,
+      });
+    }
+    rememberTableCall(callKey);
+
     const notifType = isBill ? "BILL" : "CALL_WAITER";
     const title = isBill ? " ¡Solicitud de Cuenta!" : " ¡Llamado de Mesa!";
     const message = isBill
@@ -618,6 +863,10 @@ export async function resolveMapsUrl(req: Request, res: Response, next: NextFunc
     const iframeMatch = trimmedUrl.match(/src="([^"]+)"/i);
     const candidateUrl = iframeMatch ? iframeMatch[1] : trimmedUrl;
 
+    if (!isGoogleMapsLink(candidateUrl)) {
+      return res.status(400).json({ success: false, message: "Solo se aceptan enlaces de Google Maps." });
+    }
+
     // A. Coordenadas explícitas de lugar en URLs completas: !3d(lat)!4d(lng)
     const placeCoordsMatch = candidateUrl.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
     if (placeCoordsMatch) {
@@ -657,19 +906,7 @@ export async function resolveMapsUrl(req: Request, res: Response, next: NextFunc
     let htmlBody = "";
 
     try {
-      const response = await fetch(candidateUrl, {
-        method: "GET",
-        redirect: "follow",
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-          "Accept-Language": "es,en;q=0.9",
-        },
-      });
-
-      resolvedUrl = response.url || candidateUrl;
-      htmlBody = await response.text();
+      ({ resolvedUrl, htmlBody } = await followMapsLink(candidateUrl));
     } catch (fetchErr: any) {
       console.warn("[resolveMapsUrl] Error siguiendo redirección:", fetchErr.message);
     }
@@ -810,7 +1047,7 @@ export async function approveRestaurant(req: Request, res: Response, next: NextF
     return res.status(200).json({
       success: true,
       message: `Restaurante "${restaurant.name}" aprobado exitosamente. La cuenta del propietario ha sido activada y se ha notificado por correo electrónico.`,
-      restaurant: updated,
+      restaurant: hideRestaurantSecrets(updated),
     });
   } catch (error) {
     next(error);
@@ -873,7 +1110,7 @@ export async function rejectRestaurant(req: Request, res: Response, next: NextFu
     return res.status(200).json({
       success: true,
       message: `Restaurante "${restaurant.name}" ha sido rechazado.`,
-      restaurant: updated,
+      restaurant: hideRestaurantSecrets(updated),
     });
   } catch (error) {
     next(error);
@@ -925,7 +1162,7 @@ export async function reviewRestaurant(req: Request, res: Response, next: NextFu
     return res.status(200).json({
       success: true,
       message: `Restaurante "${restaurant.name}" puesto en estado En Revisión.`,
-      restaurant: updated,
+      restaurant: hideRestaurantSecrets(updated),
     });
   } catch (error) {
     next(error);

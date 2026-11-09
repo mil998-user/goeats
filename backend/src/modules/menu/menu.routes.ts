@@ -25,7 +25,7 @@ router.use(authMiddleware);
 router.use(tenantMiddleware);
 
 // Categories routes
-router.get("/categories", getMenuCategories);
+router.get("/categories", authorize([Role.RESTAURANT_OWNER, Role.CAJERO, Role.MOZO]), getMenuCategories);
 router.post("/categories", authorize([Role.RESTAURANT_OWNER, Role.CAJERO]), createMenuCategory);
 router.put("/categories/:id", authorize([Role.RESTAURANT_OWNER, Role.CAJERO]), updateMenuCategory);
 router.delete("/categories/:id", authorize([Role.RESTAURANT_OWNER]), deleteMenuCategory);
@@ -41,7 +41,7 @@ router.put("/variants/:id", authorize([Role.RESTAURANT_OWNER, Role.CAJERO]), upd
 router.delete("/variants/:id", authorize([Role.RESTAURANT_OWNER]), deleteVariant);
 
 // Recipe routes
-router.get("/variants/:variantId/recipe", getRecipe);
+router.get("/variants/:variantId/recipe", authorize([Role.RESTAURANT_OWNER, Role.CAJERO]), getRecipe);
 router.post("/variants/:variantId/recipe", authorize([Role.RESTAURANT_OWNER]), setRecipe);
 
 export default router;

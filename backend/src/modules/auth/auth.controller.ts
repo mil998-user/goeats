@@ -4,22 +4,67 @@ import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { prisma } from "../../config/database";
 import { env } from "../../config/env";
+import { isLocalDatabase } from "../../config/databaseUrl";
 import { Role } from "@prisma/client";
 import { sendWelcomeEmail } from "../../services/email";
 import { NotificationService } from "../notifications/notification.service";
 import { verifyGoogleToken, verifyFacebookToken } from "../../services/oauth";
 import { safeDeleteUser } from "./user-cleanup.service";
+import { AttemptLimiter, sendTooManyAttempts } from "../../utils/rateLimit";
+import {
+  getAccountError,
+  getPasswordError,
+  getSameIdentityValues,
+  isValidEmail,
+  isValidIdentification,
+  normalizeIdentification,
+} from "../../utils/validation";
+import { saveProfileAddressAsDefault } from "../orders/addresses.controller";
+
+// One account per person: an ID and the RUC built from it count as the same person
+async function isIdentificationTaken(identification: string, exceptUserId?: number) {
+  const taken = await prisma.user.findFirst({
+    where: {
+      cedula: { in: getSameIdentityValues(identification) },
+      ...(exceptUserId ? { NOT: { id: exceptUserId } } : {}),
+    },
+    select: { id: true },
+  });
+  return !!taken;
+}
+import { hideRestaurantSecrets } from "../../utils/safeRestaurant";
 
 
 const SALT_ROUNDS = 10;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const loginByConnectionAndUser = new AttemptLimiter(8, LOGIN_WINDOW_MS);
+const loginByUser = new AttemptLimiter(30, LOGIN_WINDOW_MS);
+const loginByConnection = new AttemptLimiter(50, LOGIN_WINDOW_MS);
 
 export async function login(req: Request, res: Response, next: NextFunction) {
   try {
     const { username, password } = req.body;
 
-    if (!username || !password) {
+    if (typeof username !== "string" || typeof password !== "string" || !username || !password) {
       return res.status(400).json({ success: false, message: "Username and password are required" });
     }
+
+    const connectionKey = req.ip || "unknown";
+    const userKey = username.toLowerCase();
+    const connectionAndUserKey = `${connectionKey}|${userKey}`;
+    const retryAfter = Math.max(
+      loginByConnectionAndUser.retryAfter(connectionAndUserKey),
+      loginByUser.retryAfter(userKey),
+      loginByConnection.retryAfter(connectionKey)
+    );
+    if (retryAfter > 0) {
+      return sendTooManyAttempts(res, retryAfter, "Demasiados intentos fallidos. Espera unos minutos e intenta de nuevo.");
+    }
+
+    // Counted before checking the password, so parallel attempts can't slip through
+    loginByConnectionAndUser.hit(connectionAndUserKey);
+    loginByUser.hit(userKey);
+    loginByConnection.hit(connectionKey);
 
     const user = await prisma.user.findUnique({
       where: { username },
@@ -34,6 +79,10 @@ export async function login(req: Request, res: Response, next: NextFunction) {
     if (!isMatch) {
       return res.status(401).json({ success: false, message: "Usuario o contraseña incorrectos" });
     }
+
+    loginByConnectionAndUser.reset(connectionAndUserKey);
+    loginByUser.reset(userKey);
+    loginByConnection.forgive(connectionKey);
 
     // Verificación de aprobación según el rol
     if (!user.isActive) {
@@ -133,6 +182,11 @@ export async function registerOwner(req: Request, res: Response, next: NextFunct
         success: false,
         message: "Username, password, name, restaurantName, and slug are required",
       });
+    }
+
+    const accountError = getAccountError({ username, password, name, email, phone });
+    if (accountError) {
+      return res.status(400).json({ success: false, message: accountError });
     }
 
     // Check if user already exists
@@ -265,6 +319,11 @@ export async function registerStaff(req: Request, res: Response, next: NextFunct
       return res.status(400).json({ success: false, message: "Username, password, name, and role are required" });
     }
 
+    const accountError = getAccountError({ username, password, name, email });
+    if (accountError) {
+      return res.status(400).json({ success: false, message: accountError });
+    }
+
     if (!Object.values(Role).includes(role) || role === Role.SUPER_ADMIN || role === Role.RESTAURANT_OWNER) {
       return res.status(400).json({ success: false, message: "Invalid staff role specified" });
     }
@@ -345,7 +404,7 @@ export async function getProfile(req: Request, res: Response, next: NextFunction
         cedula: user.cedula || null,
         walletBalance: user.walletBalance,
         restaurantId: user.restaurantId,
-        restaurant: user.restaurant,
+        restaurant: user.restaurant ? hideRestaurantSecrets(user.restaurant) : null,
         isPlus: user.isPlus,
         createdAt: user.createdAt,
         preferences,
@@ -391,16 +450,21 @@ export async function updateProfile(req: Request, res: Response, next: NextFunct
       return res.status(404).json({ success: false, message: "Usuario no encontrado" });
     }
 
+    const cleanCedula = normalizeIdentification(cedula);
+    if (cedula && !isValidIdentification(cleanCedula, existingUser.role === Role.CUSTOMER)) {
+      return res.status(400).json({ success: false, message: "La cédula o el RUC no es válido." });
+    }
+    if (password) {
+      const passwordError = getPasswordError(password);
+      if (passwordError) {
+        return res.status(400).json({ success: false, message: passwordError });
+      }
+    }
+
     // Validar unicidad de cédula si se proporciona una nueva
-    if (cedula && cedula.trim() !== "" && cedula.trim() !== existingUser.cedula) {
-      const cedulaCheck = await prisma.user.findFirst({
-        where: {
-          cedula: cedula.trim(),
-          NOT: { id: userId },
-        },
-      });
-      if (cedulaCheck) {
-        return res.status(400).json({
+    if (cleanCedula && cleanCedula !== existingUser.cedula) {
+      if (await isIdentificationTaken(cleanCedula, userId)) {
+        return res.status(409).json({
           success: false,
           message: "El número de identificación o cédula ya se encuentra registrado con otra cuenta.",
         });
@@ -415,7 +479,7 @@ export async function updateProfile(req: Request, res: Response, next: NextFunct
       dataToUpdate.phone = phone ? phone.trim() : null;
     }
     if (cedula !== undefined) {
-      dataToUpdate.cedula = cedula ? cedula.trim() : null;
+      dataToUpdate.cedula = cleanCedula || null;
     }
     if (password && password.trim() !== "") {
       dataToUpdate.password = await bcrypt.hash(password.trim(), SALT_ROUNDS);
@@ -448,6 +512,10 @@ export async function updateProfile(req: Request, res: Response, next: NextFunct
       data: dataToUpdate,
       include: { restaurant: true },
     });
+
+    if (updatedUser.role === Role.CUSTOMER && deliveryAddress !== undefined) {
+      await saveProfileAddressAsDefault(userId);
+    }
 
     const rawPreferences = (updatedUser as any).preferencesJson;
     let preferences: string[] = [];
@@ -501,21 +569,20 @@ export async function registerCustomer(req: Request, res: Response, next: NextFu
       });
     }
 
-    const cleanCedula = cedula.replace(/\D/g, "");
-    if (cleanCedula.length !== 10) {
-      return res.status(400).json({
-        success: false,
-        message: "La cédula ecuatoriana debe tener exactamente 10 dígitos numéricos.",
-      });
+    const accountError = getAccountError({ username, password, name, email, phone });
+    if (accountError) {
+      return res.status(400).json({ success: false, message: accountError });
     }
 
-    const existingCedula = await prisma.user.findFirst({
-      where: { cedula: cleanCedula }
-    });
-    if (existingCedula) {
-      return res.status(400).json({
+    const cleanCedula = normalizeIdentification(cedula);
+    if (!isValidIdentification(cleanCedula)) {
+      return res.status(400).json({ success: false, message: "La cédula o el RUC no es válido." });
+    }
+
+    if (await isIdentificationTaken(cleanCedula)) {
+      return res.status(409).json({
         success: false,
-        message: "Ya existe una cuenta registrada con esta cédula.",
+        message: "Ya existe una cuenta con esta cédula o RUC. Inicia sesión o recupera tu contraseña.",
       });
     }
 
@@ -591,19 +658,18 @@ export async function registerDriver(req: Request, res: Response, next: NextFunc
       });
     }
 
-    const cleanCedula = cedula.replace(/\D/g, "");
-    if (cleanCedula.length !== 10) {
-      return res.status(400).json({
-        success: false,
-        message: "La cédula debe tener exactamente 10 dígitos numéricos.",
-      });
+    const accountError = getAccountError({ username, password, name, email, phone });
+    if (accountError) {
+      return res.status(400).json({ success: false, message: accountError });
     }
 
-    const existingCedula = await prisma.user.findFirst({
-      where: { cedula: cleanCedula }
-    });
-    if (existingCedula) {
-      return res.status(400).json({
+    const cleanCedula = normalizeIdentification(cedula);
+    if (!isValidIdentification(cleanCedula, false)) {
+      return res.status(400).json({ success: false, message: "La cédula no es válida." });
+    }
+
+    if (await isIdentificationTaken(cleanCedula)) {
+      return res.status(409).json({
         success: false,
         message: "Ya existe un usuario registrado con esta cédula.",
       });
@@ -661,6 +727,19 @@ export async function registerDriver(req: Request, res: Response, next: NextFunc
 
 export async function resetDatabase(req: any, res: any, next: any) {
   try {
+    if (process.env.ALLOW_DATABASE_RESET !== "true") {
+      return res.status(403).json({ success: false, message: "El vaciado del sistema está desactivado en este entorno." });
+    }
+
+    // La base compartida del equipo nunca se vacía desde el panel, aunque alguien active el permiso.
+    if (!isLocalDatabase(env.DATABASE_URL)) {
+      return res.status(403).json({ success: false, message: "El vaciado solo se permite con una base local." });
+    }
+
+    if (req.body?.confirm !== "VACIAR") {
+      return res.status(400).json({ success: false, message: "Debes confirmar escribiendo VACIAR." });
+    }
+
     // Delete transactions in dependency order
     await prisma.$transaction([
       prisma.walletTransaction.deleteMany(),
@@ -759,7 +838,15 @@ export async function updateStaff(req: Request, res: Response, next: NextFunctio
       dataToUpdate.role = role;
     }
 
+    if (email && !isValidEmail(email)) {
+      return res.status(400).json({ success: false, message: "El correo no es válido." });
+    }
+
     if (password && password.trim() !== "") {
+      const passwordError = getPasswordError(password);
+      if (passwordError) {
+        return res.status(400).json({ success: false, message: passwordError });
+      }
       dataToUpdate.password = await bcrypt.hash(password, SALT_ROUNDS);
     }
 
@@ -803,9 +890,33 @@ export async function deleteStaff(req: Request, res: Response, next: NextFunctio
       return res.status(404).json({ success: false, message: "Staff member not found" });
     }
 
-    await prisma.user.delete({ where: { id } });
+    // Someone who already worked keeps their name on orders, dishes and cash: they are deactivated
+    const [orders, dishes, sessions, expenses, incomes, purchases] = await Promise.all([
+      prisma.order.count({ where: { mozoId: id } }),
+      prisma.orderItem.count({ where: { preparedById: id } }),
+      prisma.cashSession.count({ where: { userId: id } }),
+      prisma.expense.count({ where: { userId: id } }),
+      prisma.income.count({ where: { userId: id } }),
+      prisma.purchase.count({ where: { userId: id } }),
+    ]);
+    if (orders + dishes + sessions + expenses + incomes + purchases > 0) {
+      await prisma.$transaction([
+        prisma.user.update({ where: { id }, data: { isActive: false } }),
+        prisma.cashRegister.updateMany({ where: { assignedUserId: id }, data: { assignedUserId: null } }),
+      ]);
+      return res.status(200).json({
+        success: true,
+        deactivated: true,
+        message: "Se desactivó la cuenta. Su historial de pedidos y caja se conserva.",
+      });
+    }
 
-    return res.status(200).json({ success: true, message: "Staff member deleted successfully" });
+    await prisma.$transaction([
+      prisma.cashRegister.updateMany({ where: { assignedUserId: id }, data: { assignedUserId: null } }),
+      prisma.user.delete({ where: { id } }),
+    ]);
+
+    return res.status(200).json({ success: true, message: "Se eliminó la cuenta." });
   } catch (error) {
     next(error);
   }
@@ -1008,11 +1119,24 @@ export async function deleteMyAccount(req: Request, res: Response, next: NextFun
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, username: true, role: true },
+      select: { id: true, username: true, role: true, restaurantId: true },
     });
 
     if (!user) {
       return res.status(404).json({ success: false, message: "Usuario no encontrado" });
+    }
+
+    // A17: a restaurant can't be left open without an owner
+    if (user.role === Role.RESTAURANT_OWNER && user.restaurantId) {
+      const otherOwners = await prisma.user.count({
+        where: { restaurantId: user.restaurantId, role: Role.RESTAURANT_OWNER, isActive: true, id: { not: user.id } },
+      });
+      if (otherOwners === 0) {
+        return res.status(409).json({
+          success: false,
+          message: "Tu local quedaría sin dueño. Pide al administrador de GoEats que lo dé de baja o lo pase a otra persona.",
+        });
+      }
     }
 
     // Proteger cuenta SUPER_ADMIN para evitar dejar el sistema sin administrador

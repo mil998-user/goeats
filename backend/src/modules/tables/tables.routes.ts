@@ -1,5 +1,7 @@
 import { Router } from "express";
 import {
+  joinTable,
+  separateTable,
   getDiningAreas,
   createDiningArea,
   updateDiningArea,
@@ -20,7 +22,7 @@ router.use(authMiddleware);
 router.use(tenantMiddleware);
 
 // Dining Areas routes
-router.get("/dining-areas", getDiningAreas);
+router.get("/dining-areas", authorize([Role.RESTAURANT_OWNER, Role.CAJERO, Role.MOZO]), getDiningAreas);
 router.post("/dining-areas", authorize([Role.RESTAURANT_OWNER]), createDiningArea);
 router.put("/dining-areas/:id", authorize([Role.RESTAURANT_OWNER]), updateDiningArea);
 router.delete("/dining-areas/:id", authorize([Role.RESTAURANT_OWNER]), deleteDiningArea);
@@ -28,6 +30,8 @@ router.delete("/dining-areas/:id", authorize([Role.RESTAURANT_OWNER]), deleteDin
 // Tables routes
 router.post("/", authorize([Role.RESTAURANT_OWNER]), createTable);
 router.put("/:id", authorize([Role.RESTAURANT_OWNER, Role.CAJERO, Role.MOZO]), updateTable);
+router.post("/:id(\\d+)/join", authorize([Role.RESTAURANT_OWNER, Role.CAJERO, Role.MOZO]), joinTable);
+router.post("/:id(\\d+)/separate", authorize([Role.RESTAURANT_OWNER, Role.CAJERO, Role.MOZO]), separateTable);
 router.delete("/:id", authorize([Role.RESTAURANT_OWNER]), deleteTable);
 
 export default router;

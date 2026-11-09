@@ -1,6 +1,18 @@
 import { Request, Response, NextFunction } from "express";
 import { prisma } from "../../config/database";
 
+// The owner picks whole days of Ecuador (UTC-5, no daylight saving).
+// "2026-11-08" goes from 00:00 to 23:59:59.999 of that day there, whatever the server time zone
+const ECUADOR_OFFSET = "-05:00";
+const DAY_RE = /^d{4}-d{2}-d{2}$/;
+function getReportRange(startDate: unknown, endDate: unknown) {
+  const day = (value: unknown, time: string) =>
+    typeof value === "string" && DAY_RE.test(value) ? new Date(`${value}T${time}${ECUADOR_OFFSET}`) : null;
+  const start = day(startDate, "00:00:00.000") ?? new Date(0);
+  const end = day(endDate, "23:59:59.999") ?? new Date();
+  return { start, end };
+}
+
 export async function getDashboardData(req: Request, res: Response, next: NextFunction) {
   try {
     const restaurantId = req.restaurantId;
@@ -130,9 +142,7 @@ export async function getSalesReport(req: Request, res: Response, next: NextFunc
       return res.status(400).json({ success: false, message: "Restaurant context is required" });
     }
 
-    const start = startDate ? new Date(startDate as string) : new Date(0);
-    const end = endDate ? new Date(endDate as string) : new Date();
-    end.setHours(23, 59, 59, 999);
+    const { start, end } = getReportRange(startDate, endDate);
 
     const sales = await prisma.sale.findMany({
       where: {
@@ -174,9 +184,7 @@ export async function getProductSalesReport(req: Request, res: Response, next: N
       return res.status(400).json({ success: false, message: "Restaurant context is required" });
     }
 
-    const start = startDate ? new Date(startDate as string) : new Date(0);
-    const end = endDate ? new Date(endDate as string) : new Date();
-    end.setHours(23, 59, 59, 999);
+    const { start, end } = getReportRange(startDate, endDate);
 
     const orderItems = await prisma.orderItem.findMany({
       where: {
@@ -223,9 +231,7 @@ export async function getWaiterReport(req: Request, res: Response, next: NextFun
       return res.status(400).json({ success: false, message: "Restaurant context is required" });
     }
 
-    const start = startDate ? new Date(startDate as string) : new Date(0);
-    const end = endDate ? new Date(endDate as string) : new Date();
-    end.setHours(23, 59, 59, 999);
+    const { start, end } = getReportRange(startDate, endDate);
 
     // Get DINE_IN orders grouped by mozo
     const orders = await prisma.order.findMany({
@@ -240,22 +246,46 @@ export async function getWaiterReport(req: Request, res: Response, next: NextFun
       },
     });
 
-    const mozoMap = new Map<string, { id: number; name: string; orderCount: number; salesTotal: number }>();
+    const mozoMap = new Map<string, { id: number; name: string; orderCount: number; salesTotal: number; tipsTotal: number }>();
     for (const order of orders) {
       if (!order.mozo) continue;
       const key = `${order.mozoId}`;
-      const existing = mozoMap.get(key) || { id: order.mozo.id, name: order.mozo.name, orderCount: 0, salesTotal: 0 };
+      const existing = mozoMap.get(key) || { id: order.mozo.id, name: order.mozo.name, orderCount: 0, salesTotal: 0, tipsTotal: 0 };
       mozoMap.set(key, {
         id: order.mozo.id,
         name: order.mozo.name,
         orderCount: existing.orderCount + 1,
         salesTotal: existing.salesTotal + order.total,
+        // Tips charged at the register for this waiter's tables
+        tipsTotal: Math.round((existing.tipsTotal + (order.tipAmount || 0)) * 100) / 100,
       });
     }
 
     const waiters = Array.from(mozoMap.values()).sort((a, b) => b.salesTotal - a.salesTotal);
 
-    return res.status(200).json({ success: true, waiters });
+    // Dishes each person prepared in the kitchen, in the same dates
+    const prepared = await prisma.orderItem.groupBy({
+      by: ["preparedById"],
+      where: {
+        preparedById: { not: null },
+        order: { restaurantId, createdAt: { gte: start, lte: end }, status: { not: "CANCELLED" } },
+      },
+      _sum: { quantity: true },
+    });
+    const cookIds = prepared.map((row) => row.preparedById as number);
+    const cookUsers = await prisma.user.findMany({
+      where: { id: { in: cookIds }, restaurantId },
+      select: { id: true, name: true },
+    });
+    const cooks = cookUsers
+      .map((cook) => ({
+        id: cook.id,
+        name: cook.name,
+        dishCount: prepared.find((row) => row.preparedById === cook.id)?._sum.quantity || 0,
+      }))
+      .sort((a, b) => b.dishCount - a.dishCount);
+
+    return res.status(200).json({ success: true, waiters, cooks });
   } catch (error) {
     next(error);
   }

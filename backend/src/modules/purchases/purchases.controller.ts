@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { prisma } from "../../config/database";
+import { parseAmount } from "../../utils/validation";
 
 // SUPPLIERS
 
@@ -201,7 +202,10 @@ export async function createPurchase(req: Request, res: Response, next: NextFunc
     }
 
     const parsedSupplierId = parseInt(supplierId, 10);
-    const disc = parseFloat(discount || 0);
+    const disc = parseAmount(discount || 0, { allowZero: true });
+    if (disc === null) {
+      return res.status(400).json({ success: false, message: "Discount must be a valid amount" });
+    }
 
     // Verify supplier exists
     const supplier = await prisma.supplier.findFirst({
@@ -219,8 +223,12 @@ export async function createPurchase(req: Request, res: Response, next: NextFunc
 
       for (const item of items) {
         const supplyId = parseInt(item.supplyId, 10);
-        const quantity = parseFloat(item.quantity);
-        const price = parseFloat(item.price);
+        const quantity = parseAmount(item.quantity);
+        const price = parseAmount(item.price, { allowZero: true });
+
+        if (quantity === null || price === null) {
+          throw new Error("Item quantity and price must be valid amounts");
+        }
 
         const supply = await tx.supply.findFirst({
           where: { id: supplyId, restaurantId },
@@ -353,11 +361,10 @@ export async function payCreditInstallment(req: Request, res: Response, next: Ne
     const userId = req.user?.userId;
     const { amount } = req.body; // Amount paid in this installment
 
-    if (isNaN(id) || !restaurantId || !userId || !amount) {
+    const parsedAmount = parseAmount(amount);
+    if (isNaN(id) || !restaurantId || !userId || parsedAmount === null) {
       return res.status(400).json({ success: false, message: "Invalid inputs" });
     }
-
-    const parsedAmount = parseFloat(amount);
 
     const credit = await prisma.purchaseCredit.findFirst({
       where: { id, purchase: { restaurantId } },

@@ -35,11 +35,11 @@ export class NotificationService {
     }
 
     // Fallback: SMTP estándar o emulador de desarrollo
-    const host = process.env.SMTP_HOST || "server3651.hostingsupremo.net";
+    const host = process.env.SMTP_HOST || "";
     const port = parseInt(process.env.SMTP_PORT || "465", 10);
     const secure = process.env.SMTP_SECURE !== "false";
-    const user = process.env.SMTP_USER || "gerencia@guibis.com";
-    const pass = process.env.SMTP_PASS || "MACAra666_";
+    const user = process.env.SMTP_USER || "";
+    const pass = process.env.SMTP_PASS || "";
 
     return {
       transporter: nodemailer.createTransport({

@@ -2,6 +2,12 @@ import { Request, Response, NextFunction } from "express";
 import { prisma } from "../../config/database";
 import { OrderStatus, OrderType } from "@prisma/client";
 import { emitElectronicInvoice } from "../../services/sri/sri-billing.service";
+import { parseAmount } from "../../utils/validation";
+import { getChargeError, MAX_TIP } from "../../utils/orderRules";
+import { releaseTable } from "../../utils/tables";
+
+const PAYMENT_METHODS = ["01", "20"];
+const roundMoney = (value: number) => Math.round(value * 100) / 100;
 
 export async function emitSale(req: Request, res: Response, next: NextFunction) {
   try {
@@ -22,10 +28,25 @@ export async function emitSale(req: Request, res: Response, next: NextFunction) 
       paymentMethod, // "01" (cash), "20" (card)
       docTypeId, // ID from DocumentType model
       fiscalEmit, // boolean: emit electronic invoice
+      tip, // Optional tip for the waiter: charged with the bill, outside the invoice and the IVA
     } = req.body;
 
     if (!orderId || !docTypeId || !paymentMethod) {
       return res.status(400).json({ success: false, message: "orderId, docTypeId, and paymentMethod are required" });
+    }
+
+    if (!PAYMENT_METHODS.includes(paymentMethod)) {
+      return res.status(400).json({ success: false, message: "Forma de pago no válida" });
+    }
+
+    const disc = parseAmount(discount ?? 0, { allowZero: true });
+    if (disc === null) {
+      return res.status(400).json({ success: false, message: "Descuento no válido" });
+    }
+
+    const tipValue = parseAmount(tip ?? 0, { allowZero: true });
+    if (tipValue === null || tipValue > MAX_TIP) {
+      return res.status(400).json({ success: false, message: `La propina debe ser de $0 a ${MAX_TIP}.` });
     }
 
     // 1. Verify restaurant has an active open cash session
@@ -46,6 +67,8 @@ export async function emitSale(req: Request, res: Response, next: NextFunction) 
     const order = await prisma.order.findFirst({
       where: { id: parseInt(orderId, 10), restaurantId },
       include: {
+        sale: { select: { id: true } },
+        restaurant: { select: { payBeforeEating: true } },
         items: {
           include: {
             variant: {
@@ -63,8 +86,30 @@ export async function emitSale(req: Request, res: Response, next: NextFunction) 
       return res.status(404).json({ success: false, message: "Order not found" });
     }
 
-    if (order.status === OrderStatus.DELIVERED) {
-      return res.status(400).json({ success: false, message: "This order has already been closed/paid" });
+    const payBeforeEating = order.restaurant.payBeforeEating;
+    const chargeError = getChargeError(order, !!order.sale, payBeforeEating);
+    if (chargeError) {
+      return res.status(409).json({ success: false, message: chargeError });
+    }
+
+    const saleTotal = roundMoney(order.total - disc);
+    if (saleTotal < 0) {
+      return res.status(400).json({ success: false, message: "El descuento no puede superar el total del pedido" });
+    }
+
+    // The register always records the amount owed, never what the browser says
+    const receivedAmount = (parseAmount(paymentCash ?? 0, { allowZero: true }) ?? -1) + (parseAmount(paymentCard ?? 0, { allowZero: true }) ?? -1);
+    if (tipValue > 0 && order.type === OrderType.DELIVERY) {
+      return res.status(400).json({ success: false, message: "La propina de un domicilio la recibe el motorizado." });
+    }
+    const amountDue = roundMoney(saleTotal + tipValue);
+    if (Math.abs(receivedAmount - amountDue) > 0.01) {
+      return res.status(409).json({
+        success: false,
+        message: tipValue > 0
+          ? `El total con propina es ${amountDue.toFixed(2)}. Revisa el pedido antes de cobrar.`
+          : `El total del pedido es ${saleTotal.toFixed(2)}. Revisa el pedido antes de cobrar.`,
+      });
     }
 
     // 3. Load or create Client
@@ -79,6 +124,10 @@ export async function emitSale(req: Request, res: Response, next: NextFunction) 
       }
       finalClientId = client.id;
     } else if (clientData) {
+      if (!clientData.name || !clientData.typeId || !clientData.identification) {
+        return res.status(400).json({ success: false, message: "Faltan datos del cliente" });
+      }
+
       // Find if client already exists by identification in this restaurant
       const existingClient = await prisma.client.findFirst({
         where: { identification: clientData.identification, restaurantId },
@@ -132,36 +181,18 @@ export async function emitSale(req: Request, res: Response, next: NextFunction) 
       return res.status(404).json({ success: false, message: "Document type not found" });
     }
 
-    // 5. Load issuer to build doc serial and next sequential
+    // 5. The issuer is only needed to invoice, not to charge
     const restaurant = await prisma.restaurant.findUnique({
       where: { id: restaurantId },
       include: { issuer: true },
     });
-    if (!restaurant?.issuer) {
-      return res.status(400).json({ success: false, message: "Restaurant does not have billing issuer config" });
-    }
-
-    const issuer = restaurant.issuer;
-    const serialDoc = `${issuer.establecimiento}-${issuer.puntoEmision}`;
-
-    // Get the next sequential number
-    const lastSale = await prisma.sale.findFirst({
-      where: { restaurantId, docTypeId: docType.id },
-      orderBy: { id: "desc" },
-    });
-
-    let nextNumber = 1;
-    if (lastSale) {
-      nextNumber = parseInt(lastSale.numberDoc, 10) + 1;
-    } else {
-      nextNumber = parseInt(issuer.startSecuencial, 10);
-    }
-    const numberDoc = nextNumber.toString().padStart(9, "0");
+    const issuer = restaurant?.issuer;
+    const serialDoc = `${issuer?.establecimiento ?? "001"}-${issuer?.puntoEmision ?? "001"}`;
 
     // 6. Calculate subtotal & tax totals
-    const disc = parseFloat(discount || 0);
-    const taxRate = 12.0; // standard IVA in Ecuador (can be updated to 15.0 if needed)
-    
+    // IVA chosen by the restaurant (15 % by default). Menu prices already include it
+    const taxRate = restaurant?.taxRate ?? 15;
+
     // In GoEats: We assume prices include tax, or exclude tax.
     // Let's assume prices in Menu items already include tax, so we calculate backward.
     // Price = Subtotal + Tax
@@ -172,7 +203,8 @@ export async function emitSale(req: Request, res: Response, next: NextFunction) 
     let taxValueTotal = 0;
 
     for (const item of order.items) {
-      const isTaxable = item.variant.menuItem.productionAreaId !== null; // Cocina/Bar products are taxable, grocery/other might be 0%
+      // Food served by a restaurant pays IVA; a restaurant at 0 % leaves everything without it
+      const isTaxable = taxRate > 0;
       const itemTotal = item.price * item.quantity;
 
       if (isTaxable) {
@@ -185,10 +217,30 @@ export async function emitSale(req: Request, res: Response, next: NextFunction) 
       }
     }
 
-    const saleTotal = subtotalTaxTotal + subtotal0Total + taxValueTotal - disc;
+    subtotalTaxTotal = roundMoney(subtotalTaxTotal);
+    subtotal0Total = roundMoney(subtotal0Total);
+    taxValueTotal = roundMoney(taxValueTotal);
 
     // 7. Execute Transaction: inventory deduction + sale + order update
     const sale = await prisma.$transaction(async (tx) => {
+      // Charges of one restaurant go one at a time: same order or same number never repeat
+      await tx.$queryRaw`SELECT id FROM Restaurant WHERE id = ${restaurantId} FOR UPDATE`;
+
+      const currentOrder = await tx.order.findUnique({
+        where: { id: order.id },
+        include: { sale: { select: { id: true } } },
+      });
+      if (!currentOrder || getChargeError(currentOrder, !!currentOrder.sale, payBeforeEating) || roundMoney(currentOrder.total - disc) !== saleTotal) {
+        return null;
+      }
+
+      const lastSale = await tx.sale.findFirst({
+        where: { restaurantId, docTypeId: docType.id },
+        orderBy: { id: "desc" },
+      });
+      const nextNumber = lastSale ? parseInt(lastSale.numberDoc, 10) + 1 : parseInt(issuer?.startSecuencial ?? "1", 10);
+      const numberDoc = nextNumber.toString().padStart(9, "0");
+
       // A. Inventory deduction based on recipe
       for (const item of order.items) {
         for (const recipe of item.variant.recipeIngredients) {
@@ -226,8 +278,8 @@ export async function emitSale(req: Request, res: Response, next: NextFunction) 
           cashSessionId: cashSession.id,
           serialDoc,
           numberDoc,
-          paymentCash: parseFloat(paymentCash || 0),
-          paymentCard: parseFloat(paymentCard || 0),
+          paymentCash: paymentMethod === "01" ? saleTotal : 0,
+          paymentCard: paymentMethod === "20" ? saleTotal : 0,
           discount: disc,
           taxRate,
           subtotal0: subtotal0Total,
@@ -240,11 +292,13 @@ export async function emitSale(req: Request, res: Response, next: NextFunction) 
       });
 
       // C. Update Order status
-      // If delivery or takeout and currently PENDING, it goes to kitchen (PREPARING).
-      // If it already has an active kitchen status (PREPARING, READY, DELIVERING), keep it.
-      // If dine-in, orders are paid after consumption, so we set them to DELIVERED (closed).
+      // A served table and a ready takeout are finished once paid.
+      // Paid before eating: the table order goes to the kitchen and the table stays occupied
+      const paidBeforeCooking = order.type === OrderType.DINE_IN && order.status === OrderStatus.PENDING;
       let targetStatus = order.status;
-      if (order.type === OrderType.DINE_IN) {
+      if (paidBeforeCooking) {
+        targetStatus = OrderStatus.PREPARING;
+      } else if (order.type === OrderType.DINE_IN || order.status === OrderStatus.READY) {
         targetStatus = OrderStatus.DELIVERED;
       } else if (order.status === OrderStatus.PENDING) {
         targetStatus = OrderStatus.PREPARING;
@@ -254,20 +308,22 @@ export async function emitSale(req: Request, res: Response, next: NextFunction) 
         where: { id: order.id },
         data: {
           status: targetStatus,
-          paymentStatus: "APPROVED"
+          paymentStatus: "APPROVED",
+          tipAmount: tipValue,
         },
       });
 
-      // D. Free table if dine-in
-      if (order.type === OrderType.DINE_IN && order.tableId) {
-        await tx.table.update({
-          where: { id: order.tableId },
-          data: { status: "FREE" },
-        });
+      // D. Free table if dine-in, unless the customers are still about to eat
+      if (order.type === OrderType.DINE_IN && order.tableId && !paidBeforeCooking) {
+        await releaseTable(tx, order.tableId, order.id);
       }
 
       return newSale;
     });
+
+    if (!sale) {
+      return res.status(409).json({ success: false, message: "El pedido cambió mientras se cobraba. Revísalo e intenta de nuevo." });
+    }
 
     // Notify real-time clients (POS) that order is finalized and table is free
     const io = req.app.get("io");

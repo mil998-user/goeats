@@ -24,13 +24,13 @@ router.get("/categories", getSupplyCategories);
 router.get("/units", getUnitsOfMeasure);
 
 // Supplies routes
-router.get("/supplies", tenantMiddleware, getSupplies);
+router.get("/supplies", tenantMiddleware, authorize([Role.RESTAURANT_OWNER, Role.CAJERO]), getSupplies);
 router.post("/supplies", tenantMiddleware, authorize([Role.RESTAURANT_OWNER]), createSupply);
 router.put("/supplies/:id", tenantMiddleware, authorize([Role.RESTAURANT_OWNER]), updateSupply);
 router.delete("/supplies/:id", tenantMiddleware, authorize([Role.RESTAURANT_OWNER]), deleteSupply);
 
 // Kardex routes
-router.get("/movements", tenantMiddleware, getInventoryMovements);
+router.get("/movements", tenantMiddleware, authorize([Role.RESTAURANT_OWNER, Role.CAJERO]), getInventoryMovements);
 router.post("/movements", tenantMiddleware, authorize([Role.RESTAURANT_OWNER, Role.CAJERO]), logManualMovement);
 
 export default router;

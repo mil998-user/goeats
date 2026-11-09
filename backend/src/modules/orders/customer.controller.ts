@@ -12,6 +12,13 @@ export async function getMyOrders(req: Request, res: Response, next: NextFunctio
     const orders = await prisma.order.findMany({
       where: { customerId: userId },
       orderBy: { createdAt: "desc" },
+      // Driver pay and commissions are internal; the receipt image is heavy and the customer already has it
+      omit: {
+        providerPayAmount: true,
+        driverEarnings: true,
+        appCommissionFromProvider: true,
+        paymentReceipt: true,
+      },
       include: {
         restaurant: {
           select: {
@@ -29,7 +36,7 @@ export async function getMyOrders(req: Request, res: Response, next: NextFunctio
           include: {
             variant: {
               include: {
-                menuItem: true,
+                menuItem: { select: { id: true, name: true } },
               },
             },
           },
@@ -47,6 +54,8 @@ export async function getMyOrders(req: Request, res: Response, next: NextFunctio
             role: true,
           },
         },
+        // What the customer already rated; the driver rating of the customer stays internal
+        rating: { select: { restaurantStars: true, driverStars: true, comment: true } },
       },
     });
 
@@ -131,9 +140,14 @@ export async function togglePlusSubscription(req: Request, res: Response, next: 
       return res.status(404).json({ success: false, message: "Usuario no encontrado" });
     }
 
+    // Plus is only activated through a paid plan, this route can only cancel it
+    if (!user.isPlus) {
+      return res.status(403).json({ success: false, message: "Para activar Plus debes comprar un plan." });
+    }
+
     const updatedUser = await prisma.user.update({
       where: { id: userId },
-      data: { isPlus: !user.isPlus },
+      data: { isPlus: false },
       select: {
         id: true,
         username: true,
@@ -145,9 +159,7 @@ export async function togglePlusSubscription(req: Request, res: Response, next: 
 
     return res.status(200).json({
       success: true,
-      message: updatedUser.isPlus
-        ? "Te has suscrito con éxito a GoEats Plus. ¡Disfruta de envíos gratis!"
-        : "Has cancelado tu suscripción a GoEats Plus.",
+      message: "Has cancelado tu suscripción a GoEats Plus.",
       isPlus: updatedUser.isPlus,
       user: updatedUser,
     });

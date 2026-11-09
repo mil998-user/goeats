@@ -16,7 +16,7 @@ const router = Router();
 router.use(authMiddleware);
 router.use(tenantMiddleware);
 
-router.get("/dashboard", getDashboardData);
+router.get("/dashboard", authorize([Role.RESTAURANT_OWNER, Role.CAJERO]), getDashboardData);
 router.get("/sales", authorize([Role.RESTAURANT_OWNER, Role.CAJERO]), getSalesReport);
 router.get("/products", authorize([Role.RESTAURANT_OWNER, Role.CAJERO]), getProductSalesReport);
 router.get("/waiters", authorize([Role.RESTAURANT_OWNER, Role.CAJERO]), getWaiterReport);

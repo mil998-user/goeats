@@ -6,7 +6,9 @@ import {
   updateOrderStatus,
   changeTable,
   cancelOrder,
+  attendOrder,
   updateOrder,
+  getBillingCustomer,
 } from "./orders.controller";
 import { authMiddleware } from "../../middlewares/auth";
 import { tenantMiddleware } from "../../middlewares/tenant";
@@ -19,12 +21,15 @@ const router = Router();
 router.use(authMiddleware);
 router.use(tenantMiddleware);
 
-router.get("/", getOrders);
+router.get("/", authorize([Role.RESTAURANT_OWNER, Role.CAJERO, Role.MOZO]), getOrders);
 router.post("/", authorize([Role.RESTAURANT_OWNER, Role.CAJERO, Role.MOZO]), createOrder);
-router.get("/:id", getOrderById);
+// Billing data of the app customer who placed this order, so the cashier does not retype it
+router.get("/:id/billing-customer", authorize([Role.RESTAURANT_OWNER, Role.CAJERO]), getBillingCustomer);
+router.get("/:id", authorize([Role.RESTAURANT_OWNER, Role.CAJERO, Role.MOZO]), getOrderById);
 router.put("/:id", authorize([Role.RESTAURANT_OWNER, Role.CAJERO, Role.MOZO]), updateOrder);
 router.put("/:id/status", authorize([Role.RESTAURANT_OWNER, Role.CAJERO, Role.PRODUCCION, Role.MOZO]), updateOrderStatus);
 router.post("/:id/change-table", authorize([Role.RESTAURANT_OWNER, Role.CAJERO, Role.MOZO]), changeTable);
+router.post("/:id/attend", authorize([Role.MOZO]), attendOrder);
 router.post("/:id/cancel", authorize([Role.RESTAURANT_OWNER, Role.CAJERO, Role.MOZO]), cancelOrder);
 
 export default router;
