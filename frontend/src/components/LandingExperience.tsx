@@ -144,6 +144,8 @@ export const LandingExperience: React.FC = () => {
             {sections.map((section) => (
               <a key={section.id} href={`#${section.id}`} onClick={closeMenu}>{section.label}</a>
             ))}
+            {/* One entry for everyone who already has an account: customer, restaurant, driver or staff */}
+            <Link className="ge-login-link" to="/login" onClick={closeMenu}>Iniciar sesión</Link>
             <a className="ge-mobile-cta" href="#descargar" onClick={closeMenu}>Pedir ahora</a>
           </nav>
           <button className="ge-nav-cta" onClick={openRestaurants}>

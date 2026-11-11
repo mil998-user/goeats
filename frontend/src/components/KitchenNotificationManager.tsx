@@ -571,7 +571,7 @@ export const KitchenNotificationManager: React.FC = () => {
           {/* Notifications Drawer Popup */}
           {showDrawer && (
             <div
-              className="glass-card animate-fade-in"
+              className="glass-card animate-fade-in kitchen-bell-drawer"
               style={{
                 position: "absolute",
                 bottom: "65px",

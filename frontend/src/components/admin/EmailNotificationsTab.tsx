@@ -229,7 +229,7 @@ export const EmailNotificationsTab: React.FC = () => {
             </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", minWidth: 0, maxWidth: "100%" }}>
             <div style={{
               display: "flex",
               alignItems: "center",
@@ -309,7 +309,7 @@ export const EmailNotificationsTab: React.FC = () => {
               </div>
             )}
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "20px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 100%), 1fr))", gap: "20px" }}>
               {/* OPCION 1: OAUTH2 GMAIL API */}
               <div style={{ padding: "16px", backgroundColor: "#1e293b", borderRadius: "10px", border: "1px solid #334155" }}>
                 <h4 style={{ margin: "0 0 8px 0", color: "#38bdf8", fontSize: "14px", fontWeight: "700" }}>

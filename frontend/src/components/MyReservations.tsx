@@ -1,3 +1,4 @@
+import { appConfirm } from "./AppDialogs";
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { CalendarDays } from "lucide-react";
@@ -39,7 +40,7 @@ export const MyReservations: React.FC = () => {
   }, []);
 
   const cancel = async (id: number) => {
-    if (!window.confirm("¿Cancelar esta reserva?")) return;
+    if (!(await appConfirm("¿Cancelar esta reserva?"))) return;
     setBusyId(id);
     setError(null);
     try {

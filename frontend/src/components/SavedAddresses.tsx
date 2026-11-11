@@ -1,3 +1,4 @@
+import { appConfirm } from "./AppDialogs";
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { MapPin, Plus, Star, Trash2 } from "lucide-react";
@@ -59,8 +60,8 @@ export const SavedAddresses: React.FC = () => {
     }
   };
 
-  const remove = (address: SavedAddress) => {
-    if (!window.confirm(`¿Borrar la dirección "${address.label}"?`)) return;
+  const remove = async (address: SavedAddress) => {
+    if (!(await appConfirm(`¿Borrar la dirección "${address.label}"?`))) return;
     run(address.id, `/orders/customer/addresses/${address.id}`, "DELETE");
   };
 

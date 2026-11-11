@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { MapPin, Navigation, Compass, Loader2, Search, X } from "lucide-react";
-import { systemTextWithIcons } from "../utils/systemIcons";
 import { escapeHtml } from "../utils/html";
 
 
@@ -444,13 +443,13 @@ export const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
         }
       ).addTo(map);
 
-      // Custom User Marker Pin (Coral Badge)
+      // Custom user marker pin (black badge)
       const userPinHtml = `
         <div style="position: relative; display: flex; flex-direction: column; align-items: center; cursor: grab; transform: translate(-50%, -100%);">
-          <div style="background: rgba(255, 71, 87, 0.95); color: white; padding: 3px 8px; border-radius: 12px; font-weight: 800; font-size: 12px; box-shadow: 0 4px 12px rgba(255,71,87,0.4); white-space: nowrap; margin-bottom: 2px; border: 1px solid rgba(255,255,255,0.4);">
+          <div style="background: #111827; color: #ffffff; padding: 4px 10px; border-radius: 12px; font-weight: 800; font-size: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); white-space: nowrap; margin-bottom: 2px; border: 1px solid #ffffff;">
             Tu Entrega
           </div>
-          <div style="width: 24px; height: 24px; background: #ff4757; border: 2.5px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(255,71,87,0.6);">
+          <div style="width: 24px; height: 24px; background: #111827; border: 2.5px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.4);">
             <div style="width: 8px; height: 8px; background: #ffffff; border-radius: 50%;"></div>
           </div>
         </div>
@@ -485,11 +484,11 @@ export const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
       if (showRestaurantLocation && restaurantLat && restaurantLng) {
         const restPinHtml = `
           <div style="position: relative; display: flex; flex-direction: column; align-items: center; transform: translate(-50%, -100%);">
-            <div style="background: rgba(20, 24, 33, 0.9); color: #ffd700; padding: 3px 8px; border-radius: 12px; font-weight: 800; font-size: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.4); white-space: nowrap; margin-bottom: 2px; border: 1px solid rgba(255,215,0,0.3); backdrop-filter: blur(4px);">
+            <div style="background: #ffffff; color: #111827; padding: 4px 10px; border-radius: 12px; font-weight: 800; font-size: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.25); white-space: nowrap; margin-bottom: 2px; border: 1.5px solid #111827;">
               ${escapeHtml(restaurantName)}
             </div>
-            <div style="width: 22px; height: 22px; background: #ff9f43; border: 2.5px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(255,159,67,0.5);">
-              <div style="width: 7px; height: 7px; background: #ffffff; border-radius: 50%;"></div>
+            <div style="width: 22px; height: 22px; background: #ffffff; border: 2.5px solid #111827; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
+              <div style="width: 7px; height: 7px; background: #111827; border-radius: 50%;"></div>
             </div>
           </div>
         `;
@@ -506,7 +505,7 @@ export const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
         restMarkerRef.current = restMarker;
 
         const route = L.polyline([], {
-          color: "#ff4757",
+          color: "#111827",
           weight: 5,
           opacity: 0.9,
           lineCap: "round",
@@ -571,7 +570,7 @@ export const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
           }} />
           <input
             type="text"
-            placeholder="Escribe la calle o punto de entrega en Loja..."
+            placeholder="Busca tu calle o un lugar"
             value={searchQuery}
             onChange={handleSearchInputChange}
             onFocus={() => {
@@ -583,20 +582,22 @@ export const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
                 executeAddressSearch(searchQuery);
               }
             }}
+            className="location-picker-search-input"
             style={{
               width: "100%",
-              backgroundColor: "rgba(0, 0, 0, 0.25)",
-              border: "1px solid var(--border-light, rgba(255,255,255,0.12))",
+              backgroundColor: "#ffffff",
+              border: "1px solid #9ca3af",
               borderRadius: "20px",
-              padding: "7px 36px 7px 34px",
-              fontSize: "13px",
-              color: "#ffffff",
+              padding: "9px 36px 9px 34px",
+              fontSize: "14px",
+              color: "#111827",
               outline: "none"
             }}
           />
           {searchQuery && (
             <button
               type="button"
+              aria-label="Borrar búsqueda"
               onClick={() => {
                 setSearchQuery("");
                 setSearchResults([]);
@@ -628,11 +629,10 @@ export const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
               left: 0,
               right: 0,
               zIndex: 2000,
-              backgroundColor: "rgba(18, 22, 31, 0.98)",
-              backdropFilter: "blur(12px)",
+              backgroundColor: "#ffffff",
               borderRadius: "12px",
-              border: "1px solid rgba(255, 71, 87, 0.35)",
-              boxShadow: "0 10px 25px rgba(0,0,0,0.5)",
+              border: "1px solid #d1d5db",
+              boxShadow: "0 10px 25px rgba(0,0,0,0.18)",
               maxHeight: "240px",
               overflowY: "auto"
             }}>
@@ -645,21 +645,21 @@ export const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
                       padding: "10px 14px",
                       cursor: "pointer",
                       fontSize: "13px",
-                      color: "#ffffff",
-                      borderBottom: i < searchResults.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none",
+                      color: "#111827",
+                      borderBottom: i < searchResults.length - 1 ? "1px solid #e5e7eb" : "none",
                       display: "flex",
                       alignItems: "center",
                       gap: "10px",
                       transition: "background 0.15s ease"
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = "rgba(255, 71, 87, 0.18)";
+                      e.currentTarget.style.backgroundColor = "#f3f4f6";
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.backgroundColor = "transparent";
                     }}
                   >
-                    <MapPin size={15} color="#ff4757" style={{ flexShrink: 0 }} />
+                    <MapPin size={15} color="#111827" style={{ flexShrink: 0 }} />
                     <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {res.display_name}
                     </span>
@@ -678,8 +678,9 @@ export const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
           type="button"
           onClick={() => executeAddressSearch(searchQuery)}
           disabled={searching}
+          className="location-picker-btn"
           style={{
-            backgroundColor: "#ff4757",
+            backgroundColor: "#111827",
             color: "#ffffff",
             border: "none",
             borderRadius: "20px",
@@ -699,7 +700,7 @@ export const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
       </div>
 
       {/* Map Element */}
-      <div style={{ position: "relative", width: "100%", height }}>
+      <div className="location-picker-map-area" style={{ position: "relative", width: "100%", height }}>
         <div ref={mapContainerRef} style={{ width: "100%", height: "100%" }} />
 
         {/* Floating GPS Button (Top-Right) */}
@@ -708,17 +709,17 @@ export const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
             type="button"
             onClick={handleGetCurrentLocation}
             disabled={locating}
+            className="location-picker-btn"
             style={{
               display: "inline-flex",
               alignItems: "center",
               gap: "6px",
-              backgroundColor: "rgba(18, 22, 31, 0.92)",
-              backdropFilter: "blur(8px)",
-              color: "#ffffff",
+              backgroundColor: "#ffffff",
+              color: "#111827",
               padding: "7px 14px",
               borderRadius: "24px",
-              border: "1px solid rgba(255, 71, 87, 0.4)",
-              boxShadow: "0 4px 14px rgba(0,0,0,0.3)",
+              border: "1.5px solid #111827",
+              boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
               fontSize: "13px",
               fontWeight: "700",
               cursor: "pointer",
@@ -726,11 +727,11 @@ export const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
             }}
           >
             {locating ? (
-              <Loader2 size={14} className="spin" color="#ff4757" />
+              <Loader2 size={14} className="spin" color="#111827" />
             ) : (
-              <Navigation size={13} fill="#ff4757" color="#ff4757" />
+              <Navigation size={13} fill="#111827" color="#111827" />
             )}
-            <span>{locating ? "Detectando..." : systemTextWithIcons("📍 Mi GPS actual")}</span>
+            <span>{locating ? "Detectando..." : "Mi GPS actual"}</span>
           </button>
         </div>
       </div>
@@ -748,7 +749,7 @@ export const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
         fontSize: "13px"
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: "6px", flex: "1 1 180px", overflow: "hidden" }}>
-          <MapPin size={15} color="#ff4757" style={{ flexShrink: 0 }} />
+          <MapPin size={15} color="#111827" style={{ flexShrink: 0 }} />
           <span style={{ color: "var(--text-primary, #ffffff)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {addressLoading ? "Detectando calle..." : detectedAddress || "Mueve el pin por las calles"}
           </span>
@@ -756,8 +757,8 @@ export const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
 
         {estimatedDistance !== null && (
           <div style={{
-            backgroundColor: "rgba(255, 71, 87, 0.12)",
-            color: "#ff4757",
+            backgroundColor: "#f3f4f6",
+            color: "#111827",
             padding: "3px 10px",
             borderRadius: "16px",
             fontWeight: "800",
@@ -765,7 +766,7 @@ export const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
             display: "inline-flex",
             alignItems: "center",
             gap: "4px",
-            border: "1px solid rgba(255, 71, 87, 0.25)"
+            border: "1px solid #d1d5db"
           }}>
             <Compass size={12} />
             <span>~{estimatedDistance.toFixed(1)} km ({estimatedDuration || 5} min)</span>

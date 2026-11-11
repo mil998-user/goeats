@@ -610,6 +610,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
             </span>
           </div>
 
+{import.meta.env.DEV && (
           <button
             type="button"
             onClick={handleSimulateAdvance}
@@ -627,6 +628,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
           >
             {systemIconForEmoji("🧪")} Probar Avance GPS (+20%)
           </button>
+          )}
         </div>
       )}
 
