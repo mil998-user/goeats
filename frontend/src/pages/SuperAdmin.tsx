@@ -1,3 +1,4 @@
+import { appConfirm } from "../components/AppDialogs";
 import React, { useEffect, useState } from "react";
 import { DeliveryIncidentsPanel } from "../components/DeliveryIncidentsPanel";
 import { UnassignedDeliveries } from "../components/UnassignedDeliveries";
@@ -196,7 +197,7 @@ export const SuperAdmin: React.FC = () => {
   };
 
   const handleDeleteCategory = async (id: number) => {
-    if (!window.confirm("¿Seguro que desea eliminar esta categoría? Se eliminarán todas las subcategorías asociadas.")) return;
+    if (!(await appConfirm("¿Seguro que desea eliminar esta categoría? Se eliminarán todas las subcategorías asociadas."))) return;
     try {
       const res = await apiRequest(`/saas-categories/${id}`, { method: "DELETE" });
       if (res.success) {
@@ -243,7 +244,7 @@ export const SuperAdmin: React.FC = () => {
   };
 
   const handleDeleteSubcategory = async (subId: number) => {
-    if (!window.confirm("¿Seguro que desea eliminar esta subcategoría?")) return;
+    if (!(await appConfirm("¿Seguro que desea eliminar esta subcategoría?"))) return;
     try {
       const res = await apiRequest(`/saas-categories/subcategories/${subId}`, { method: "DELETE" });
       if (res.success) {
@@ -318,7 +319,7 @@ export const SuperAdmin: React.FC = () => {
   };
 
   const handleDeletePlan = async (id: number) => {
-    if (!window.confirm("¿Seguro que deseas eliminar este plan?")) return;
+    if (!(await appConfirm("¿Seguro que deseas eliminar este plan?"))) return;
     try {
       const res = await apiRequest(`/saas/plans/${id}`, { method: "DELETE" });
       if (res.success) {
@@ -370,7 +371,7 @@ export const SuperAdmin: React.FC = () => {
 
   const handleDeleteCustomer = async (customerId: number, customerName: string, customerUsername: string) => {
     const confirmMessage = `¿Estás seguro de que deseas eliminar permanentemente al cliente "${customerName}" (@${customerUsername})?\n\nEsta acción borrará la cuenta del cliente de forma irreversible.`;
-    if (!window.confirm(confirmMessage)) {
+    if (!(await appConfirm(confirmMessage))) {
       return;
     }
 
@@ -479,7 +480,7 @@ export const SuperAdmin: React.FC = () => {
       return;
     }
 
-    const confirmPay = window.confirm(
+    const confirmPay = await appConfirm(
       `¿Confirmas que ya realizaste la transferencia bancaria de $${driver.walletBalance.toFixed(2)} a ${driver.name}?\n\nAl confirmar, su saldo a favor se liquidará y quedará en $0.00.`
     );
     if (!confirmPay) return;
@@ -504,7 +505,7 @@ export const SuperAdmin: React.FC = () => {
 
   const handleToggleDriverStatus = async (driver: any) => {
     const isApproving = !driver.isActive;
-    const confirmAction = window.confirm(
+    const confirmAction = await appConfirm(
       isApproving
         ? `¿Confirmas que deseas APROBAR y activar al motorizado ${driver.name}?\n\nAl aprobarlo, podrá iniciar sesión y aceptar pedidos de entrega. Se le enviará un correo de confirmación.`
         : `¿Deseas suspender o desactivar al motorizado ${driver.name}?`
@@ -2854,7 +2855,7 @@ export const SuperAdmin: React.FC = () => {
                 <input
                   type="text"
                   readOnly
-                  value={`${selectedDriver.name} (${selectedDriver.cedula})`}
+                  value={selectedDriver.cedula ? `${selectedDriver.name} (${selectedDriver.cedula})` : `${selectedDriver.name} (sin cédula)`}
                   className="input-field"
                   style={{ backgroundColor: "var(--bg-tertiary)", color: "var(--text-secondary)" }}
                 />

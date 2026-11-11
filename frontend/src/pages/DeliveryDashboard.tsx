@@ -1,3 +1,4 @@
+import { appConfirm, appPrompt } from "../components/AppDialogs";
 import React, { useEffect, useState } from "react";
 import { PlatformBankInfo } from "../components/PlatformBankInfo";
 import { apiRequest } from "../utils/api";
@@ -19,6 +20,9 @@ import { DriverOrderActions } from "../components/DriverOrderActions";
 import { StarAverage } from "../components/Stars";
 import { RateCustomerModal } from "../components/RateCustomerModal";
 import { systemIconForEmoji, systemTextWithIcons } from "../utils/systemIcons";
+
+// Card payments stay off until the payment provider account exists (set VITE_CARD_PAYMENTS=true to turn them on)
+const CARD_PAYMENTS_ENABLED = import.meta.env.VITE_CARD_PAYMENTS === "true";
 
 
 interface Order {
@@ -97,6 +101,8 @@ export const DeliveryDashboard: React.FC = () => {
   // Comes from the server, which applies the balance rule set by the administrator
   const [canTakeOrders, setCanTakeOrders] = useState<boolean>(true);
   const [takeBlockedMessage, setTakeBlockedMessage] = useState<string | null>(null);
+  const [balanceRule, setBalanceRule] = useState<string>("");
+  const [costPerOrder, setCostPerOrder] = useState<number>(0);
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [deliveryRate, setDeliveryRate] = useState<any>(null);
 
@@ -111,7 +117,7 @@ export const DeliveryDashboard: React.FC = () => {
   // SaaS States
   const [plans, setPlans] = useState<any[]>([]);
   const [selectedCard, setSelectedCard] = useState<any | null>(null);
-  const [rechargeMethod, setRechargeMethod] = useState<"CARD" | "TRANSFER">("CARD");
+  const [rechargeMethod, setRechargeMethod] = useState<"CARD" | "TRANSFER">(CARD_PAYMENTS_ENABLED ? "CARD" : "TRANSFER");
   const [paymentReceipt, setPaymentReceipt] = useState<string>("");
   const [payphoneTransactionId, setPayphoneTransactionId] = useState<string>("");
   const [showPayphoneSimulator, setShowPayphoneSimulator] = useState(false);
@@ -211,6 +217,8 @@ export const DeliveryDashboard: React.FC = () => {
         setIsDebtLocked(!!walletRes.isDebtLocked);
         setCanTakeOrders(walletRes.canTakeOrders !== false);
         setTakeBlockedMessage(walletRes.blockedMessage || null);
+        setBalanceRule(walletRes.balanceRule || "");
+        setCostPerOrder(Number(walletRes.costPerOrder) || 0);
         setTransactions(walletRes.transactions || []);
       }
 
@@ -234,13 +242,28 @@ export const DeliveryDashboard: React.FC = () => {
     loadData();
   }, []);
 
+  // Los pedidos disponibles se revisan solos, sin tener que pulsar actualizar
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (document.hidden) return;
+      apiRequest("/delivery/available")
+        .then((res) => {
+          if (!res.success) return;
+          setAvailableOrders(res.orders || []);
+          setHasRecentLocation(res.hasRecentLocation !== false);
+        })
+        .catch(() => undefined);
+    }, 15000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   const handleTakeOrder = async (orderId: number, commission: number) => {
     if (!canTakeOrders) {
       alert(takeBlockedMessage || "No puedes tomar pedidos con tu saldo actual.");
       return;
     }
 
-    if (!confirm(`¿Deseas aceptar este pedido? Se descontarán $${commission.toFixed(2)} de comisión.`)) return;
+    if (!(await appConfirm(`¿Deseas aceptar este pedido? Se descontarán $${commission.toFixed(2)} de comisión.`))) return;
 
     setActionLoading(orderId);
     try {
@@ -260,7 +283,7 @@ export const DeliveryDashboard: React.FC = () => {
     let pinToSend: string | undefined = undefined;
 
     if (requiresPin) {
-      const enteredPin = prompt("Escribe el código de entrega de 4 dígitos que te da el cliente.\n(El cliente lo ve en Mis pedidos)");
+      const enteredPin = await appPrompt("Escribe el código de entrega de 4 dígitos que te da el cliente.\n(El cliente lo ve en Mis pedidos)", { numeric: true, maxLength: 4, placeholder: "0000", confirmLabel: "Entregar" });
       if (enteredPin === null) return; // cancelado
       if (!enteredPin.trim()) {
         alert("Debes ingresar el PIN de 4 dígitos proporcionado por el cliente.");
@@ -268,7 +291,7 @@ export const DeliveryDashboard: React.FC = () => {
       }
       pinToSend = enteredPin.trim();
     } else {
-      if (!confirm("¿Confirmas que has entregado este pedido al cliente?")) return;
+      if (!(await appConfirm("¿Confirmas que has entregado este pedido al cliente?"))) return;
     }
 
     setActionLoading(orderId);
@@ -330,7 +353,7 @@ export const DeliveryDashboard: React.FC = () => {
   const commissionCost = deliveryRate?.costPerOrder || 0.50;
 
   return (
-    <div style={{ padding: "30px", maxWidth: "1200px", margin: "0 auto", background: "var(--bg-primary)" }}>
+    <div className="delivery-page" style={{ padding: "30px", maxWidth: "1200px", margin: "0 auto", background: "var(--bg-primary)" }}>
       {/* Header */}
       <div style={{
         display: "flex",
@@ -414,7 +437,7 @@ export const DeliveryDashboard: React.FC = () => {
       </div>
 
       {/* Tabs Selector */}
-      <div className="scrollable-tabs" style={{
+      <div className="scrollable-tabs delivery-tabs" style={{
         display: "flex",
         background: "var(--bg-secondary)",
         borderRadius: "var(--radius-md)",
@@ -548,7 +571,7 @@ export const DeliveryDashboard: React.FC = () => {
                       {/* Content Grid (Square Map if open + Details) */}
                       <div style={{
                         display: "grid",
-                        gridTemplateColumns: showMapForOrder[order.id] ? "repeat(auto-fit, minmax(320px, 1fr))" : "repeat(auto-fit, minmax(280px, 1fr))",
+                        gridTemplateColumns: showMapForOrder[order.id] ? "repeat(auto-fit, minmax(min(320px, 100%), 1fr))" : "repeat(auto-fit, minmax(min(280px, 100%), 1fr))",
                         gap: "24px",
                         alignItems: "start"
                       }}>
@@ -599,11 +622,11 @@ export const DeliveryDashboard: React.FC = () => {
                           <h4 style={{ fontSize: "13px", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "12px" }}>Detalle del Cobro</h4>
                           <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: "13px", color: "var(--text-secondary)" }}>
                             <div style={{ display: "flex", justifyContent: "space-between" }}>
-                              <span>Total de Productos (Ya cobrado):</span>
+                              <span>{(order.paymentMethodString || "CASH") === "CASH" ? "Total del pedido (lo cobras al cliente):" : "Total del pedido (ya pagado en línea):"}</span>
                               <span>${order.total.toFixed(2)}</span>
                             </div>
                             <div style={{ display: "flex", justifyContent: "space-between" }}>
-                              <span>Costo de Envío:</span>
+                              <span>Envío (incluido en el total):</span>
                               <span style={{ color: "var(--success)", fontWeight: "bold" }}>${order.shippingCost.toFixed(2)}</span>
                             </div>
                             <div style={{
@@ -615,7 +638,7 @@ export const DeliveryDashboard: React.FC = () => {
                               color: "var(--text-primary)",
                               marginTop: "4px"
                             }}>
-                              <span>Comisión a Descontar:</span>
+                              <span>Comisión por tomar el pedido:</span>
                               <span style={{ color: "var(--accent-primary)" }}>-${commissionCost.toFixed(2)}</span>
                             </div>
                           </div>
@@ -634,6 +657,18 @@ export const DeliveryDashboard: React.FC = () => {
                         <div style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
                           {order.comments && <span><strong>Obs:</strong> {order.comments}</span>}
                         </div>
+                        {!canTakeOrders && (
+                          <div style={{ flexBasis: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", flexWrap: "wrap", padding: "12px 14px", borderRadius: "var(--radius-md)", border: "1px solid #111827", backgroundColor: "#f3f4f6", color: "#111827", fontSize: "14px" }}>
+                            <span>{takeBlockedMessage || "Necesitas saldo para tomar pedidos."}</span>
+                            <button
+                              type="button"
+                              onClick={() => setActiveTab("saas_plans")}
+                              style={{ padding: "10px 20px", minHeight: "44px", borderRadius: "var(--radius-md)", backgroundColor: "#111827", color: "#ffffff", border: "none", fontWeight: "bold", cursor: "pointer" }}
+                            >
+                              Recargar saldo
+                            </button>
+                          </div>
+                        )}
                         <button
                           onClick={() => handleTakeOrder(order.id, commissionCost)}
                           disabled={actionLoading === order.id || !canTakeOrders}
@@ -705,7 +740,7 @@ export const DeliveryDashboard: React.FC = () => {
                       {/* 2-Column Responsive Grid (Square Map + Details) */}
                       <div style={{
                         display: "grid",
-                        gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 100%), 1fr))",
                         gap: "24px",
                         alignItems: "start"
                       }}>
@@ -779,25 +814,25 @@ export const DeliveryDashboard: React.FC = () => {
                               <div style={{
                                 marginTop: "14px",
                                 padding: "14px",
-                                backgroundColor: "rgba(0, 0, 0, 0.35)",
-                                border: "1px solid var(--border-light)",
+                                backgroundColor: "#f9fafb",
+                                border: "1px solid #d1d5db",
                                 borderRadius: "var(--radius-md)",
                                 display: "flex",
                                 flexDirection: "column",
                                 gap: "8px",
                               }}>
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                  <span style={{ fontSize: "14px", fontWeight: "bold", color: "#3498db" }}>{systemIconForEmoji("💵")} Pagar proveedor:</span>
-                                  <span style={{ fontSize: "16px", fontWeight: "bold", color: "#3498db" }}>
+                                  <span style={{ fontSize: "15px", fontWeight: "bold", color: "#111827" }}>{systemIconForEmoji("💵")} Pagas en el local:</span>
+                                  <span style={{ fontSize: "20px", fontWeight: "bold", color: "#111827" }}>
                                     ${order.financialBreakdown.providerPayAmount.toFixed(2)}
                                   </span>
                                 </div>
-                                <p style={{ fontSize: "13px", color: "#8ab4f8", margin: 0, lineHeight: 1.3 }}>
-                                  El valor original es ${order.financialBreakdown.foodSubtotal.toFixed(2)} pero se le resta ${order.financialBreakdown.appCommissionFromProvider.toFixed(2)} por comisión ({order.financialBreakdown.commissionPct}%) aceptada por el proveedor.
+                                <p style={{ fontSize: "13px", color: "#4b5563", margin: 0, lineHeight: 1.4 }}>
+                                  La comida cuesta ${order.financialBreakdown.foodSubtotal.toFixed(2)}. El local te cobra ${order.financialBreakdown.appCommissionFromProvider.toFixed(2)} menos ({order.financialBreakdown.commissionPct}%), que es la comisión de GoEats.
                                 </p>
 
-                                <div style={{ fontSize: "13px", color: "#e8eaed", marginTop: "4px" }}>
-                                  {systemIconForEmoji("🎁")} GoEats le pagará <strong>${order.financialBreakdown.driverBonus.toFixed(2)} extras</strong> por este pedido. Recuerde siempre cobrar al cliente lo que marca.
+                                <div style={{ fontSize: "13px", color: "#374151", marginTop: "4px" }}>
+                                  {systemIconForEmoji("🎁")} GoEats te paga <strong>${order.financialBreakdown.driverBonus.toFixed(2)} extra</strong> por este pedido. Cobra al cliente exactamente lo que marca abajo.
                                 </div>
 
                                 <div style={{
@@ -810,27 +845,27 @@ export const DeliveryDashboard: React.FC = () => {
                                   fontWeight: "bold",
                                   color: "var(--text-primary)"
                                 }}>
-                                  <span>El total que ganará por esta orden:</span>
-                                  <span style={{ color: "var(--success)" }}>${order.financialBreakdown.driverEarnings.toFixed(2)}</span>
+                                  <span>Ganas por esta entrega:</span>
+                                  <span style={{ color: "#111827", fontSize: "15px" }}>${order.financialBreakdown.driverEarnings.toFixed(2)}</span>
                                 </div>
                                 {(order.financialBreakdown.tip || 0) > 0 && (
                                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", color: "var(--text-primary)" }}>
                                     <span>Propina del cliente (es toda tuya):</span>
-                                    <span style={{ color: "var(--success)" }}>+${order.financialBreakdown.tip!.toFixed(2)}</span>
+                                    <span style={{ color: "#111827" }}>+${order.financialBreakdown.tip!.toFixed(2)}</span>
                                   </div>
                                 )}
 
                                 <div style={{
-                                  backgroundColor: "rgba(46, 204, 113, 0.1)",
-                                  padding: "8px 10px",
+                                  backgroundColor: "#111827",
+                                  padding: "12px 14px",
                                   borderRadius: "6px",
                                   display: "flex",
                                   justifyContent: "space-between",
                                   alignItems: "center",
                                   marginTop: "4px"
                                 }}>
-                                  <span style={{ fontSize: "14px", fontWeight: "bold", color: "var(--success)" }}>{systemIconForEmoji("🧾")} Cobrar cliente:</span>
-                                  <span style={{ fontSize: "17px", fontWeight: "bold", color: "var(--success)" }}>
+                                  <span style={{ fontSize: "15px", fontWeight: "bold", color: "#ffffff" }}>Cobras al cliente:</span>
+                                  <span style={{ fontSize: "20px", fontWeight: "bold", color: "#ffffff" }}>
                                     ${(order.financialBreakdown.customerTotal + (order.paymentMethodString === "CASH" ? order.financialBreakdown.tip || 0 : 0)).toFixed(2)}
                                   </span>
                                 </div>
@@ -1005,7 +1040,15 @@ export const DeliveryDashboard: React.FC = () => {
                 }}>
                   <AlertTriangle size={20} color={isDebtLocked ? "#ff4757" : "#3498db"} style={{ flexShrink: 0 }} />
                   <div>
-                    <strong>Límite de Deuda Máxima:</strong> Tienes permitido acumular hasta <strong>-${maxDebtLimit.toFixed(2)}</strong> de comisión retenida de pedidos en efectivo.
+                    {balanceRule === "DEBT_LIMIT" ? (
+                      <>
+                        <strong>Límite de deuda:</strong> puedes seguir tomando pedidos aunque tu saldo quede en negativo, hasta <strong>-${maxDebtLimit.toFixed(2)}</strong>.
+                      </>
+                    ) : (
+                      <>
+                        <strong>Cómo funciona tu saldo:</strong> cada pedido que tomas descuenta <strong>${costPerOrder.toFixed(2)}</strong>. Si el cliente paga en efectivo, al entregar también se descuenta la comisión de GoEats que cobraste por el restaurante. Recarga antes de quedarte sin saldo.
+                      </>
+                    )}
                     {isDebtLocked && (
                       <div style={{ color: "#ff4757", marginTop: "6px", fontWeight: "bold" }}>
                         Has alcanzado el límite. No podrás aceptar pedidos en efectivo hasta realizar un abono a GoEats.
@@ -1118,6 +1161,8 @@ export const DeliveryDashboard: React.FC = () => {
                         <button
                           type="button"
                           className={rechargeMethod === "CARD" ? "glow-btn" : "secondary-btn"}
+                          disabled={!CARD_PAYMENTS_ENABLED}
+                          title={CARD_PAYMENTS_ENABLED ? undefined : "El pago con tarjeta estará disponible pronto"}
                           onClick={() => {
                             setRechargeMethod("CARD");
                             setPaymentReceipt("");
@@ -1125,7 +1170,7 @@ export const DeliveryDashboard: React.FC = () => {
                           }}
                           style={{ padding: "8px", fontSize: "0.85rem" }}
                         >
-                          {systemIconForEmoji("💳")} Tarjeta
+                          {systemIconForEmoji("💳")} {CARD_PAYMENTS_ENABLED ? "Tarjeta" : "Tarjeta (pronto)"}
                         </button>
                         <button
                           type="button"
