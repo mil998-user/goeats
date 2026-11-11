@@ -1,10 +1,40 @@
 # Plan del equipo para el MVP de GoEats
 
-Actualizado el 6 de noviembre de 2026.
+Actualizado el 10 de noviembre de 2026.
 
 **Equipo:** Deyvi (full stack y revisión), Jhosept (backend) y Janneth (frontend y parte visual).
 
 Este plan se basa en lo que explicaron los jefes y en una revisión del código. Algunos puntos pueden cambiar cuando lleguen sus respuestas.
+
+---
+
+## Trabajo en equipo desde el 10 de noviembre
+
+Jhosept y Janneth ya están conectados a la base compartida y con el sistema corriendo en su equipo. Los bloques 0 a 8 y 10 están hechos y subidos a `desarrollo`. Lo que sigue se reparte por historias de [REQUISITOS_GOEATS.md](REQUISITOS_GOEATS.md): cada tarea tiene criterios de aceptación y está lista solo cuando los cumple.
+
+| Quién | Tarea | Historia o requisito | Listo cuando |
+|---|---|---|---|
+| **Jhosept** | Probar y cerrar el inventario por compra | HU-11 | Una compra sube el inventario, una cantidad en cero o negativa se rechaza, y hay una prueba en `npm run test:api` |
+| **Jhosept** | Medir el tiempo de respuesta del catálogo | RNF-05 | Queda anotada la cifra de 20 peticiones seguidas |
+| **Jhosept** | Prototipo de factura del SRI en ambiente de pruebas | Sección 5, "Podría" | Un documento corto que diga qué se necesita y cuánto tomaría. Sin código en `desarrollo` |
+| **Jhosept** | Proponer la dependencia para los avisos en el celular | HU-06 | Propuesta escrita. No se instala nada hasta que Deyvi la apruebe |
+| **Janneth** | Pasar a blanco y negro las pantallas que siguen en verde | Sección 5, "Debe" | Login, ubicación del cliente, catálogo y caja sin verde, salvo colores de estado |
+| **Janneth** | Revisar botones y desborde en celular | RNF-06 | Sin desplazamiento horizontal a 390 px y botones principales de 44 px o más |
+| **Janneth** | Revisar el contraste del texto | RNF-08 | Pantallas principales en nivel AA |
+| **Janneth** | Prueba en un celular real | Sección 5, "Debe" | Lista de lo que falló, con capturas |
+| **Deyvi** | Guion de demo e idea de negocio (bloque 9) | Sección 5, "Debe" | Documento listo y demo ensayada |
+| **Deyvi** | Despliegue para los jefes | RNF-09 | La demo abre desde otro equipo y otra red |
+| **Deyvi** | Entrevista con los jefes | Sección 6 de los requisitos | Respuestas anotadas y supuestos corregidos |
+| **Deyvi** | Revisar cada entrega y aplicar migraciones | RNF-10 | Cada rama pasa `tsc`, `npm run build` y la regresión |
+
+**Cómo se trabaja:**
+
+1. Antes de empezar: `git pull --ff-only origin desarrollo`.
+2. Cada tarea va en su rama: `feature/inventario-compras`, `feature/blanco-y-negro-login`, y así.
+3. Al terminar se abre un pull request hacia `desarrollo`. Deyvi lo revisa y lo une. Nadie sube directo a `desarrollo` ni a `main`.
+4. Los archivos grandes (`POS.tsx`, `Settings.tsx`, `SuperAdmin.tsx`, `Aggregator.tsx`, `index.css`) los toca una sola persona a la vez. Se avisa en el grupo antes de abrirlos.
+5. Si una tarea necesita un campo o tabla nueva, Jhosept propone la migración y solo Deyvi la aplica en la base compartida.
+6. Las claves no se escriben en el chat, en los commits ni en comandos. Esto vale también para las IA de cada uno.
 
 ---
 
@@ -51,7 +81,7 @@ Agregado el 6 de noviembre de 2026. Mientras Jhosept y Janneth no estén disponi
 - **Backend:** Node, Express 4, TypeScript, Prisma 6, MySQL y Socket.io.
 - **Versiones:** no se actualiza ninguna versión ni se suma una dependencia sin consultarlo antes.
 - **Móvil:** web instalable, sin dependencias nuevas. Ya existe `frontend/public/sw.js`; faltan el manifest y su registro. La app Flutter queda quieta y no se borra.
-- **Pruebas:** el proyecto no tiene pruebas automáticas. Cada entrega debe pasar `tsc`, `npm run build` y una prueba manual del flujo.
+- **Pruebas:** el backend tiene pruebas automáticas de API (`npm run test:api`). Cada entrega debe pasar `tsc`, `npm run build`, esas pruebas y una prueba manual del flujo.
 
 ---
 
@@ -61,13 +91,13 @@ Agregado el 6 de noviembre de 2026. Mientras Jhosept y Janneth no estén disponi
 2. **Estilos:** Janneth es la dueña de `frontend/src/index.css`.
 3. **Archivos grandes:** `Settings.tsx`, `SuperAdmin.tsx`, `POS.tsx` y `Aggregator.tsx` son los más propensos a conflictos. Lo nuevo va en componentes nuevos.
 4. **Backend y web:** Jhosept deja escrita cada ruta y evento antes de que Janneth los conecte.
-5. **Git:** todos trabajan en `desarrollo`, ejecutan `git pull --ff-only origin desarrollo` antes de empezar y hacen commits pequeños. Deyvi revisa cada entrega. `main` no se toca.
+5. **Git:** cada tarea va en una rama `feature/*` con pull request hacia `desarrollo`. Antes de empezar se ejecuta `git pull --ff-only origin desarrollo`. Deyvi revisa cada entrega. `main` no se toca.
 
 ---
 
 ## Base de datos compartida de pruebas
 
-Deyvi crea y administra una sola base MySQL en la nube para todo el proyecto. Sirve solo para pruebas y para trabajar entre los tres, sin datos reales. La base real la entregarán los jefes después; allí se aplicarán las mismas migraciones.
+Deyvi administra una sola base en la nube para todo el proyecto, creada el 9 de noviembre. Los pasos para conectarse están en [BASE_DE_DATOS_EQUIPO.md](BASE_DE_DATOS_EQUIPO.md). Sirve solo para pruebas y para trabajar entre los tres, sin datos reales. La base real la entregarán los jefes después; allí se aplicarán las mismas migraciones.
 
 - **Conexión:** cada uno pone `DATABASE_URL` en su `.env`, nunca en el repositorio. La clave se pasa por un medio privado.
 - **Migraciones:** en la base compartida solo se usa `npx prisma migrate deploy`. Nunca `prisma migrate dev`, `prisma migrate reset` ni `prisma db push`.

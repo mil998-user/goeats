@@ -143,3 +143,5 @@ Para repetirla en otra instancia:
 | `Can't reach database server` | Sin internet, tu IP no está autorizada en TiDB (avísale a Deyvi) o se agotó el cupo gratis del mes |
 | `Migraciones pendientes` en la compartida | Avísale a Deyvi; no las apliques tú |
 | `No encontré MySQL` en `db:local` | Instala MySQL Server o pon `MYSQL_BIN` en el `.env` |
+| `EADDRINUSE` en el puerto 5000 (Mac) | macOS usa ese puerto para AirPlay: Configuración del Sistema > General > AirDrop y Handoff > apaga **Receptor AirPlay**. No cambies el puerto: el frontend espera el backend en el 5000 |
+| `DATABASE_URL es obligatoria` | No existe `backend/.env` o le falta esa línea. En Windows, revisa que no se haya guardado como `.env.txt` |

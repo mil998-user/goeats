@@ -489,6 +489,45 @@ SISTEMA ACTUAL (Single-Tenant)          SISTEMA NUEVO (Multi-Tenant SaaS)
 
 ## 📝 Historial de Cambios
 
+### v0.7.16 — 2026-11-10 (Arreglos del recorrido de demo)
+- ✅ **Pedido duplicado.** Si el envío tardaba y se pulsaba dos veces "Enviar a Cocina", el pedido se guardaba dos veces. El botón ahora se bloquea y muestra "Enviando..." hasta que el servidor responde. Falta el rechazo del duplicado en el servidor.
+- ✅ **Campana de avisos.** En computadora tapaba "Enviar a Cocina" y "Cobrar". Ahora va junto al menú lateral.
+- ✅ **Recarga con tarjeta del motorizado.** Mostraba "Pago Exitoso" y luego decía que no estaba disponible. La opción queda apagada como "Tarjeta (pronto)" y la recarga abre en Transferencia. Se enciende con `VITE_CARD_PAYMENTS=true` cuando exista la cuenta del proveedor de pagos.
+- ✅ **Saldo del motorizado.** Sin saldo, la pantalla explica el motivo y ofrece el botón "Recargar saldo". La billetera explica la regla que está activa (recarga previa o límite de deuda) en lugar de mostrar siempre el límite de deuda.
+- ✅ **Factura del SRI.** La casilla de factura electrónica viene desmarcada, porque la conexión con el SRI todavía no existe.
+- ✅ **Etiqueta de los platos.** En la pantalla del mesero todos los platos decían "Carnes". Ahora muestran su categoría real.
+- ✅ **Botón "Iniciar sesión" en la landing**, para cualquier tipo de cuenta.
+- ✅ **Contador de pedidos en el menú.** Junto a "Pedidos" y "Cocina KDS" sale un número en rojo con los pedidos por atender (pendientes o en preparación). Se actualiza solo al entrar un pedido o cambiar su estado.
+- ✅ **Cuadros propios.** Los avisos, confirmaciones y el código de entrega ya no usan los cuadros del navegador ("localhost dice"); salen en un cuadro de la app en blanco y negro (`components/AppDialogs.tsx`).
+- ✅ **Pedidos del motorizado.** El panel revisa solo los pedidos disponibles cada 15 segundos.
+- ✅ **Pedido entregado.** El seguimiento del cliente dice "Pedido entregado con éxito" cuando ya se entregó, en lugar de "en curso".
+- ✅ **Motorizado en celular.** La tarjeta de la entrega con el mapa ya no se corta en pantallas angostas y las pestañas van en dos columnas.
+- ✅ **Responsivo a 320 px.** Revisadas 33 pantallas (dueño, administrador, cliente y motorizado). Corregidos los cortes en lista de restaurantes, menú del dueño, ajustes generales, correos del administrador y billetera del motorizado. Las rejillas con ancho mínimo fijo ahora usan `minmax(min(Npx, 100%), 1fr)`.
+- ✅ **Comprobante del pedido.** Muestra subtotal de platos, envío, total y propina, para que el total cuadre.
+- ✅ **Cliente.** Acceso "Restaurantes" en su menú y botón "Ver más restaurantes" en el seguimiento.
+- ✅ **Ventas del Día.** El reporte suma también los pedidos en línea entregados (solo la comida, sin el envío); antes contaba solo lo cobrado en caja.
+- ✅ **Clientes del restaurante.** El listado incluye a los clientes facturados en caja, no solo a los que tienen cuenta en la app.
+- ✅ **Errores cortos del plan (fase 1).** Referencia de entrega sin repetir; forma de pago visible en el seguimiento; tarjeta apagada como "Tarjeta (pronto)" en el pago del cliente y en Plus; recarga del administrador sin "(null)"; botón de prueba de GPS solo en desarrollo; "+ Abrir" solo para el mesero; cocina muestra "Esperando al motorizado" en pedidos a domicilio.
+- ✅ **Resto de la fase 1.** El servidor rechaza el mismo pedido enviado dos veces en 8 segundos; detalle del cobro del motorizado con textos correctos; buscador de cliente por cédula, RUC o nombre; mapa del local según las coordenadas guardadas; "Total gastado" aclara que no incluye propinas; el catálogo público no muestra platos sin precio.
+- ✅ **Preparación para publicar (fase 2).** Variable `CORS_ORIGINS` para la dirección del frontend publicado; el tiempo real usa el servidor de `VITE_API_URL` si no hay `VITE_SOCKET_URL`; en producción el servidor no escribe su `.env`.
+- ✅ **Velocidad.** Medido contra la base compartida: cada consulta tarda unos 150 ms de ida y vuelta. La lista de restaurantes se guarda 30 segundos en memoria (de 1,1 s a menos de 0,01 s en visitas repetidas; se apaga con `PUBLIC_LIST_CACHE_SECONDS=0`). El catálogo lanza sus consultas en paralelo (de 1,7 s a 1,1 s aproximadamente).
+- ✅ **Textos más claros.** El código de entrega explica que se le muestra al motorizado, y el bloque de cobro del motorizado dice "Pagas en el local", "Ganas por esta entrega" y "Cobras al cliente", con letra oscura sobre fondo claro.
+- 📝 **Recorrido completo de demo** con 88 observaciones en `practicas/2026-11-10/observaciones-recorrido.md` y 12 preguntas para los jefes.
+- 🔜 **Pendiente:** el pago con tarjeta del cliente y de Plus muestra el mismo "Pago Exitoso"; clientes de caja que no aparecen en "Clientes"; referencia repetida en el destino; forma de pago "no especificado" en el seguimiento.
+
+### v0.7.15 — 2026-11-10 (Mapa de entrega, regreso al restaurante y requisitos)
+- ✅ **Mapa de entrega en blanco y negro.** La búsqueda ahora es blanca con borde y texto oscuro (antes parecía apagada), el botón Buscar, los pines y la ruta pasaron de rojo a negro, y "Mi GPS actual" quedó con un solo ícono. El pin del restaurante es blanco con borde negro para distinguirlo del punto de entrega.
+- ✅ **Mapa en celular.** El mapa ocupa al menos la mitad de la pantalla, los botones miden 44 px de alto y la búsqueda usa letra de 16 px para que el iPhone no haga zoom al escribir.
+- ✅ **El cliente sin dirección ya no pierde el restaurante.** Si iniciaba sesión desde un restaurante y todavía no tenía dirección, al guardarla terminaba en la lista de restaurantes. Ahora vuelve al mismo restaurante con su carrito. Solo se acepta como regreso una página de restaurante (`/r/…`).
+- ✅ **Pruebas:** mapa y regreso al restaurante en web y celular (16/16), motorizado con pausas (22/22; la prueba ahora espera el cambio real en vez de un tiempo fijo).
+- 📝 **Documentos nuevos:** [REQUISITOS_GOEATS.md](REQUISITOS_GOEATS.md) con historias de usuario, requisitos no funcionales medibles, prioridades y guion de entrevista; reparto del equipo en [PLAN_EQUIPO_MVP.md](PLAN_EQUIPO_MVP.md).
+
+### v0.7.14 — 2026-11-09 (Cierre de la regresión)
+- ✅ **Cédula en caja desde el enlace directo.** Al entrar a cobrar desde Pedidos o Mesas (`/pos?orderId=…&checkout=true`), la ventana de cobro no traía la cédula del cliente de la app, porque se abría antes de saber cuál era el pedido. Ahora recibe el pedido directamente.
+- ✅ **Regresión completa sin fallas** con el código de hoy: servidor, celular, pantallas de los bloques 1 a 10, `npm run test:api` (15/15) y las 3 correcciones del 2026-11-08 (9/9).
+- 📝 **Problemas comunes de la base:** en Mac, el Receptor AirPlay ocupa el puerto 5000; `DATABASE_URL es obligatoria` cuando falta `backend/.env`.
+- ✅ **Mapa de entrega:** hecho en la v0.7.15.
+
 ### v0.7.13 — 2026-11-09 (Base de datos del equipo)
 - ✅ **Base compartida en la nube (TiDB Cloud Starter, gratis y sin tarjeta) y base local con un comando.** Ya no se copia `backend/db-data` entre compañeros. Guía completa en `docs/BASE_DE_DATOS_EQUIPO.md`.
 - ✅ **Conexión validada al arrancar** (`backend/src/config/databaseUrl.ts`):
