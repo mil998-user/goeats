@@ -176,7 +176,56 @@ export async function getPlatformCustomers(req: Request, res: Response, next: Ne
       orderBy: { name: "asc" },
     });
 
-    return res.status(200).json({ success: true, customers });
+    // Clientes facturados en caja (sin cuenta en la app). "Consumidor final" (07) no es una persona
+    const billedClients = await prisma.client.findMany({
+      where: { restaurantId, typeId: { not: "07" }, sales: { some: {} } },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        identification: true,
+        sales: {
+          select: {
+            order: {
+              select: {
+                id: true,
+                total: true,
+                status: true,
+                createdAt: true,
+                items: {
+                  select: {
+                    id: true,
+                    quantity: true,
+                    price: true,
+                    variant: { select: { name: true, menuItem: { select: { name: true } } } },
+                  },
+                },
+              },
+            },
+          },
+          orderBy: { createdAt: "desc" },
+        },
+      },
+      orderBy: { name: "asc" },
+    });
+
+    const knownCedulas = new Set(customers.map((c) => c.cedula).filter(Boolean));
+    const fromCashier = billedClients
+      .filter((client) => !knownCedulas.has(client.identification))
+      .map((client) => ({
+        // Id negativo: no choca con los usuarios de la app
+        id: -client.id,
+        name: client.name,
+        email: client.email,
+        cedula: client.identification,
+        isPlus: false,
+        source: "CAJA",
+        customerOrders: client.sales.map((sale) => sale.order),
+      }));
+
+    const allCustomers = [...customers, ...fromCashier].sort((x, y) => x.name.localeCompare(y.name));
+
+    return res.status(200).json({ success: true, customers: allCustomers });
   } catch (error) {
     next(error);
   }

@@ -39,6 +39,25 @@ export async function getDashboardData(req: Request, res: Response, next: NextFu
       },
     });
 
+    // Pedidos en linea ya entregados: no pasan por caja, asi que no tienen venta registrada.
+    // Cuenta la comida; el envio es del motorizado
+    const deliveredOnline = await prisma.order.findMany({
+      where: {
+        restaurantId,
+        status: "DELIVERED",
+        sale: null,
+        type: { in: ["DELIVERY", "TAKEOUT"] },
+        updatedAt: { gte: sevenDaysAgo },
+      },
+      select: { total: true, shippingCost: true, updatedAt: true },
+    });
+    for (const order of deliveredOnline) {
+      salesLast7Days.push({
+        total: Math.max(0, order.total - (order.shippingCost || 0)),
+        createdAt: order.updatedAt,
+      });
+    }
+
     // Group sales by day of week
     const salesByDay = Array.from({ length: 7 }).map((_, i) => {
       const d = new Date();

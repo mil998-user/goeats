@@ -329,18 +329,21 @@ export async function getPublicRestaurantCatalog(req: Request, res: Response, ne
       return res.status(404).json({ success: false, message: "Restaurant not found or inactive" });
     }
 
+    // The four lookups below do not depend on each other, so they run together:
+    // with a remote database each one costs a full round trip
+    const [diningAreas, menuCategories, deliveryRate, ratings] = await Promise.all([
     // Load active dining areas & tables
-    const diningAreas = await prisma.diningArea.findMany({
+    prisma.diningArea.findMany({
       where: { restaurantId: restaurant.id },
       include: {
         tables: {
           select: { id: true, number: true, status: true },
         },
       },
-    });
+    }),
 
     // Load menu categories and items (excluding recipes & internal cost detail)
-    const menuCategories = await prisma.menuCategory.findMany({
+    prisma.menuCategory.findMany({
       where: { restaurantId: restaurant.id },
       include: {
         items: {
@@ -352,14 +355,17 @@ export async function getPublicRestaurantCatalog(req: Request, res: Response, ne
           },
         },
       },
-    });
+    }),
+      getActiveDeliveryRate(),
+      getRestaurantAverages([restaurant.id]),
+    ]);
 
     // The Wi-Fi password is only for people at a table of this restaurant
     const tableId = Number(req.query.tableId);
     const isAtTable = diningAreas.some((area) => area.tables.some((table) => table.id === tableId));
-    const { basePrice, pricePerKm } = await getActiveDeliveryRate();
+    const { basePrice, pricePerKm } = deliveryRate;
     const now = new Date();
-    const rating = (await getRestaurantAverages([restaurant.id])).get(restaurant.id);
+    const rating = ratings.get(restaurant.id);
 
     return res.status(200).json({
       success: true,
@@ -373,10 +379,13 @@ export async function getPublicRestaurantCatalog(req: Request, res: Response, ne
       // Buyers see the price of today; during a promotion, also the normal one
       menuCategories: menuCategories.map((category) => ({
         ...category,
-        items: category.items.map((item) => ({
-          ...item,
-          variants: item.variants.map((variant) => toSaleVariant(variant, now)),
-        })),
+        // Un plato sin presentación de precio no se puede vender: no se muestra
+        items: category.items
+          .filter((item) => item.variants.length > 0)
+          .map((item) => ({
+            ...item,
+            variants: item.variants.map((variant) => toSaleVariant(variant, now)),
+          })),
       })),
       deliveryRate: { basePrice, pricePerKm },
     });
@@ -385,8 +394,17 @@ export async function getPublicRestaurantCatalog(req: Request, res: Response, ne
   }
 }
 
+// The public list is the same for every visitor and changes rarely, so it is kept for a few seconds
+// instead of asking the database on every visit. PUBLIC_LIST_CACHE_SECONDS=0 turns it off.
+const PUBLIC_LIST_CACHE_MS = Math.max(0, Number(process.env.PUBLIC_LIST_CACHE_SECONDS ?? 30)) * 1000 || 0;
+let publicListCache: { expiresAt: number; restaurants: unknown[] } | null = null;
+
 export async function getPublicRestaurantList(req: Request, res: Response, next: NextFunction) {
   try {
+    if (publicListCache && publicListCache.expiresAt > Date.now()) {
+      return res.status(200).json({ success: true, restaurants: publicListCache.restaurants });
+    }
+
     const startOfWeek = new Date();
     startOfWeek.setDate(startOfWeek.getDate() - ((startOfWeek.getDay() + 6) % 7));
     startOfWeek.setHours(0, 0, 0, 0);
@@ -415,45 +433,49 @@ export async function getPublicRestaurantList(req: Request, res: Response, next:
       },
     });
 
-    const weeklyOrderCounts = await prisma.order.groupBy({
-      by: ["restaurantId"],
-      where: {
-        restaurantId: { in: restaurants.map((restaurant) => restaurant.id) },
-        createdAt: { gte: startOfWeek },
-        status: { not: OrderStatus.CANCELLED },
-      },
-      _count: { _all: true },
-    });
+    const restaurantIds = restaurants.map((restaurant) => restaurant.id);
+    const now = new Date();
+    // Independent lookups run together to save round trips to the database
+    const [weeklyOrderCounts, promoDishes, ratings] = await Promise.all([
+      prisma.order.groupBy({
+        by: ["restaurantId"],
+        where: {
+          restaurantId: { in: restaurantIds },
+          createdAt: { gte: startOfWeek },
+          status: { not: OrderStatus.CANCELLED },
+        },
+        _count: { _all: true },
+      }),
+      // Restaurants with a dish on promotion today appear among the offers
+      prisma.menuItemVariant.findMany({
+        where: {
+          promoPrice: { not: null },
+          promoEndsAt: { gt: now },
+          menuItem: { isActive: true, category: { restaurantId: { in: restaurantIds } } },
+        },
+        select: { price: true, promoPrice: true, promoEndsAt: true, menuItem: { select: { category: { select: { restaurantId: true } } } } },
+      }),
+      getRestaurantAverages(restaurantIds),
+    ]);
     const orderCountByRestaurantId = new Map(
       weeklyOrderCounts.map((entry) => [entry.restaurantId, entry._count._all])
     );
-
-    // Restaurants with a dish on promotion today appear among the offers
-    const now = new Date();
-    const promoDishes = await prisma.menuItemVariant.findMany({
-      where: {
-        promoPrice: { not: null },
-        promoEndsAt: { gt: now },
-        menuItem: { isActive: true, category: { restaurantId: { in: restaurants.map((restaurant) => restaurant.id) } } },
-      },
-      select: { price: true, promoPrice: true, promoEndsAt: true, menuItem: { select: { category: { select: { restaurantId: true } } } } },
-    });
     const withPromo = new Set(
       promoDishes.filter((dish) => isPromoActive(dish, now)).map((dish) => dish.menuItem.category.restaurantId)
     );
 
-    const ratings = await getRestaurantAverages(restaurants.map((restaurant) => restaurant.id));
+    const list = restaurants.map((restaurant) => ({
+      ...restaurant,
+      ratingAverage: ratings.get(restaurant.id)?.average ?? null,
+      ratingCount: ratings.get(restaurant.id)?.count ?? 0,
+      promoText: restaurant.promoText || (withPromo.has(restaurant.id) ? "Platos en promoción" : null),
+      ordersThisWeek: orderCountByRestaurantId.get(restaurant.id) || 0,
+    }));
+    if (PUBLIC_LIST_CACHE_MS > 0) {
+      publicListCache = { expiresAt: Date.now() + PUBLIC_LIST_CACHE_MS, restaurants: list };
+    }
 
-    return res.status(200).json({
-      success: true,
-      restaurants: restaurants.map((restaurant) => ({
-        ...restaurant,
-        ratingAverage: ratings.get(restaurant.id)?.average ?? null,
-        ratingCount: ratings.get(restaurant.id)?.count ?? 0,
-        promoText: restaurant.promoText || (withPromo.has(restaurant.id) ? "Platos en promoción" : null),
-        ordersThisWeek: orderCountByRestaurantId.get(restaurant.id) || 0,
-      })),
-    });
+    return res.status(200).json({ success: true, restaurants: list });
   } catch (error) {
     next(error);
   }
