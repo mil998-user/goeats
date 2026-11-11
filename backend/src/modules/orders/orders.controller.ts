@@ -9,7 +9,22 @@ import { refundTakeCommission } from "../delivery/deliveryWallet";
 import { OPEN_TABLE_STATUSES, releaseTable, resolveOrderTable } from "../../utils/tables";
 
 
+// Pedidos recién enviados, para no guardar dos veces el mismo si se pulsa doble o la red reintenta.
+// Vive en memoria: sirve con un solo servidor encendido
+const DUPLICATE_WINDOW_MS = 8000;
+const recentOrderKeys = new Map<string, number>();
+
+function claimOrderKey(key: string, now = Date.now()) {
+  for (const [savedKey, at] of recentOrderKeys) {
+    if (now - at > DUPLICATE_WINDOW_MS) recentOrderKeys.delete(savedKey);
+  }
+  if (recentOrderKeys.has(key)) return false;
+  recentOrderKeys.set(key, now);
+  return true;
+}
+
 export async function createOrder(req: Request, res: Response, next: NextFunction) {
+  let orderKey: string | null = null;
   try {
     const restaurantId = req.restaurantId;
     const userId = req.user?.userId;
@@ -32,6 +47,16 @@ export async function createOrder(req: Request, res: Response, next: NextFunctio
     if (costEnvio === null) {
       return res.status(400).json({ success: false, message: "Costo de envío no válido" });
     }
+
+    const itemsSignature = items
+      .map((item: any) => `${parseInt(item.variantId, 10)}x${parseFloat(item.quantity)}`)
+      .sort()
+      .join(",");
+    const candidateKey = [restaurantId, userId, type, tableId ?? "-", String(customerName).trim().toLowerCase(), itemsSignature].join("|");
+    if (!claimOrderKey(candidateKey)) {
+      return res.status(409).json({ success: false, message: "Este pedido ya se envió hace un momento. Revisa la lista antes de enviarlo otra vez." });
+    }
+    orderKey = candidateKey;
 
     // Restaurants that charge first leave table orders waiting for the register
     const settings = await prisma.restaurant.findUnique({ where: { id: restaurantId }, select: { payBeforeEating: true } });
@@ -140,6 +165,8 @@ export async function createOrder(req: Request, res: Response, next: NextFunctio
 
     return res.status(201).json({ success: true, message: "Order created successfully", order: hideDeliveryPin(order) });
   } catch (error: any) {
+    // Si el pedido no se guardó, se puede volver a intentar de inmediato
+    if (orderKey) recentOrderKeys.delete(orderKey);
     return res.status(400).json({ success: false, message: error.message || "Failed to create order" });
   }
 }
