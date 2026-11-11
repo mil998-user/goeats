@@ -224,6 +224,14 @@ export async function retryAllFailed(req: Request, res: Response, next: NextFunc
  */
 export async function saveEmailConfig(req: Request, res: Response, next: NextFunction) {
   try {
+    // Publicado, el archivo .env no existe o se pierde al reiniciar: el correo se configura en las variables del servicio
+    if (process.env.NODE_ENV === "production") {
+      return res.status(403).json({
+        success: false,
+        message: "En el sistema publicado, el correo se configura en las variables del servidor, no desde esta pantalla.",
+      });
+    }
+
     const {
       gmailUser,
       gmailClientId,

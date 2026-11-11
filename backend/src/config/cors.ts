@@ -3,7 +3,11 @@ import cors from "cors";
 const allowedOrigins = [
   "http://localhost:5173", // Vite default port
   "http://localhost:3000",
-  // Add other origins here as needed (like staging or production URLs)
+  // Direcciones publicadas (frontend): variable CORS_ORIGINS, separadas por coma
+  ...(process.env.CORS_ORIGINS || "")
+    .split(",")
+    .map((origin) => origin.trim().replace(/\/$/, ""))
+    .filter(Boolean),
 ];
 
 export const corsOptions: cors.CorsOptions = {

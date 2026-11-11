@@ -28,6 +28,12 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     let socketUrl = typeof window !== "undefined" ? window.location.origin : "http://localhost:5000";
     if (envSocketUrl && !envSocketUrl.includes("localhost") && !envSocketUrl.includes("127.0.0.1") && envSocketUrl.startsWith("http")) {
       socketUrl = envSocketUrl.replace(/\/$/, "");
+    } else {
+      // Publicado sin VITE_SOCKET_URL: el tiempo real va al mismo servidor que la API
+      const envApiUrl = (import.meta as any).env?.VITE_API_URL;
+      if (envApiUrl && envApiUrl.startsWith("http") && !envApiUrl.includes("localhost") && !envApiUrl.includes("127.0.0.1")) {
+        socketUrl = new URL(envApiUrl).origin;
+      }
     }
     const newSocket = io(socketUrl, {
       transports: ["websocket", "polling"],
