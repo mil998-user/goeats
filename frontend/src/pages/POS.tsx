@@ -1,3 +1,4 @@
+import { appConfirm } from "../components/AppDialogs";
 import React, { useEffect, useState, useRef } from "react";
 import { useSocket } from "../context/SocketContext";
 import { apiRequest } from "../utils/api";
@@ -154,7 +155,11 @@ export const POS: React.FC = () => {
   // Optional tip for the waiter: charged with the bill but kept out of the sale and the invoice
   const [tip, setTip] = useState("0.00");
   const tipValue = orderType === "DELIVERY" ? 0 : Math.max(0, Math.round((parseFloat(tip) || 0) * 100) / 100);
-  const [fiscalEmit, setFiscalEmit] = useState(true);
+  // Off by default: the SRI connection is not set up yet, so the cashier turns it on only when the restaurant has it
+  const [fiscalEmit, setFiscalEmit] = useState(false);
+  // Blocks a second click while the order is being sent, so it is not saved twice
+  const [placingOrder, setPlacingOrder] = useState(false);
+  const placingOrderRef = useRef(false);
 
   // Client Search/Register State
   const [clientSearchIdent, setClientSearchIdent] = useState("");
@@ -400,7 +405,7 @@ export const POS: React.FC = () => {
             }
             // Trigger checkout modal if parameter is passed
             if (searchParams.get("checkout") === "true") {
-              openCheckoutModal();
+              openCheckoutModal(order.id);
             }
           }
           isLoadingOrderRef.current = false;
@@ -642,14 +647,16 @@ export const POS: React.FC = () => {
   };
 
   const handlePlaceOrder = async () => {
-    if (cart.length === 0) return;
+    if (cart.length === 0 || placingOrderRef.current) return;
+    placingOrderRef.current = true;
+    setPlacingOrder(true);
     try {
       const body = {
         type: orderType,
         customerName,
         comments: orderComments,
         deliveryAddress: orderType === "DELIVERY"
-          ? (deliveryReference ? `${deliveryAddress} (Ref: ${deliveryReference})` : deliveryAddress)
+          ? deliveryAddress
           : undefined,
         deliveryReference: orderType === "DELIVERY" ? deliveryReference : undefined,
         deliveryObservation: orderType === "DELIVERY" ? deliveryReference : undefined,
@@ -687,6 +694,9 @@ export const POS: React.FC = () => {
       loadInitialData(); // Refresh table layout
     } catch (error: any) {
       alert(error.message || "Error al procesar el pedido");
+    } finally {
+      placingOrderRef.current = false;
+      setPlacingOrder(false);
     }
   };
 
@@ -739,7 +749,7 @@ export const POS: React.FC = () => {
           </div>
           <div class="details">
             <div><strong>Fecha:</strong> ${dateStr}</div>
-            <div><strong>Tipo:</strong> ${orderType === "DINE_IN" ? "SERVICIO EN MESA" : orderType === "TAKEOUT" ? "PARA LLEVAR / TAKEOUT" : "DOMICILIO / DELIVERY"}</div>
+            <div><strong>Tipo:</strong> ${orderType === "DINE_IN" ? "SERVICIO EN MESA" : orderType === "TAKEOUT" ? "RECOGER EN LOCAL" : "DOMICILIO / DELIVERY"}</div>
             ${selectedTable ? `<div><strong>Mesa:</strong> Mesa ${selectedTable.number}</div>` : ""}
             <div><strong>Cliente:</strong> ${escapeHtml(customerName || "Varios")}</div>
             ${activeOrderId ? `<div><strong>Nro Pedido:</strong> #${activeOrderId}</div>` : ""}
@@ -771,13 +781,22 @@ export const POS: React.FC = () => {
 
   // Client search
   const handleSearchClient = async () => {
-    if (!clientSearchIdent) return;
+    const term = clientSearchIdent.trim();
+    if (!term) return;
     try {
       const res = await apiRequest("/clients");
-      const client = res.clients.find((c: any) => c.identification === clientSearchIdent);
+      const byName = res.clients.filter((c: any) => (c.name || "").toLowerCase().includes(term.toLowerCase()));
+      const client = res.clients.find((c: any) => c.identification === term) || (byName.length === 1 ? byName[0] : null);
+      const isNumber = /^\d+$/.test(term);
       if (client) {
         setSelectedClient(client);
+        // El buscador muestra al cliente elegido
+        setClientSearchIdent(client.identification);
         setShowNewClientForm(false);
+      } else if (byName.length > 1) {
+        alert(`Hay ${byName.length} clientes con ese nombre: ${byName.slice(0, 5).map((c: any) => c.name).join(", ")}. Busca por cédula para elegir uno.`);
+      } else if (!isNumber) {
+        alert("No hay un cliente con ese nombre. Busca por cédula o RUC para registrarlo.");
       } else if (orderCustomer && orderCustomer.identification === clientSearchIdent.trim()) {
         // The customer of this order is not yet a billing client of the restaurant: prefill their data
         setNewClientName(orderCustomer.name);
@@ -822,14 +841,15 @@ export const POS: React.FC = () => {
     }
   };
 
-  const openCheckoutModal = () => {
+  // orderId is passed when the order was just loaded from the URL and activeOrderId is not updated yet
+  const openCheckoutModal = (orderId: number | null = activeOrderId) => {
     setSelectedClient(null);
     setShowNewClientForm(false);
     setClientSearchIdent("");
     setOrderCustomer(null);
     // If an app customer placed this order, suggest their ID so the cashier does not retype it
-    if (activeOrderId) {
-      apiRequest(`/orders/${activeOrderId}/billing-customer`)
+    if (orderId) {
+      apiRequest(`/orders/${orderId}/billing-customer`)
         .then((res) => {
           if (res.customer) {
             setOrderCustomer(res.customer);
@@ -1343,7 +1363,7 @@ export const POS: React.FC = () => {
                           )}
 
                           <span style={{ fontSize: "20px", fontWeight: "bold" }}>{table.number}</span>
-                          <span style={{ fontSize: "13px", opacity: 0.7 }}>Cap. {table.capacity}</span>
+                          <span style={{ fontSize: "13px", opacity: 0.7 }}>{table.capacity} personas</span>
                           {isAllReady && (
                             <span style={{ fontSize: "13px", color: "var(--success)", fontWeight: 700, marginTop: "2px" }}>
                               Servir {systemIconForEmoji("🛎️")}
@@ -1382,7 +1402,7 @@ export const POS: React.FC = () => {
                 No hay pedidos externos (Llevar / Delivery) pendientes de cobro o entrega.
               </div>
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "15px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(280px, 100%), 1fr))", gap: "15px" }}>
                 {externalOrders.map(order => {
                   const isSelected = activeOrderId === order.id;
                   const isPending = order.status === "PENDING";
@@ -1688,7 +1708,8 @@ export const POS: React.FC = () => {
                       const isItemInCart = !!cartItem;
                       
                       // Check if it's taxable (production area is set)
-                      const isVeg = item.description?.toLowerCase().includes("veg") || item.name.toLowerCase().includes("ensalada") || item.name.toLowerCase().includes("jugo");
+                      // The tag shows the real menu category instead of guessing "meat" or "veg" from the dish name
+                      const categoryLabel = menuCategories.find(c => c.items.some(i => i.id === item.id))?.name || "";
 
                       return (
                         <div
@@ -1728,9 +1749,11 @@ export const POS: React.FC = () => {
                                   <s style={{ marginLeft: "6px", fontSize: "0.8em", opacity: 0.7, fontWeight: 400 }}>${item.variants[0].regularPrice.toFixed(2)}</s>
                                 )}
                               </span>
-                              <span className={`pos-dish-card-diet ${isVeg ? "veg" : "non-veg"}`}>
-                                {isVeg ? systemTextWithIcons("🥬 Veg") : systemTextWithIcons("🍗 Carnes")}
-                              </span>
+                              {categoryLabel && (
+                                <span className="pos-dish-card-diet" style={{ color: "#4b5563", maxWidth: "55%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={categoryLabel}>
+                                  {categoryLabel}
+                                </span>
+                              )}
                             </div>
 
                             {/* Button or quantity counter */}
@@ -2230,9 +2253,9 @@ export const POS: React.FC = () => {
                   borderColor: "var(--accent-primary)",
                   color: user?.role === "MOZO" ? "#ffffff" : "var(--accent-primary)"
                 }}
-                disabled={cart.length === 0}
+                disabled={cart.length === 0 || placingOrder}
               >
-                {systemIconForEmoji("🔥")} Enviar a Cocina
+                {systemIconForEmoji("🔥")} {placingOrder ? "Enviando..." : "Enviar a Cocina"}
               </button>
             </div>
 
@@ -2312,7 +2335,7 @@ export const POS: React.FC = () => {
                     ) : (
                       <button
                         type="button"
-                        onClick={openCheckoutModal}
+                        onClick={() => openCheckoutModal()}
                         className="glow-btn"
                         style={{ flex: 1, padding: "12px", fontSize: "14px" }}
                         disabled={!hasCashSession || cart.length === 0}
@@ -2323,7 +2346,7 @@ export const POS: React.FC = () => {
                   ) : (
                     <button
                       type="button"
-                      onClick={openCheckoutModal}
+                      onClick={() => openCheckoutModal()}
                       className="glow-btn"
                       style={{ flex: 1, padding: "12px", fontSize: "14px" }}
                       disabled={!hasCashSession || cart.length === 0}
@@ -2385,7 +2408,7 @@ export const POS: React.FC = () => {
                 <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
                   <input
                     type="text"
-                    placeholder="Buscar Cédula o RUC..."
+                    placeholder="Cédula, RUC o nombre..."
                     className="input-field"
                     style={{ padding: "8px 12px", fontSize: "13px" }}
                     value={clientSearchIdent}
@@ -2744,7 +2767,7 @@ export const POS: React.FC = () => {
               <button
                 type="button"
                 onClick={async () => {
-                  if (window.confirm("¿Está seguro de que desea rechazar el comprobante y cancelar la orden?")) {
+                  if (await appConfirm("¿Está seguro de que desea rechazar el comprobante y cancelar la orden?")) {
                     try {
                       await apiRequest(`/orders/${activeOrderObj.id}/status`, {
                         method: "PUT",

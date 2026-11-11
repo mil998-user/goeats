@@ -1,3 +1,4 @@
+import { appConfirm } from "../components/AppDialogs";
 import React, { useEffect, useMemo, useState } from "react";
 import { CalendarDays, Phone, Plus, Users, X } from "lucide-react";
 import { apiRequest } from "../utils/api";
@@ -267,7 +268,7 @@ export const Reservations: React.FC = () => {
                       <button
                         className="secondary-btn"
                         disabled={busy}
-                        onClick={() => window.confirm(`¿Cancelar la reserva de ${reservation.name}?`) && update(reservation.id, { status: "CANCELLED" })}
+                        onClick={async () => (await appConfirm(`¿Cancelar la reserva de ${reservation.name}?`)) && update(reservation.id, { status: "CANCELLED" })}
                       >
                         Cancelar
                       </button>

@@ -335,7 +335,7 @@ export const Kitchen: React.FC = () => {
                           ? `Mesa ${group.order.table.number}`
                           : group.order.type === "DELIVERY"
                           ? systemTextWithIcons("🚚 Delivery")
-                          : systemTextWithIcons("🛍️ Para Llevar")}
+                          : systemTextWithIcons("🛍️ Recoger en local")}
                       </h3>
                       <div style={{ marginTop: "4px", fontSize: "13px", color: "var(--text-secondary)" }}>
                         Cliente: <strong>{group.order.customerName}</strong>
@@ -489,7 +489,12 @@ export const Kitchen: React.FC = () => {
                             Listo
                           </button>
                         )}
-                        {item.status === "READY" && (
+                        {item.status === "READY" && item.order.type === "DELIVERY" && (
+                          <span style={{ flex: 1, padding: "6px 12px", fontSize: "13px", textAlign: "center", color: "var(--text-secondary)" }}>
+                            Esperando al motorizado
+                          </span>
+                        )}
+                        {item.status === "READY" && item.order.type !== "DELIVERY" && (
                           <button
                             onClick={() => handleUpdateStatus(item.id, "SERVED")}
                             className="secondary-btn"

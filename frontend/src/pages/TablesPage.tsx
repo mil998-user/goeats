@@ -134,7 +134,7 @@ export const TablesPage: React.FC = () => {
     }
     if (table.status === "FREE") {
       if (user?.role === "RESTAURANT_OWNER") {
-        alert("El administrador no puede iniciar pedidos en el POS.");
+        alert("Los pedidos en mesa los toma un mesero. Si aún no tienes uno, créalo en Ajustes → Personal.");
         return;
       }
       // Redirect to POS with tableId parameter to start order
@@ -391,7 +391,7 @@ export const TablesPage: React.FC = () => {
                         gap: "4px",
                         marginTop: "2px"
                       }}>
-                        <Users size={12} /> Cap. {table.capacity}
+                        <Users size={12} /> {table.capacity} personas
                       </span>
                       {table.joinedToId && (
                         <span data-testid={`joined-${table.id}`} style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-primary)", display: "block", marginTop: "2px" }}>
@@ -463,7 +463,7 @@ export const TablesPage: React.FC = () => {
                     </div>
                   )}
 
-                  {!isOccupied && (
+                  {!isOccupied && user?.role === "MOZO" && (
                     <div style={{ marginTop: "16px", display: "flex", justifyContent: "flex-end" }}>
                       <span className="text-accent" style={{
                         fontSize: "13px",

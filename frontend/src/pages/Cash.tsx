@@ -1,3 +1,4 @@
+import { appConfirm } from "../components/AppDialogs";
 import React, { useEffect, useState } from "react";
 import { apiRequest } from "../utils/api";
 import { useSocket } from "../context/SocketContext";
@@ -156,7 +157,7 @@ export const Cash: React.FC = () => {
   const handleCloseSession = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!closeAmount) return;
-    if (!window.confirm("¿Está seguro de que desea cerrar la sesión de caja actual?")) return;
+    if (!(await appConfirm("¿Está seguro de que desea cerrar la sesión de caja actual?"))) return;
     setLoading(true);
     try {
       const res = await apiRequest("/cash/sessions/close", {

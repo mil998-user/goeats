@@ -1,3 +1,5 @@
+import { WifiQR } from "../components/WifiQR";
+import { appConfirm } from "../components/AppDialogs";
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
@@ -211,7 +213,7 @@ export const Settings: React.FC = () => {
   };
 
   const handleDeleteRegister = async (id: number) => {
-    if (!window.confirm("¿Estás seguro de eliminar esta caja registradora?")) return;
+    if (!(await appConfirm("¿Estás seguro de eliminar esta caja registradora?"))) return;
     try {
       const res = await apiRequest(`/cash/registers/${id}`, {
         method: "DELETE",
@@ -343,7 +345,7 @@ export const Settings: React.FC = () => {
   };
 
   const handleDeleteStaff = async (id: number) => {
-    if (!window.confirm("¿Quitar a este miembro del personal? Si ya atendió pedidos o usó la caja, su cuenta se desactiva y su historial se conserva.")) return;
+    if (!(await appConfirm("¿Quitar a este miembro del personal? Si ya atendió pedidos o usó la caja, su cuenta se desactiva y su historial se conserva."))) return;
     try {
       const res = await apiRequest(`/auth/staff/${id}`, {
         method: "DELETE"
@@ -509,7 +511,7 @@ export const Settings: React.FC = () => {
   };
 
   const handleDeleteSupply = async (id: number) => {
-    if (!window.confirm("¿Estás seguro de eliminar este insumo?")) return;
+    if (!(await appConfirm("¿Estás seguro de eliminar este insumo?"))) return;
     try {
       await apiRequest(`/inventory/supplies/${id}`, { method: "DELETE" });
       loadInventoryData();
@@ -578,7 +580,7 @@ export const Settings: React.FC = () => {
   };
 
   const handleDeleteSupplier = async (id: number) => {
-    if (!window.confirm("¿Estás seguro de eliminar este proveedor?")) return;
+    if (!(await appConfirm("¿Estás seguro de eliminar este proveedor?"))) return;
     try {
       await apiRequest(`/purchases/suppliers/${id}`, { method: "DELETE" });
       loadInventoryData();
@@ -1026,8 +1028,8 @@ export const Settings: React.FC = () => {
     setShowAccountModal(false);
   };
 
-  const handleDeleteAccount = (id: string) => {
-    if (window.confirm("¿Estás seguro de eliminar esta cuenta bancaria?")) {
+  const handleDeleteAccount = async (id: string) => {
+    if (await appConfirm("¿Estás seguro de eliminar esta cuenta bancaria?")) {
       setBankAccounts(prev => prev.filter(a => a.id !== id));
     }
   };
@@ -1083,7 +1085,7 @@ export const Settings: React.FC = () => {
   };
 
   const handleDeleteArea = async (id: number) => {
-    if (!window.confirm("¿Estás seguro de eliminar este salón? Se eliminarán todas las mesas asociadas.")) return;
+    if (!(await appConfirm("¿Estás seguro de eliminar este salón? Se eliminarán todas las mesas asociadas."))) return;
     try {
       const res = await apiRequest(`/tables/dining-areas/${id}`, {
         method: "DELETE"
@@ -1161,7 +1163,7 @@ export const Settings: React.FC = () => {
   };
 
   const handleDeleteTable = async (id: number) => {
-    if (!window.confirm("¿Estás seguro de eliminar esta mesa?")) return;
+    if (!(await appConfirm("¿Estás seguro de eliminar esta mesa?"))) return;
     try {
       const res = await apiRequest(`/tables/${id}`, {
         method: "DELETE"
@@ -1262,7 +1264,7 @@ export const Settings: React.FC = () => {
               Perfil del Restaurante
             </h3>
             
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "20px" }}>
+            <div className="mobile-column-stack" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "20px" }}>
               <div className="input-group">
                 <label>Nombre Comercial</label>
                 <input
@@ -1285,7 +1287,7 @@ export const Settings: React.FC = () => {
                   disabled={logo.startsWith("data:image")}
                   style={{ marginBottom: "6px" }}
                 />
-                <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
                   <label style={{
                     padding: "8px 16px",
                     borderRadius: "var(--radius-sm)",
@@ -1374,7 +1376,7 @@ export const Settings: React.FC = () => {
               Red WiFi local (Para Clientes en Mesa)
             </h3>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "20px" }}>
+            <div className="mobile-column-stack" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "20px" }}>
               <div className="input-group">
                 <label>SSID / Nombre de Red WiFi</label>
                 <input
@@ -1397,6 +1399,12 @@ export const Settings: React.FC = () => {
                 />
               </div>
             </div>
+
+            {wifiSsid.trim() && (
+              <div style={{ marginBottom: "20px" }}>
+                <WifiQR ssid={wifiSsid} password={wifiPassword} />
+              </div>
+            )}
 
             <div style={{
               display: "flex",
@@ -1509,7 +1517,7 @@ export const Settings: React.FC = () => {
               </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "20px" }}>
+            <div className="mobile-column-stack" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "20px" }}>
               <div className="input-group">
                 <label>Slogan o Descripción Corta</label>
                 <input
@@ -1800,7 +1808,7 @@ export const Settings: React.FC = () => {
               />
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "20px" }}>
+            <div className="mobile-column-stack" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "20px" }}>
               <div className="input-group">
                 <label>Referencia de Dirección</label>
                 <input
@@ -1825,7 +1833,7 @@ export const Settings: React.FC = () => {
             </div>
 
             {/* Numeric Coordinates (Auto-filled) */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "20px" }}>
+            <div className="mobile-column-stack" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "20px" }}>
               <div className="input-group">
                 <label>Latitud GPS (Auto-generada)</label>
                 <input

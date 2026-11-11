@@ -1,3 +1,4 @@
+import { appConfirm } from "../components/AppDialogs";
 import React, { useEffect, useState } from "react";
 import { apiRequest } from "../utils/api";
 import {
@@ -121,7 +122,7 @@ export const Menu: React.FC = () => {
   };
 
   const handleDeleteCategory = async (catId: number) => {
-    if (!window.confirm("¿Está seguro de que desea eliminar esta categoría? Se eliminarán todos sus platos asociados.")) return;
+    if (!(await appConfirm("¿Está seguro de que desea eliminar esta categoría? Se eliminarán todos sus platos asociados."))) return;
     try {
       await apiRequest(`/menu/categories/${catId}`, { method: "DELETE" });
       setSelectedCategoryId(null);
@@ -169,13 +170,13 @@ export const Menu: React.FC = () => {
   };
 
   const handleDeleteItem = async (itemId: number) => {
-    if (!window.confirm("¿Está seguro de eliminar este plato?")) return;
+    if (!(await appConfirm("¿Está seguro de eliminar este plato?"))) return;
     try {
       await apiRequest(`/menu/items/${itemId}`, { method: "DELETE" });
       await loadMenuData();
     } catch (error: any) {
       const message = error.message || "Error al eliminar plato";
-      if (message.includes("Ocultar") && window.confirm(`${message}\n\n¿Quieres ocultarlo ahora?`)) {
+      if (message.includes("Ocultar") && await appConfirm(`${message}\n\n¿Quieres ocultarlo ahora?`)) {
         await handleToggleItemVisibility(itemId, false);
         return;
       }
@@ -234,7 +235,7 @@ export const Menu: React.FC = () => {
   };
 
   const handleDeleteVariant = async (variantId: number) => {
-    if (!window.confirm("¿Está seguro de eliminar esta presentación?")) return;
+    if (!(await appConfirm("¿Está seguro de eliminar esta presentación?"))) return;
     try {
       await apiRequest(`/menu/variants/${variantId}`, { method: "DELETE" });
       await loadMenuData();
