@@ -30,6 +30,10 @@ import { OrderRatingBox, type OrderRating } from "../components/OrderRatingBox";
 import { MyReservations } from "../components/MyReservations";
 import { CalendarDays } from "lucide-react";
 
+// Pago con tarjeta apagado hasta tener proveedor (VITE_CARD_PAYMENTS=true lo enciende)
+const CARD_PAYMENTS_ENABLED = import.meta.env.VITE_CARD_PAYMENTS === "true";
+
+
 
 interface OrderItem {
   id: number;
@@ -110,7 +114,7 @@ const DeliveryPinBox: React.FC<{ pin: string; large?: boolean }> = ({ pin, large
       {pin}
     </div>
     <div style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
-      Dáselo al motorizado solo cuando recibas tu pedido.
+      Muéstraselo al motorizado cuando te entregue el pedido.
     </div>
   </div>
 );
@@ -166,7 +170,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
   const [plans, setPlans] = useState<any[]>([]);
   const [saasOrders, setSaasOrders] = useState<any[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<any | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<"CARD" | "TRANSFER">("CARD");
+  const [paymentMethod, setPaymentMethod] = useState<"CARD" | "TRANSFER">(CARD_PAYMENTS_ENABLED ? "CARD" : "TRANSFER");
   const [paymentReceipt, setPaymentReceipt] = useState<string>("");
   const [payphoneTransactionId, setPayphoneTransactionId] = useState<string>("");
   const [showPayphoneSimulator, setShowPayphoneSimulator] = useState(false);
@@ -489,7 +493,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
       case "CASH": return "Efectivo/Contraentrega";
       case "CARD": return "Tarjeta de Crédito/Débito";
       case "TRANSFER": return "Transferencia Bancaria";
-      default: return method || "No especificado";
+      default: return method || "Efectivo/Contraentrega";
     }
   };
 
@@ -819,6 +823,8 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                         <label style={{ fontSize: "13px", fontWeight: "600", display: "block", marginBottom: "6px" }}>Forma de Pago</label>
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                           <button
+                            disabled={!CARD_PAYMENTS_ENABLED}
+                            title={CARD_PAYMENTS_ENABLED ? undefined : "El pago con tarjeta estará disponible pronto"}
                             type="button"
                             onClick={() => {
                               setPaymentMethod("CARD");
@@ -835,7 +841,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                               fontWeight: paymentMethod === "CARD" ? "bold" : "normal"
                             }}
                           >
-                            {systemIconForEmoji("💳")} Tarjeta
+                            {systemIconForEmoji("💳")} {CARD_PAYMENTS_ENABLED ? "Tarjeta" : "Tarjeta (pronto)"}
                           </button>
                           <button
                             type="button"
@@ -1010,6 +1016,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
           <div>
             <div style={{ fontSize: "13px", color: "var(--text-muted)", fontWeight: 600 }}>TOTAL GASTADO</div>
             <div style={{ fontSize: "24px", fontWeight: 800, color: "var(--text-primary)" }}>${stats.totalSpent.toFixed(2)}</div>
+            <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>Pedidos y envíos, sin propinas</div>
           </div>
         </div>
 
@@ -1397,7 +1404,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                 <div><strong>Consumo en Mesa:</strong> Mesa {trackingOrder.table?.number || trackingOrder.tableId}</div>
               )}
               <div style={{ marginTop: "8px", borderTop: "1px solid var(--border-light)", paddingTop: "8px" }}>
-                <strong>Método de Pago:</strong> {getPaymentMethodLabel(trackingOrder.paymentMethod)}
+                <strong>Método de Pago:</strong> {getPaymentMethodLabel(trackingOrder.paymentMethod || (trackingOrder as any).paymentMethodString)}
               </div>
             </div>
 

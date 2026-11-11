@@ -14,6 +14,10 @@ import {
 } from "lucide-react";
 import { systemIconForEmoji } from "../utils/systemIcons";
 
+// Pago con tarjeta apagado hasta tener proveedor (VITE_CARD_PAYMENTS=true lo enciende)
+const CARD_PAYMENTS_ENABLED = import.meta.env.VITE_CARD_PAYMENTS === "true";
+
+
 
 export const PlusPromo: React.FC = () => {
   const { user, token, login, isAuthenticated } = useAuth();
@@ -77,7 +81,7 @@ export const PlusPromo: React.FC = () => {
   const [regCedula, setRegCedula] = useState("");
 
   // Checkout states
-  const [paymentMethod, setPaymentMethod] = useState<"CARD" | "TRANSFER">("CARD");
+  const [paymentMethod, setPaymentMethod] = useState<"CARD" | "TRANSFER">(CARD_PAYMENTS_ENABLED ? "CARD" : "TRANSFER");
   const [paymentReceipt, setPaymentReceipt] = useState<string>("");
   const [payphoneTransactionId, setPayphoneTransactionId] = useState<string>("");
   const [showPayphoneSimulator, setShowPayphoneSimulator] = useState(false);
@@ -723,6 +727,8 @@ export const PlusPromo: React.FC = () => {
                     <label style={{ fontSize: "13px", fontWeight: "600" }}>Forma de Pago</label>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                       <button
+                        disabled={!CARD_PAYMENTS_ENABLED}
+                        title={CARD_PAYMENTS_ENABLED ? undefined : "El pago con tarjeta estará disponible pronto"}
                         type="button"
                         onClick={() => {
                           setPaymentMethod("CARD");
@@ -740,7 +746,7 @@ export const PlusPromo: React.FC = () => {
                           color: "var(--text-primary)"
                         }}
                       >
-                        {systemIconForEmoji("💳")} Tarjeta
+                        {systemIconForEmoji("💳")} {CARD_PAYMENTS_ENABLED ? "Tarjeta" : "Tarjeta (pronto)"}
                       </button>
                       <button
                         type="button"

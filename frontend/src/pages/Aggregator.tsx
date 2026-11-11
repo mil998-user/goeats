@@ -1587,7 +1587,7 @@ export const Aggregator: React.FC = () => {
 
         {/* Loading State */}
         {loading ? (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "30px", marginTop: "20px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(320px, 100%), 1fr))", gap: "30px", marginTop: "20px" }}>
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 <div className="skeleton" style={{ width: "100%", height: "180px", borderRadius: "16px" }} />
@@ -2226,7 +2226,7 @@ export const Aggregator: React.FC = () => {
 
               <div style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))",
+                gridTemplateColumns: "repeat(auto-fill, minmax(min(350px, 100%), 1fr))",
                 gap: "30px"
               }}>
                 {filteredRestaurants.map((rest) => (

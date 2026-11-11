@@ -29,6 +29,12 @@ function getRestaurantReturnTo() {
   return returnTo && /^\/r\/[a-z0-9-]+(\/mesa\/\d+)?$/.test(returnTo) ? returnTo : null;
 }
 
+// A customer without an address sets it first, keeping the restaurant to go back to afterwards
+function getLocationSetupPath() {
+  const restaurantPath = getRestaurantReturnTo();
+  return restaurantPath ? `/customer/location-setup?returnTo=${encodeURIComponent(restaurantPath)}` : "/customer/location-setup";
+}
+
 export const Auth: React.FC = () => {
   const [selectedRole, setSelectedRole] = useState<"customer" | "driver" | "restaurant" | "superadmin" | null>(() => {
     const role = new URLSearchParams(window.location.search).get("role");
@@ -113,7 +119,8 @@ export const Auth: React.FC = () => {
       if (res.user.role === "CUSTOMER" && returnTo === "/plus#pricing-plans") {
         navigate(returnTo);
       } else {
-        navigate(res.user.role === "CUSTOMER" && !res.user.deliveryAddress ? "/customer/location-setup" : "/restaurants");
+        if (res.user.role !== "CUSTOMER") navigate("/restaurants");
+        else navigate(res.user.deliveryAddress ? getRestaurantReturnTo() || "/restaurants" : getLocationSetupPath());
       }
     } catch (err: any) {
       console.error("Error en login social:", err);
@@ -265,7 +272,7 @@ export const Auth: React.FC = () => {
         } else if (res.user.role === "MOTORIZADO") {
           navigate("/delivery");
         } else if (res.user.role === "CUSTOMER") {
-          navigate(res.user.deliveryAddress ? getRestaurantReturnTo() || "/restaurants" : "/customer/location-setup");
+          navigate(res.user.deliveryAddress ? getRestaurantReturnTo() || "/restaurants" : getLocationSetupPath());
         } else if (res.user.role === "RESTAURANT_OWNER") {
           navigate("/reports");
         } else {
@@ -306,7 +313,7 @@ export const Auth: React.FC = () => {
           login(res.token, res.user);
           setError(null);
           const returnTo = new URLSearchParams(window.location.search).get("returnTo");
-          navigate(returnTo === "/plus#pricing-plans" ? returnTo : "/customer/location-setup");
+          navigate(returnTo === "/plus#pricing-plans" ? returnTo : getLocationSetupPath());
           return;
         }
         
@@ -353,7 +360,7 @@ export const Auth: React.FC = () => {
 
           <div style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(min(260px, 100%), 1fr))",
             gap: "25px",
             marginBottom: "30px"
           }}>

@@ -17,6 +17,9 @@ export const CustomerLocationSetup: React.FC = () => {
   // ?new=1 adds one more saved address (work, family...) instead of the first one
   const [searchParams] = useSearchParams();
   const isExtraAddress = searchParams.get("new") === "1";
+  // Only a restaurant page is accepted as the place to go back to
+  const returnParam = searchParams.get("returnTo");
+  const restaurantReturnTo = returnParam && /^\/r\/[a-z0-9-]+(\/mesa\/\d+)?$/.test(returnParam) ? returnParam : null;
   const [label, setLabel] = useState(isExtraAddress ? "" : "Casa");
   const [step, setStep] = useState<1 | 2>(1);
   const [location, setLocation] = useState<SelectedLocation | null>(null);
@@ -86,7 +89,7 @@ export const CustomerLocationSetup: React.FC = () => {
         deliverySecondaryStreet: secondaryStreet,
         deliveryReferences: references,
       });
-      navigate("/restaurants?setup_preferences=true", { replace: true });
+      navigate(restaurantReturnTo || "/restaurants?setup_preferences=true", { replace: true });
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "No se pudo guardar tu dirección.");
     } finally {

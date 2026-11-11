@@ -12,6 +12,11 @@ import { systemIconForEmoji, systemTextWithIcons } from "../utils/systemIcons";
 import { getMapEmbedUrl } from "../utils/maps";
 import { StarAverage } from "../components/Stars";
 import { ReserveTable } from "../components/ReserveTable";
+import { WifiQR } from "../components/WifiQR";
+
+// Pago con tarjeta apagado hasta tener proveedor (VITE_CARD_PAYMENTS=true lo enciende)
+const CARD_PAYMENTS_ENABLED = import.meta.env.VITE_CARD_PAYMENTS === "true";
+
 
 // Fixed tip choices for the driver; 0 means no tip
 const TIP_CHOICES = [0, 0.5, 1, 2];
@@ -454,9 +459,9 @@ export const PublicCatalog: React.FC = () => {
         // Distance, payment on delivery and the home reference only make sense for deliveries
         comments: orderType === "DINE_IN"
           ? "Pedido público web. En Mesa. Pago en caja."
-          : `Pedido público web. ${orderType === "DELIVERY" ? "A Domicilio" : "Para Llevar"}.${orderType === "DELIVERY" ? ` Distancia: ${shippingDistance.toFixed(1)} km.` : ""} Pago: ${paymentMethod === "CASH" ? (orderType === "DELIVERY" ? "Efectivo/Contraentrega" : "Efectivo") : paymentMethod === "CARD" ? "Tarjeta" : "Transferencia"}${orderType === "DELIVERY" && deliveryReference ? ` • Referencia: ${deliveryReference}` : ""}`,
+          : `Pedido público web. ${orderType === "DELIVERY" ? "A Domicilio" : "Recoger en local"}.${orderType === "DELIVERY" ? ` Distancia: ${shippingDistance.toFixed(1)} km.` : ""} Pago: ${paymentMethod === "CASH" ? (orderType === "DELIVERY" ? "Efectivo/Contraentrega" : "Efectivo") : paymentMethod === "CARD" ? "Tarjeta" : "Transferencia"}${orderType === "DELIVERY" && deliveryReference ? ` • Referencia: ${deliveryReference}` : ""}`,
         deliveryAddress: orderType === "DELIVERY" 
-          ? (deliveryReference ? `${deliveryAddress} (Ref: ${deliveryReference})` : deliveryAddress)
+          ? deliveryAddress
           : null,
         deliveryReference: orderType === "DELIVERY" ? deliveryReference : null,
         deliveryObservation: orderType === "DELIVERY" ? deliveryReference : null,
@@ -930,7 +935,7 @@ export const PublicCatalog: React.FC = () => {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border-light)", paddingBottom: "16px", marginBottom: "20px" }}>
                   <div>
                     <span style={{ fontSize: "0.85rem", fontWeight: "800", color: "var(--accent-primary)", textTransform: "uppercase", letterSpacing: "1px" }}>
-                      {systemIconForEmoji("🛵")} Pedido a Domicilio en Curso
+                      {systemIconForEmoji("🛵")} {activeOrder?.status === "DELIVERED" ? "Pedido entregado con éxito" : activeOrder?.status === "CANCELLED" ? "Pedido cancelado" : "Pedido a Domicilio en Curso"}
                     </span>
                     <h2 style={{ margin: "4px 0 0 0", fontSize: "1.5rem" }}>
                       Orden #{activeOrder?.id || "---"}
@@ -951,21 +956,21 @@ export const PublicCatalog: React.FC = () => {
                 {/* PIN DE ENTREGA DESTACADO */}
                 {activeOrder?.deliveryPin && activeOrder?.status !== "DELIVERED" && activeOrder?.status !== "CANCELLED" && (
                   <div style={{
-                    background: "linear-gradient(135deg, rgba(46, 213, 115, 0.12), rgba(30, 144, 255, 0.12))",
-                    border: "2px dashed #2ed573",
+                    background: "#f9fafb",
+                    border: "2px solid #111827",
                     borderRadius: "14px",
                     padding: "20px",
                     margin: "20px 0",
                     textAlign: "center"
                   }}>
-                    <div style={{ fontSize: "0.85rem", fontWeight: "800", color: "#2ed573", letterSpacing: "1.5px", textTransform: "uppercase" }}>
+                    <div style={{ fontSize: "0.95rem", fontWeight: "800", color: "#111827", letterSpacing: "1.5px", textTransform: "uppercase" }}>
                       {systemIconForEmoji("🔑")} CÓDIGO DE ENTREGA
                     </div>
-                    <div style={{ fontSize: "3.2rem", fontWeight: "900", letterSpacing: "12px", color: "#2ed573", margin: "10px 0", fontFamily: "monospace" }}>
+                    <div style={{ fontSize: "3.2rem", fontWeight: "900", letterSpacing: "12px", color: "#111827", margin: "10px 0", fontFamily: "monospace" }}>
                       {activeOrder.deliveryPin}
                     </div>
-                    <p style={{ margin: 0, fontSize: "0.92rem", color: "var(--text-secondary)" }}>
-                      Dáselo al motorizado solo cuando recibas tu pedido. También lo encuentras en "Mis pedidos".
+                    <p style={{ margin: 0, fontSize: "1rem", color: "#374151", lineHeight: 1.5 }}>
+                      <strong>Muéstrale este código al motorizado cuando te entregue el pedido.</strong> Sin el código no puede cerrar la entrega. También está en "Mis pedidos".
                     </p>
                   </div>
                 )}
@@ -1017,6 +1022,9 @@ export const PublicCatalog: React.FC = () => {
                 <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
                   <button className="secondary-btn" onClick={() => { rememberActiveOrder(null); setOrderSuccess(false); }} style={{ padding: "12px 24px" }}>
                     Hacer otro pedido
+                  </button>
+                  <button className="secondary-btn" onClick={() => navigate("/restaurants")} style={{ padding: "12px 24px" }}>
+                    Ver más restaurantes
                   </button>
                   <button className="glow-btn" onClick={() => navigate("/customer/dashboard")} style={{ padding: "12px 24px" }}>
                     Ver en Mis pedidos
@@ -1380,14 +1388,16 @@ export const PublicCatalog: React.FC = () => {
                           <button
                             type="button"
                             className={paymentMethod === "CARD" ? "glow-btn" : "secondary-btn"}
+                            disabled={!CARD_PAYMENTS_ENABLED}
+                            title={CARD_PAYMENTS_ENABLED ? undefined : "El pago con tarjeta estará disponible pronto"}
                             onClick={() => {
                               setPaymentMethod("CARD");
                               setPaymentReceipt("");
                               setPayphoneTransactionId("");
                             }}
-                            style={{ padding: "8px 4px", fontSize: "0.85rem" }}
+                            style={{ padding: "8px 4px", fontSize: "0.85rem", opacity: CARD_PAYMENTS_ENABLED ? 1 : 0.5, cursor: CARD_PAYMENTS_ENABLED ? "pointer" : "not-allowed" }}
                           >
-                            Tarjeta
+                            {CARD_PAYMENTS_ENABLED ? "Tarjeta" : "Tarjeta (pronto)"}
                           </button>
 
                           {activeBankAccounts.length > 0 && <button
@@ -1668,6 +1678,11 @@ export const PublicCatalog: React.FC = () => {
                       </span>
                     )}
                   </span>
+                  {restaurant.wifiPassword && (
+                    <div style={{ marginTop: "10px" }}>
+                      <WifiQR ssid={restaurant.wifiSsid} password={restaurant.wifiPassword} size={120} />
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -1719,8 +1734,11 @@ export const PublicCatalog: React.FC = () => {
 
             {/* Google Map Embedded */}
             {(() => {
-              const embedUrl = getMapEmbedUrl(restaurant.mapIframe);
               const hasCoords = Boolean(restaurant.mapLatitude && restaurant.mapLongitude);
+              // Las coordenadas son las que usa el reparto: mandan sobre el mapa pegado a mano
+              const embedUrl = hasCoords
+                ? `https://maps.google.com/maps?q=${restaurant.mapLatitude},${restaurant.mapLongitude}&z=16&output=embed`
+                : getMapEmbedUrl(restaurant.mapIframe);
               const directMapUrl = restaurant.mapIframe && restaurant.mapIframe.startsWith("https://")
                 ? restaurant.mapIframe
                 : hasCoords
