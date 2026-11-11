@@ -1,7 +1,11 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-import { SocketProvider } from "./context/SocketContext";
+import { SocketProvider, useSocket } from "./context/SocketContext";
+import { apiRequest } from "./utils/api";
+import { AppDialogHost, installAppAlert } from "./components/AppDialogs";
+
+installAppAlert();
 import { Aggregator } from "./pages/Aggregator";
 import { PublicCatalog } from "./pages/PublicCatalog";
 import { Auth } from "./pages/Auth";
@@ -66,8 +70,59 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = React.useState(false);
   const location = useLocation();
+  const { socket } = useSocket();
+  const [pendingCounts, setPendingCounts] = React.useState<{ orders: number; kitchen: number }>({ orders: 0, kitchen: 0 });
+
+  const role = user?.role;
+  const seesOrders = role === "RESTAURANT_OWNER" || role === "CAJERO" || role === "MOZO";
+  const seesKitchen = role === "RESTAURANT_OWNER" || role === "PRODUCCION";
+
+  // Contador de pedidos por atender junto a "Pedidos" y "Cocina KDS"
+  React.useEffect(() => {
+    if (!seesOrders && !seesKitchen) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const load = async () => {
+      const [ordersRes, kitchenRes] = await Promise.all([
+        seesOrders ? apiRequest("/orders").catch(() => null) : null,
+        seesKitchen ? apiRequest("/kitchen/pending").catch(() => null) : null,
+      ]);
+      if (cancelled) return;
+      setPendingCounts((prev) => ({
+        orders: ordersRes?.orders
+          ? ordersRes.orders.filter((o: any) => o.status === "PENDING" || o.status === "PREPARING").length
+          : prev.orders,
+        kitchen: kitchenRes?.items
+          ? new Set(
+              kitchenRes.items
+                .filter((i: any) => i.status === "PENDING" || i.status === "PREPARING")
+                .map((i: any) => i.order?.id)
+            ).size
+          : prev.kitchen,
+      }));
+    };
+
+    // Varios avisos seguidos se agrupan en una sola consulta
+    const refresh = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(load, 400);
+    };
+
+    load();
+    const events = ["new-order", "order-status-updated", "order-cancelled", "kitchen-item-status-updated"];
+    events.forEach((e) => socket?.on(e, refresh));
+
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      events.forEach((e) => socket?.off(e, refresh));
+    };
+  }, [socket, seesOrders, seesKitchen]);
 
   if (!user) return <>{children}</>;
+
+  const badgeFor = (to: string) => (to === "/orders" ? pendingCounts.orders : to === "/kitchen" ? pendingCounts.kitchen : 0);
 
   const links = [
     {
@@ -135,18 +190,18 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     },
     {
       to: "/admin/restaurants",
-      label: "SuperAdmin SaaS",
+      label: "Administración",
       icon: Shield,
       visible: user.role === "SUPER_ADMIN",
       subLinks: [
-        { to: "/admin/restaurants?tab=restaurants", label: "Restaurantes (Tenants)" },
+        { to: "/admin/restaurants?tab=restaurants", label: "Restaurantes" },
         { to: "/admin/restaurants?tab=approvals", label: "Aprobación de Locales" },
-        { to: "/admin/restaurants?tab=saas_categories", label: "Categorías SaaS" },
+        { to: "/admin/restaurants?tab=saas_categories", label: "Categorías" },
         { to: "/admin/restaurants?tab=delivery", label: "Configuración de Tarifas" },
-        { to: "/admin/restaurants?tab=wallet", label: "Wallet Conductores" },
+        { to: "/admin/restaurants?tab=wallet", label: "Saldo de Motorizados" },
         { to: "/admin/restaurants?tab=saas_customers", label: "Clientes & Plus" },
-        { to: "/admin/restaurants?tab=saas_plans", label: "Planes SaaS" },
-        { to: "/admin/restaurants?tab=saas_orders", label: "Pedidos SaaS" },
+        { to: "/admin/restaurants?tab=saas_plans", label: "Planes y Recargas" },
+        { to: "/admin/restaurants?tab=saas_orders", label: "Todos los Pedidos" },
         { to: "/admin/restaurants?tab=emails", label: "Correos & Gmail API" },
       ]
     },
@@ -155,6 +210,12 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       label: "Reparto",
       icon: Truck,
       visible: user.role === "MOTORIZADO",
+    },
+    {
+      to: "/restaurants",
+      label: "Restaurantes",
+      icon: Utensils,
+      visible: user.role === "CUSTOMER",
     },
     {
       to: "/customer/dashboard",
@@ -215,6 +276,11 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 >
                   <Icon size={18} />
                   <span>{link.label}</span>
+                  {badgeFor(link.to) > 0 && (
+                    <span className="pos-sidebar-badge" title="Pedidos por atender">
+                      {badgeFor(link.to) > 99 ? "99+" : badgeFor(link.to)}
+                    </span>
+                  )}
                 </Link>
                 
                 {/* Submenus if present and parent is active */}
@@ -260,7 +326,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   };
 
   return (
-    <div style={{ display: "flex", height: "100vh", width: "100vw", overflow: "hidden", backgroundColor: "var(--bg-primary)" }}>
+    <div style={{ display: "flex", height: "100vh", width: "100%", overflow: "hidden", backgroundColor: "var(--bg-primary)" }}>
       <KitchenNotificationManager />
 
       {/* Left Sidebar navigation (Desktop) */}
@@ -358,6 +424,7 @@ function App() {
     <Router>
       <AuthProvider>
         <SocketProvider>
+          <AppDialogHost />
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<LandingExperience />} />

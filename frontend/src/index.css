@@ -261,8 +261,12 @@ button, input, select, textarea {
     overflow: hidden !important;
   }
 
+  .mobile-column-stack > * {
+    min-width: 0;
+  }
+
   .mobile-column-stack {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: minmax(0, 1fr) !important;
     flex-direction: column !important;
     gap: 20px !important;
   }
@@ -636,7 +640,7 @@ button, input, select, textarea {
 /* Media Query: Small Mobile Devices (< 480px) */
 @media (max-width: 480px) {
   .mobile-grid-1 {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: minmax(0, 1fr) !important;
   }
   .mobile-p-sm {
     padding: 10px !important;
@@ -4434,7 +4438,7 @@ button, input, select, textarea {
 /* Owner menu on phones: categories above the dishes, buttons easy to touch */
 @media (max-width: 768px) {
   .menu-layout {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: minmax(0, 1fr) !important;
     gap: 16px !important;
   }
   .menu-layout .glass-card {
@@ -4450,7 +4454,7 @@ button, input, select, textarea {
 /* Report panels stack in one column on phones and small tablets */
 @media (max-width: 900px) {
   .reports-grid {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: minmax(0, 1fr) !important;
   }
 }
 
@@ -4481,5 +4485,199 @@ button, input, select, textarea {
   }
   button:not(.leaflet-container button) {
     min-width: 40px;
+  }
+}
+
+/* Delivery map picker: bigger touch targets and taller map on phones */
+.location-picker-search-input::placeholder {
+  color: #6b7280;
+}
+
+.location-picker-search-input:focus {
+  border-color: #111827 !important;
+  box-shadow: 0 0 0 2px rgba(17, 24, 39, 0.15);
+}
+
+@media (max-width: 640px) {
+  .location-picker-map-area {
+    min-height: 52vh;
+  }
+
+  .location-picker-search-input {
+    font-size: 16px !important;
+    padding-top: 11px !important;
+    padding-bottom: 11px !important;
+  }
+
+  .location-picker-btn {
+    min-height: 44px !important;
+    height: auto !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+    font-size: 14px !important;
+  }
+}
+
+/* Kitchen bell: on desktop it sits next to the sidebar so it never covers "Enviar a Cocina" or "Cobrar" */
+@media (min-width: 769px) {
+  .floating-kitchen-bell-container {
+    right: auto !important;
+    left: 260px !important;
+    bottom: 20px !important;
+  }
+
+  .floating-kitchen-bell-container .kitchen-bell-drawer {
+    right: auto !important;
+    left: 0 !important;
+  }
+}
+
+/* Landing: "Iniciar sesión" for anyone who already has an account */
+.ge-nav-links a.ge-login-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 20px;
+  color: #ffffff;
+  background: #111111;
+  border-radius: 999px;
+  font-size: 14px;
+}
+
+.ge-nav-links a.ge-login-link:hover {
+  color: #ffffff;
+  background: #333333;
+}
+
+/* Contador de pedidos por atender en el menu lateral */
+.pos-sidebar-badge {
+  margin-left: auto;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background-color: #dc2626;
+  color: #ffffff;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+}
+
+/* Cuadros propios de aviso, confirmacion y codigo (reemplazan los del navegador) */
+.app-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background-color: rgba(17, 24, 39, 0.55);
+}
+
+.app-dialog {
+  width: 100%;
+  max-width: 400px;
+  padding: 22px;
+  border-radius: 16px;
+  background-color: #ffffff;
+  color: #111827;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+}
+
+.app-dialog-message {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.app-dialog-input {
+  width: 100%;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid #9ca3af;
+  border-radius: 10px;
+  background-color: #ffffff;
+  color: #111827;
+  font-size: 16px;
+}
+
+.app-dialog-input.numeric {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 8px;
+  text-align: center;
+}
+
+.app-dialog-input:focus {
+  outline: none;
+  border-color: #111827;
+  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.12);
+}
+
+.app-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.app-dialog-btn {
+  min-height: 44px;
+  padding: 0 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.app-dialog-btn.primary {
+  border: 1px solid #111827;
+  background-color: #111827;
+  color: #ffffff;
+}
+
+.app-dialog-btn.secondary {
+  border: 1px solid #d1d5db;
+  background-color: #ffffff;
+  color: #111827;
+}
+
+@media (max-width: 480px) {
+  .app-dialog-actions { flex-direction: column-reverse; }
+  .app-dialog-btn { width: 100%; }
+}
+
+/* Panel del motorizado en celular: pestañas en 2 columnas y tarjetas sin desbordar */
+@media (max-width: 640px) {
+  .scrollable-tabs.delivery-tabs {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px !important;
+    padding-bottom: 4px !important;
+  }
+  .scrollable-tabs.delivery-tabs button {
+    white-space: normal !important;
+    min-height: 44px;
+    padding: 8px 6px !important;
+    font-size: 13px !important;
+    line-height: 1.25;
+  }
+}
+
+/* Panel del motorizado: menos margen lateral en celular */
+@media (max-width: 640px) {
+  .delivery-page {
+    padding: 16px !important;
+  }
+}
+
+/* Columnas apiladas en celular: ningun hijo se ensancha mas que la pantalla */
+@media (max-width: 768px) {
+  .menu-layout > * {
+    min-width: 0;
   }
 }
