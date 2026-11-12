@@ -285,3 +285,57 @@ Se corre completo antes de desplegar y otra vez después, ya con la dirección p
 2. Las ventanas emergentes (cobro, formularios) caben en pantalla.
 
 Resultado esperado: todos los pasos pasan. Cualquier paso que falle se anota con su número y vuelve a la fase que corresponde.
+
+---
+
+## Fase 8 — Prueba en celular del 12 de noviembre (para el sabado)
+
+Salio de probar el sistema en un celular real (iPhone, 390 px de ancho) por la red local. Orden sugerido: 8.1, 8.2, 8.3 y al final 8.4.
+
+### 8.1 Sesion y boton atras del navegador
+
+| # | Tarea | Tamano | Listo cuando |
+|---|-------|--------|--------------|
+| 8.1.1 | Revisar que pasa con atras / adelante estando dentro de una cuenta | S | Queda escrito el comportamiento esperado: con sesion abierta, atras no muestra el login; con sesion cerrada, adelante no vuelve a entrar |
+| 8.1.2 | Al cerrar sesion, limpiar el historial de navegacion de la cuenta (`replace` en vez de `push`) | S | Cerrar sesion, tocar atras y adelante: siempre queda en el login |
+| 8.1.3 | Si alguien abre `/login` con sesion activa, mandarlo a su panel | S | No se ve el formulario de login estando dentro |
+
+### 8.2 Todo en tiempo real
+
+Regla: ninguna pantalla debe necesitar recargar. Cada accion avisa por socket a todos los que la ven.
+
+| # | Tarea | Tamano | Listo cuando |
+|---|-------|--------|--------------|
+| 8.2.1 | Hacer la lista de acciones y a quien deben avisar (pedido creado, aceptado, en cocina, listo, tomado por motorizado, en camino, entregado, cancelado, recarga aprobada) | S | Tabla accion → evento → pantallas que escuchan |
+| 8.2.2 | Motorizado: al tomar un pedido, el saldo de la billetera baja al instante y el pedido sale de "disponibles" para los demas | M | Dos motorizados abiertos: uno toma el pedido y al otro le desaparece sin recargar |
+| 8.2.3 | Restaurante: Pedidos, Cocina, Caja y Reportes se actualizan solos | M | Cambiar un pedido en una ventana y verlo cambiar en la otra |
+| 8.2.4 | Cliente: seguimiento del pedido y "mis pedidos" se actualizan solos | S | Cada cambio de estado aparece sin tocar nada |
+| 8.2.5 | Administrador: recargas, pedidos y saldos se actualizan solos | S | Una recarga pedida aparece en la bandeja sin recargar |
+| 8.2.6 | Reconexion: al volver la senal o desbloquear el celular, volver a pedir los datos | S | Apagar y prender el Wi-Fi del celular: la pantalla queda al dia |
+
+### 8.3 Pedir de nuevo, editable
+
+Hoy "pedir de nuevo" debe llevar al cliente al carrito con lo mismo que pidio, para que quite o agregue algo y confirme.
+
+| # | Tarea | Tamano | Listo cuando |
+|---|-------|--------|--------------|
+| 8.3.1 | "Pedir de nuevo" carga el carrito del restaurante con los mismos platos, variantes y cantidades | M | Se abre el carrito lleno, sin enviar nada todavia |
+| 8.3.2 | El cliente puede quitar, sumar o cambiar cantidades antes de confirmar | S | Quitar una bebida y pedir: llega el pedido sin esa bebida |
+| 8.3.3 | Si un plato ya no existe o cambio de precio, avisar y usar el precio actual | S | Mensaje claro; nunca se cobra el precio viejo |
+| 8.3.4 | Recordar direccion y forma de pago del pedido anterior, pero dejar cambiarlas | S | Vienen puestas y se pueden editar |
+
+### 8.4 Pantallas que se ven mal en celular
+
+| # | Pantalla | Problema visto | Tamano |
+|---|----------|----------------|--------|
+| 8.4.1 | Motorizado, pedido en curso | La tarjeta se sale por la derecha: se corta "Pagas en el local", "Cobras al cliente", la observacion y el boton "Entregar con codigo del cliente" | M |
+| 8.4.2 | Motorizado, cabecera del pedido | Se corta "Ganancia" y el boton "Google Maps" | S |
+| 8.4.3 | Ajustes, "Agregar nuevo personal" | La ventana se corta arriba y los botones de abajo quedan tapados por la barra del navegador | S |
+| 8.4.4 | Catalogo, mapa de entrega | El mapa sale gris, solo carga una esquina (falta recalcular el tamano al mostrarse) | S |
+| 8.4.5 | Codigos QR de mesas | Titulo aplastado, botones de mesa con texto encimado, la tarjeta del QR cortada | M |
+| 8.4.6 | Menu lateral | El nombre del usuario y "cerrar sesion" quedan tapados por la barra del navegador (usar alto real de pantalla) | S |
+| 8.4.7 | Cocina, historial | La tabla se corta por la izquierda; pasar a tarjetas en celular | S |
+| 8.4.8 | Todas las ventanas emergentes | Revisar que ninguna quede mas alta que la pantalla y que siempre se pueda llegar a los botones | M |
+| 8.4.9 | Mas capturas que mande Deyvi | Se agregan aqui conforme lleguen | — |
+
+Listo cuando: cada pantalla se prueba en el celular real (no solo en el navegador de la computadora) con las tres cuentas, sin nada cortado ni tapado.
