@@ -180,6 +180,7 @@ export const Orders: React.FC = () => {
         <head>
           <title>Comanda - GoEats</title>
           <style>
+            @page { margin: 0; }
             @media print {
               body { margin: 0; padding: 10px; font-family: monospace; color: #000; width: 80mm; }
             }
