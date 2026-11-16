@@ -489,6 +489,14 @@ SISTEMA ACTUAL (Single-Tenant)          SISTEMA NUEVO (Multi-Tenant SaaS)
 
 ## 📝 Historial de Cambios
 
+### v0.7.17 — 2026-11-16 (Sesión, marca, landing e ingreso)
+- ✅ **Límite de sesión.** Todas las sesiones duran 8 horas; al cerrar sesión el token queda anulado en el servidor; en el navegador la sesión se cierra tras 1 hora sin uso.
+- ✅ **Colores de marca** en las pantallas internas y nueva landing (detalle en `docs/MANUAL_DE_MARCA_FRONTEND.md`).
+- ✅ **Un solo inicio de sesión para todos.** Clientes, dueños, personal del restaurante, motorizados y administrador entran por la misma pantalla; cada uno va a su panel según su rol. Ya no hay que elegir el perfil antes.
+- ✅ **Registro por pasos.** Primero el tipo de cuenta (si no viene del enlace), luego nombre y correo, contacto (celular y cédula o RUC), vehículo o datos del local según el rol, y al final usuario y contraseña. Después de cada paso sale un cuadro "¿Tus datos están bien?" con lo escrito y los botones "Corregir" y "Sí, continuar". Cada paso valida con las mismas reglas del servidor (`utils/accountValidation.ts`: cédula, RUC, correo, teléfono, usuario y contraseña de 8 caracteres con letras y números).
+- ✅ **Pantalla de ingreso nueva** (`pages/Auth.tsx`, `styles/auth.css`). Web: panel amarillo de marca con la ilustración del repartidor y el formulario a la derecha. Celular: solo el formulario a pantalla completa, campos de 52 px y letra de 16 px para que el iPhone no haga zoom. Repartidor y restaurante terminan en "Solicitud enviada" en lugar de un `alert`. Mensajes del servidor en inglés traducidos.
+- 📝 Los accesos de prueba (solo en desarrollo) usan usuarios `owner`, `cajero`, etc. con contraseña igual al usuario; en la base compartida esas cuentas no existen, así que dicen "Usuario o contraseña incorrectos". Las cuentas demo reales están en `practicas/credenciales-demo.txt`.
+
 ### v0.7.16 — 2026-11-10 (Arreglos del recorrido de demo)
 - ✅ **Pedido duplicado.** Si el envío tardaba y se pulsaba dos veces "Enviar a Cocina", el pedido se guardaba dos veces. El botón ahora se bloquea y muestra "Enviando..." hasta que el servidor responde. Falta el rechazo del duplicado en el servidor.
 - ✅ **Campana de avisos.** En computadora tapaba "Enviar a Cocina" y "Cobrar". Ahora va junto al menú lateral.
