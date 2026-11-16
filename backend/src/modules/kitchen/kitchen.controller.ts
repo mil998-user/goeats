@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { prisma } from "../../config/database";
 import { OrderItemStatus, OrderStatus } from "@prisma/client";
 import { canEditOrder, isTransferUnverified } from "../../utils/orderRules";
+import { notifyDeliveryBoard } from "../../config/realtime";
 
 export async function getPendingKitchenItems(req: Request, res: Response, next: NextFunction) {
   try {
@@ -156,6 +157,7 @@ export async function updateItemStatus(req: Request, res: Response, next: NextFu
     // Notify real-time clients (POS and Kitchen screens)
     const io = req.app.get("io");
     if (io) {
+      notifyDeliveryBoard(io);
       io.to(`restaurant-${restaurantId}`).emit("kitchen-item-status-updated", {
         item: updatedItem,
         order: freshOrder,

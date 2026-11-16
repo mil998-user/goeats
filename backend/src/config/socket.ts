@@ -3,6 +3,7 @@ import { Server, Socket } from "socket.io";
 import { prisma } from "./database";
 import { getSessionUser, TokenPayload } from "../middlewares/auth";
 import { ADMIN_ROOM } from "../modules/delivery/dispatch";
+import { DRIVERS_ROOM, userRoom } from "./realtime";
 
 async function canJoinOrder(user: TokenPayload, orderId: number) {
   const order = await prisma.order.findUnique({
@@ -44,6 +45,11 @@ export function setupSocket(io: Server) {
     // The restaurant room comes from the token, clients can't pick one
     if (isRestaurantStaff && user.restaurantId) {
       socket.join(`restaurant-${user.restaurantId}`);
+    }
+    // Avisos personales (saldo, recargas) y lista de pedidos para repartir
+    socket.join(userRoom(user.userId));
+    if (user.role === Role.MOTORIZADO) {
+      socket.join(DRIVERS_ROOM);
     }
     // Alerts for the administrator, such as a ready delivery that nobody took
     if (user.role === Role.SUPER_ADMIN) {

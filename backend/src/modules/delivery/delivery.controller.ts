@@ -16,6 +16,7 @@ import { calculateShippingCost, getShippingDistanceKm } from "../../utils/shippi
 import { readReason } from "./deliveryIncidents.controller";
 import { getDriverAverages } from "../ratings/ratings.controller";
 import { getDispatchView } from "./dispatch";
+import { notifyDeliveryBoard, notifyWallet } from "../../config/realtime";
 
 const MAX_PIN_ATTEMPTS = 5;
 const pinAttempts = new AttemptLimiter(MAX_PIN_ATTEMPTS, 15 * 60 * 1000);
@@ -301,12 +302,14 @@ export async function takeOrder(req: Request, res: Response, next: NextFunction)
     // Notify POS real-time clients that order has been taken
     const io = req.app.get("io");
     if (io) {
+      notifyDeliveryBoard(io);
       io.to(`restaurant-${order.restaurantId}`).to(`order-${order.id}`).emit("order-status-updated", {
         orderId: order.id,
         status: OrderStatus.DELIVERING,
         driverName: driver.name,
       });
     }
+    notifyWallet(io, userId);
 
     // Disparar correos a Repartidor y Cliente (Sección 2 y 3 del Plan)
     (async () => {
@@ -466,11 +469,13 @@ export async function completeDelivery(req: Request, res: Response, next: NextFu
     // Notify POS
     const io = req.app.get("io");
     if (io) {
+      notifyDeliveryBoard(io);
       io.to(`restaurant-${order.restaurantId}`).to(`order-${order.id}`).emit("order-status-updated", {
         orderId: order.id,
         status: OrderStatus.DELIVERED,
       });
     }
+    notifyWallet(io, userId);
 
     // Notificar al cliente: Pedido entregado (Sección 2 del Plan)
     if (order.customer?.email) {
@@ -517,6 +522,39 @@ export async function addObservation(req: Request, res: Response, next: NextFunc
 }
 
 // 5. Get active orders for current driver
+// Historial de entregas del motorizado: ultimas 50 terminadas o canceladas, sin datos privados del cliente
+export async function getDriverDeliveryHistory(req: Request, res: Response, next: NextFunction) {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const orders = await prisma.order.findMany({
+      where: {
+        deliveryDriverId: userId,
+        status: { in: [OrderStatus.DELIVERED, OrderStatus.CANCELLED] },
+      },
+      orderBy: { updatedAt: "desc" },
+      take: 50,
+      select: {
+        id: true,
+        status: true,
+        total: true,
+        shippingCost: true,
+        tipAmount: true,
+        paymentMethodString: true,
+        updatedAt: true,
+        restaurant: { select: { name: true } },
+      },
+    });
+
+    return res.status(200).json({ success: true, orders });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function getDriverActiveOrders(req: Request, res: Response, next: NextFunction) {
   try {
     const userId = req.user?.userId;
@@ -671,6 +709,8 @@ export async function rechargeDriverWallet(req: Request, res: Response, next: Ne
 
       return { updatedUser, txLog };
     });
+
+    notifyWallet(req.app.get("io"), targetDriver.id);
 
     return res.status(200).json({
       success: true,
@@ -912,6 +952,8 @@ export async function settleDriverBalance(req: Request, res: Response, next: Nex
 
       return { updatedUser, txLog };
     });
+
+    notifyWallet(req.app.get("io"), targetDriver.id);
 
     return res.status(200).json({
       success: true,

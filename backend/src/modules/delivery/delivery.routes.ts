@@ -10,6 +10,7 @@ import {
   addObservation,
   getDriverActiveOrders,
   getDriverWalletHistory,
+  getDriverDeliveryHistory,
   rechargeDriverWallet,
   getDriversList,
   toggleDriverActive,
@@ -45,6 +46,7 @@ router.post("/no-show/:id", authorize([Role.MOTORIZADO]), reportNoShow);
 router.post("/location", authorize([Role.MOTORIZADO]), updateDriverLocation);
 router.get("/active", authorize([Role.MOTORIZADO]), getDriverActiveOrders);
 router.get("/wallet", authorize([Role.MOTORIZADO]), getDriverWalletHistory);
+router.get("/history", authorize([Role.MOTORIZADO]), getDriverDeliveryHistory);
 
 // Super Admin endpoints (Role: SUPER_ADMIN)
 router.get("/drivers", authorize([Role.SUPER_ADMIN]), getDriversList);

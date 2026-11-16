@@ -4,6 +4,7 @@ import { prisma } from "../../config/database";
 import { NotificationService } from "../notifications/notification.service";
 import { hideDeliveryPin, isOrderPaid } from "../../utils/orderRules";
 import { refundTakeCommission } from "./deliveryWallet";
+import { notifyDeliveryBoard } from "../../config/realtime";
 
 export const INCIDENT_TYPES = ["PASS", "CANCEL", "NO_SHOW", "NO_CODE"] as const;
 export type IncidentType = (typeof INCIDENT_TYPES)[number];
@@ -29,6 +30,7 @@ function readIds(req: Request) {
 
 function emitStatus(req: Request, restaurantId: number, orderId: number, payload: Record<string, unknown>) {
   const io = req.app.get("io");
+  notifyDeliveryBoard(io);
   if (io) io.to(`restaurant-${restaurantId}`).to(`order-${orderId}`).emit("order-status-updated", { orderId, ...payload });
 }
 
@@ -163,6 +165,7 @@ export async function cancelByDriver(req: Request, res: Response, next: NextFunc
     if (!result) return res.status(409).json({ success: false, message: "El pedido cambió. Actualiza la pantalla." });
 
     const io = req.app.get("io");
+    notifyDeliveryBoard(io);
     if (io) io.to(`restaurant-${order.restaurantId}`).to(`order-${order.id}`).emit("order-cancelled", { id: order.id, orderId: order.id, status: OrderStatus.CANCELLED });
     emitStatus(req, order.restaurantId, order.id, { status: OrderStatus.CANCELLED });
 

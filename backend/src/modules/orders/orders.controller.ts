@@ -7,6 +7,7 @@ import { parseAmount } from "../../utils/validation";
 import { canEditOrder, getCancelError, getStatusChangeError, hideDeliveryPin, isOrderPaid } from "../../utils/orderRules";
 import { refundTakeCommission } from "../delivery/deliveryWallet";
 import { OPEN_TABLE_STATUSES, releaseTable, resolveOrderTable } from "../../utils/tables";
+import { notifyDeliveryBoard } from "../../config/realtime";
 
 
 // Pedidos recién enviados, para no guardar dos veces el mismo si se pulsa doble o la red reintenta.
@@ -159,6 +160,7 @@ export async function createOrder(req: Request, res: Response, next: NextFunctio
     // Send real-time Socket notification to kitchen and cashiers
     const io = req.app.get("io");
     if (io) {
+      notifyDeliveryBoard(io);
       io.to(`restaurant-${restaurantId}`).emit("new-order", hideDeliveryPin(order));
       console.log(`[Socket] Emitted new-order for restaurant-${restaurantId}`);
     }
@@ -325,6 +327,7 @@ async function cancelOrderAndNotify(
   const safeOrder = hideDeliveryPin(updatedOrder);
   const io = req.app.get("io");
   if (io) {
+    notifyDeliveryBoard(io);
     io.to(`restaurant-${updatedOrder.restaurantId}`).to(`order-${order.id}`).emit("order-cancelled", safeOrder);
     io.to(`restaurant-${updatedOrder.restaurantId}`).to(`order-${order.id}`).emit("order-status-updated", safeOrder);
   }
@@ -447,6 +450,7 @@ export async function updateOrderStatus(req: Request, res: Response, next: NextF
     // Notify kitchen/front-desk
     const io = req.app.get("io");
     if (io) {
+      notifyDeliveryBoard(io);
       io.to(`restaurant-${restaurantId}`).to(`order-${id}`).emit("order-status-updated", safeOrder);
     }
 
@@ -554,6 +558,7 @@ export async function attendOrder(req: Request, res: Response, next: NextFunctio
     });
     const io = req.app.get("io");
     if (io && order) {
+      notifyDeliveryBoard(io);
       io.to(`restaurant-${restaurantId}`).emit("order-status-updated", hideDeliveryPin(order));
     }
     return res.status(200).json({ success: true, message: "Ahora atiendes este pedido.", order: order && hideDeliveryPin(order) });
@@ -713,6 +718,7 @@ export async function updateOrder(req: Request, res: Response, next: NextFunctio
     // Send real-time Socket notification to kitchen and cashiers
     const io = req.app.get("io");
     if (io) {
+      notifyDeliveryBoard(io);
       io.to(`restaurant-${restaurantId}`).to(`order-${id}`).emit("order-status-updated", hideDeliveryPin(updatedOrder));
       console.log(`[Socket] Emitted order-status-updated for restaurant-${restaurantId}`);
     }

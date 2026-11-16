@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { prisma } from "../../config/database";
 import { safeDeleteUser } from "../auth/user-cleanup.service";
 import { parseAmount, simulatedPaymentsAllowed } from "../../utils/validation";
+import { notifySaasOrder, notifyWallet } from "../../config/realtime";
 
 const PURCHASE_ROLE_BY_TYPE: Record<string, string> = {
   RECHARGE: "MOTORIZADO",
@@ -107,6 +108,7 @@ export async function submitSaaSOrder(req: Request, res: Response, next: NextFun
         }
       });
 
+      notifySaasOrder(req.app.get("io"), userId);
       return res.status(201).json({ success: true, message: "Solicitud registrada. Pendiente de aprobación por SuperAdmin.", order });
     }
 
@@ -204,6 +206,8 @@ export async function approveSaaSOrder(req: Request, res: Response, next: NextFu
       return res.status(400).json({ success: false, message: "El pedido ya no está pendiente" });
     }
 
+    notifySaasOrder(req.app.get("io"), order.userId);
+    notifyWallet(req.app.get("io"), order.userId);
     return res.status(200).json({ success: true, message: "Pedido aprobado con éxito y beneficio otorgado." });
   } catch (error) {
     next(error);
@@ -236,6 +240,7 @@ export async function rejectSaaSOrder(req: Request, res: Response, next: NextFun
       data: { status: "REJECTED" }
     });
 
+    notifySaasOrder(req.app.get("io"), order.userId);
     return res.status(200).json({ success: true, message: "Pedido rechazado con éxito." });
   } catch (error) {
     next(error);
