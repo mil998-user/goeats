@@ -213,8 +213,8 @@ export const EmailNotificationsTab: React.FC = () => {
               <div style={{
                 padding: "8px",
                 borderRadius: "10px",
-                background: "rgba(255, 71, 87, 0.1)",
-                color: "#ff4757"
+                background: "color-mix(in srgb, var(--brand-red) 10%, transparent)",
+                color: "var(--brand-red)"
               }}>
                 <Mail size={22} />
               </div>
@@ -238,9 +238,9 @@ export const EmailNotificationsTab: React.FC = () => {
               borderRadius: "9999px",
               fontSize: "13px",
               fontWeight: 700,
-              backgroundColor: stats?.gmailConfig.isReady ? "rgba(16, 185, 129, 0.1)" : "rgba(245, 158, 11, 0.1)",
-              color: stats?.gmailConfig.isReady ? "#10b981" : "#f59e0b",
-              border: stats?.gmailConfig.isReady ? "1px solid rgba(16, 185, 129, 0.3)" : "1px solid rgba(245, 158, 11, 0.3)"
+              backgroundColor: stats?.gmailConfig.isReady ? "rgba(16, 185, 129, 0.1)" : "color-mix(in srgb, var(--brand-orange) 10%, transparent)",
+              color: stats?.gmailConfig.isReady ? "#1e8f4e" : "var(--brand-orange)",
+              border: stats?.gmailConfig.isReady ? "1px solid rgba(16, 185, 129, 0.3)" : "1px solid color-mix(in srgb, var(--brand-orange) 30%, transparent)"
             }}>
               {stats?.gmailConfig.isOAuthReady ? (
                 <>
@@ -289,9 +289,9 @@ export const EmailNotificationsTab: React.FC = () => {
             marginTop: "20px",
             padding: "20px",
             borderRadius: "12px",
-            backgroundColor: "#0f172a",
+            backgroundColor: "var(--brand-black)",
             border: "1px solid rgba(255, 255, 255, 0.15)",
-            color: "#e2e8f0",
+            color: "var(--brand-cream)",
             fontSize: "13px",
             lineHeight: 1.6
           }}>
@@ -299,7 +299,7 @@ export const EmailNotificationsTab: React.FC = () => {
               <div style={{
                 padding: "12px 16px",
                 backgroundColor: "rgba(16, 185, 129, 0.15)",
-                border: "1px solid #10b981",
+                border: "1px solid #1e8f4e",
                 borderRadius: "8px",
                 color: "#34d399",
                 fontWeight: "600",
@@ -311,11 +311,11 @@ export const EmailNotificationsTab: React.FC = () => {
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(320px, 100%), 1fr))", gap: "20px" }}>
               {/* OPCION 1: OAUTH2 GMAIL API */}
-              <div style={{ padding: "16px", backgroundColor: "#1e293b", borderRadius: "10px", border: "1px solid #334155" }}>
-                <h4 style={{ margin: "0 0 8px 0", color: "#38bdf8", fontSize: "14px", fontWeight: "700" }}>
+              <div style={{ padding: "16px", backgroundColor: "var(--brand-black)", borderRadius: "10px", border: "1px solid #333333" }}>
+                <h4 style={{ margin: "0 0 8px 0", color: "#ffca26", fontSize: "14px", fontWeight: "700" }}>
                   Opción 1: Activar Gmail API con OAuth2 (Oficial)
                 </h4>
-                <p style={{ fontSize: "13px", color: "#94a3b8", margin: "0 0 12px 0" }}>
+                <p style={{ fontSize: "13px", color: "#a6a6a6", margin: "0 0 12px 0" }}>
                   Conecta directamente con la API REST de Google sobre HTTPS (puerto 443).
                 </p>
 
@@ -341,7 +341,7 @@ export const EmailNotificationsTab: React.FC = () => {
                     1. Clic aquí para Autorizar con tu Gmail (eatsgo015@gmail.com) <ExternalLink size={13} />
                   </a>
 
-                  <p style={{ fontSize: "13px", color: "#cbd5e1", margin: 0 }}>
+                  <p style={{ fontSize: "13px", color: "#f3e8cc", margin: 0 }}>
                     Configura las credenciales OAuth en el entorno del backend (<code>GMAIL_CLIENT_ID</code> y <code>GMAIL_CLIENT_SECRET</code>). En OAuth Playground, usa esas credenciales, autoriza Gmail y copia el <strong>Refresh token</strong>.
                   </p>
 
@@ -355,8 +355,8 @@ export const EmailNotificationsTab: React.FC = () => {
                         flex: 1,
                         padding: "8px 12px",
                         borderRadius: "8px",
-                        border: "1px solid #475569",
-                        backgroundColor: "#0f172a",
+                        border: "1px solid #595959",
+                        backgroundColor: "var(--brand-black)",
                         color: "#ffffff",
                         fontSize: "13px"
                       }}
@@ -366,7 +366,7 @@ export const EmailNotificationsTab: React.FC = () => {
                       disabled={savingConfig || !refreshTokenInput.trim()}
                       style={{
                         padding: "8px 14px",
-                        backgroundColor: "#10b981",
+                        backgroundColor: "#1e8f4e",
                         color: "#ffffff",
                         border: "none",
                         borderRadius: "8px",
@@ -383,11 +383,11 @@ export const EmailNotificationsTab: React.FC = () => {
               </div>
 
               {/* OPCION 2: CONTRASEÑA DE APLICACION (GMAIL SMTP) */}
-              <div style={{ padding: "16px", backgroundColor: "#1e293b", borderRadius: "10px", border: "1px solid #334155" }}>
-                <h4 style={{ margin: "0 0 8px 0", color: "#f59e0b", fontSize: "14px", fontWeight: "700" }}>
+              <div style={{ padding: "16px", backgroundColor: "var(--brand-black)", borderRadius: "10px", border: "1px solid #333333" }}>
+                <h4 style={{ margin: "0 0 8px 0", color: "var(--brand-orange)", fontSize: "14px", fontWeight: "700" }}>
                   Opción 2: Usar Contraseña de Aplicación (Gmail SMTP)
                 </h4>
-                <p style={{ fontSize: "13px", color: "#94a3b8", margin: "0 0 12px 0" }}>
+                <p style={{ fontSize: "13px", color: "#a6a6a6", margin: "0 0 12px 0" }}>
                   Si prefieres SMTP con SSL en puerto 465 mediante contraseña de 16 caracteres.
                 </p>
 
@@ -402,9 +402,9 @@ export const EmailNotificationsTab: React.FC = () => {
                       justifyContent: "center",
                       gap: "6px",
                       padding: "10px 14px",
-                      backgroundColor: "rgba(245, 158, 11, 0.15)",
-                      color: "#fbbf24",
-                      border: "1px solid rgba(245, 158, 11, 0.3)",
+                      backgroundColor: "color-mix(in srgb, var(--brand-orange) 15%, transparent)",
+                      color: "var(--brand-yellow)",
+                      border: "1px solid color-mix(in srgb, var(--brand-orange) 30%, transparent)",
                       borderRadius: "8px",
                       fontWeight: "700",
                       fontSize: "13px",
@@ -414,7 +414,7 @@ export const EmailNotificationsTab: React.FC = () => {
                     1. Crear Contraseña de Aplicación en Google <ExternalLink size={13} />
                   </a>
 
-                  <p style={{ fontSize: "13px", color: "#cbd5e1", margin: 0 }}>
+                  <p style={{ fontSize: "13px", color: "#f3e8cc", margin: 0 }}>
                     Inicia sesión con <code>eatsgo015@gmail.com</code>, crea una contraseña con nombre "GoEats" y copia las 16 letras.
                   </p>
 
@@ -428,8 +428,8 @@ export const EmailNotificationsTab: React.FC = () => {
                         flex: 1,
                         padding: "8px 12px",
                         borderRadius: "8px",
-                        border: "1px solid #475569",
-                        backgroundColor: "#0f172a",
+                        border: "1px solid #595959",
+                        backgroundColor: "var(--brand-black)",
                         color: "#ffffff",
                         fontSize: "13px"
                       }}
@@ -439,8 +439,8 @@ export const EmailNotificationsTab: React.FC = () => {
                       disabled={savingConfig || !appPasswordInput.trim()}
                       style={{
                         padding: "8px 14px",
-                        backgroundColor: "#f59e0b",
-                        color: "#0f172a",
+                        backgroundColor: "var(--brand-orange)",
+                        color: "var(--brand-black)",
                         border: "none",
                         borderRadius: "8px",
                         fontWeight: "700",
@@ -470,16 +470,16 @@ export const EmailNotificationsTab: React.FC = () => {
             <div style={{ fontSize: "24px", fontWeight: 800, marginTop: "4px" }}>{stats?.total ?? 0}</div>
           </div>
           <div style={{ padding: "16px", background: "rgba(16, 185, 129, 0.05)", borderRadius: "12px", border: "1px solid rgba(16, 185, 129, 0.2)" }}>
-            <div style={{ fontSize: "13px", color: "#10b981", fontWeight: 600 }}>ENVIADOS CON ÉXITO</div>
-            <div style={{ fontSize: "24px", fontWeight: 800, color: "#10b981", marginTop: "4px" }}>{stats?.sent ?? 0}</div>
+            <div style={{ fontSize: "13px", color: "#1e8f4e", fontWeight: 600 }}>ENVIADOS CON ÉXITO</div>
+            <div style={{ fontSize: "24px", fontWeight: 800, color: "#1e8f4e", marginTop: "4px" }}>{stats?.sent ?? 0}</div>
           </div>
-          <div style={{ padding: "16px", background: "rgba(239, 68, 68, 0.05)", borderRadius: "12px", border: "1px solid rgba(239, 68, 68, 0.2)" }}>
-            <div style={{ fontSize: "13px", color: "#ef4444", fontWeight: 600 }}>FALLIDOS / ERRORES</div>
-            <div style={{ fontSize: "24px", fontWeight: 800, color: "#ef4444", marginTop: "4px" }}>{stats?.failed ?? 0}</div>
+          <div style={{ padding: "16px", background: "color-mix(in srgb, var(--brand-red) 5%, transparent)", borderRadius: "12px", border: "1px solid color-mix(in srgb, var(--brand-red) 20%, transparent)" }}>
+            <div style={{ fontSize: "13px", color: "var(--brand-red)", fontWeight: 600 }}>FALLIDOS / ERRORES</div>
+            <div style={{ fontSize: "24px", fontWeight: 800, color: "var(--brand-red)", marginTop: "4px" }}>{stats?.failed ?? 0}</div>
           </div>
-          <div style={{ padding: "16px", background: "rgba(59, 130, 246, 0.05)", borderRadius: "12px", border: "1px solid rgba(59, 130, 246, 0.2)" }}>
-            <div style={{ fontSize: "13px", color: "#3b82f6", fontWeight: 600 }}>PROTECCIÓN DUPLICADOS</div>
-            <div style={{ fontSize: "13px", fontWeight: 700, color: "#3b82f6", marginTop: "8px" }}>Activa (EventId Lock)</div>
+          <div style={{ padding: "16px", background: "rgba(243, 232, 204, 0.3)", borderRadius: "12px", border: "1px solid rgba(243, 232, 204, 1.0)" }}>
+            <div style={{ fontSize: "13px", color: "#000000", fontWeight: 600 }}>PROTECCIÓN DUPLICADOS</div>
+            <div style={{ fontSize: "13px", fontWeight: 700, color: "#000000", marginTop: "8px" }}>Activa (EventId Lock)</div>
           </div>
         </div>
       </div>
@@ -538,12 +538,12 @@ export const EmailNotificationsTab: React.FC = () => {
               padding: "10px 20px",
               borderRadius: "10px",
               border: "none",
-              backgroundColor: "#ff4757",
+              backgroundColor: "var(--brand-red)",
               color: "#ffffff",
               fontWeight: 700,
               fontSize: "13px",
               cursor: sendingTest ? "not-allowed" : "pointer",
-              boxShadow: "0 4px 12px rgba(255, 71, 87, 0.3)"
+              boxShadow: "0 4px 12px color-mix(in srgb, var(--brand-red) 30%, transparent)"
             }}
           >
             {sendingTest ? <RefreshCw size={14} className="animate-spin" /> : <Send size={14} />}
@@ -557,9 +557,9 @@ export const EmailNotificationsTab: React.FC = () => {
             padding: "10px 14px",
             borderRadius: "8px",
             fontSize: "13px",
-            backgroundColor: testMessage.type === "success" ? "rgba(16, 185, 129, 0.1)" : "rgba(239, 68, 68, 0.1)",
-            color: testMessage.type === "success" ? "#10b981" : "#ef4444",
-            border: testMessage.type === "success" ? "1px solid rgba(16, 185, 129, 0.2)" : "1px solid rgba(239, 68, 68, 0.2)"
+            backgroundColor: testMessage.type === "success" ? "rgba(16, 185, 129, 0.1)" : "color-mix(in srgb, var(--brand-red) 10%, transparent)",
+            color: testMessage.type === "success" ? "#1e8f4e" : "var(--brand-red)",
+            border: testMessage.type === "success" ? "1px solid rgba(16, 185, 129, 0.2)" : "1px solid color-mix(in srgb, var(--brand-red) 20%, transparent)"
           }}>
             {testMessage.text}
           </div>
@@ -649,9 +649,9 @@ export const EmailNotificationsTab: React.FC = () => {
                   gap: "6px",
                   padding: "8px 12px",
                   borderRadius: "8px",
-                  border: "1px solid rgba(239, 68, 68, 0.3)",
-                  backgroundColor: "rgba(239, 68, 68, 0.15)",
-                  color: "#f87171",
+                  border: "1px solid color-mix(in srgb, var(--brand-red) 30%, transparent)",
+                  backgroundColor: "color-mix(in srgb, var(--brand-red) 15%, transparent)",
+                  color: "#d42518",
                   fontSize: "13px",
                   fontWeight: 600,
                   cursor: retryingAll ? "not-allowed" : "pointer"
@@ -723,7 +723,7 @@ export const EmailNotificationsTab: React.FC = () => {
                     </td>
                     <td style={{ padding: "12px 16px" }}>
                       <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>{log.subject}</div>
-                      <div style={{ fontSize: "13px", color: "#64748b", fontFamily: "monospace" }}>
+                      <div style={{ fontSize: "13px", color: "#737373", fontFamily: "monospace" }}>
                         {log.type} {log.eventId ? `• [${log.eventId}]` : ""}
                       </div>
                     </td>
@@ -741,7 +741,7 @@ export const EmailNotificationsTab: React.FC = () => {
                           fontSize: "13px",
                           fontWeight: 700,
                           backgroundColor: "rgba(16, 185, 129, 0.1)",
-                          color: "#10b981",
+                          color: "#1e8f4e",
                         }}>
                           <CheckCircle size={12} /> ENVIADO
                         </span>
@@ -756,15 +756,15 @@ export const EmailNotificationsTab: React.FC = () => {
                             borderRadius: "9999px",
                             fontSize: "13px",
                             fontWeight: 700,
-                            backgroundColor: "rgba(239, 68, 68, 0.1)",
-                            color: "#ef4444",
+                            backgroundColor: "color-mix(in srgb, var(--brand-red) 10%, transparent)",
+                            color: "var(--brand-red)",
                           }} title={log.error || undefined}>
                             <XCircle size={12} /> FALLÓ
                           </span>
                           {log.error && (
                             <div style={{
                               fontSize: "13px",
-                              color: "#f87171",
+                              color: "#d42518",
                               marginTop: "4px",
                               maxWidth: "200px",
                               lineHeight: 1.3,
@@ -784,8 +784,8 @@ export const EmailNotificationsTab: React.FC = () => {
                           borderRadius: "9999px",
                           fontSize: "13px",
                           fontWeight: 700,
-                          backgroundColor: "rgba(59, 130, 246, 0.1)",
-                          color: "#3b82f6",
+                          backgroundColor: "rgba(243, 232, 204, 0.6)",
+                          color: "#000000",
                         }}>
                           <Clock size={12} /> PROCESANDO
                         </span>
@@ -804,9 +804,9 @@ export const EmailNotificationsTab: React.FC = () => {
                             borderRadius: "6px",
                             fontSize: "13px",
                             fontWeight: 600,
-                            backgroundColor: "rgba(239, 68, 68, 0.1)",
-                            color: "#ef4444",
-                            border: "1px solid rgba(239, 68, 68, 0.2)",
+                            backgroundColor: "color-mix(in srgb, var(--brand-red) 10%, transparent)",
+                            color: "var(--brand-red)",
+                            border: "1px solid color-mix(in srgb, var(--brand-red) 20%, transparent)",
                             cursor: retryingId === log.id ? "not-allowed" : "pointer"
                           }}
                         >

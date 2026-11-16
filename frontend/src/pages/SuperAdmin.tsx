@@ -5,6 +5,7 @@ import { UnassignedDeliveries } from "../components/UnassignedDeliveries";
 import { StarAverage } from "../components/Stars";
 import { apiRequest } from "../utils/api";
 import { useAuth } from "../context/AuthContext";
+import { useSocket } from "../context/SocketContext";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Store,
@@ -593,6 +594,26 @@ export const SuperAdmin: React.FC = () => {
     }
   };
 
+  const { socket } = useSocket();
+
+  // Tiempo real: recargas pedidas o aprobadas y saldos de motorizados
+  useEffect(() => {
+    let timer: number | undefined;
+    const refresh = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        loadSaasOrders();
+        loadDrivers();
+      }, 400);
+    };
+    const events = ["wallet-changed", "saas-order-changed"];
+    events.forEach((name) => socket?.on(name, refresh));
+    return () => {
+      window.clearTimeout(timer);
+      events.forEach((name) => socket?.off(name, refresh));
+    };
+  }, [socket]);
+
   useEffect(() => {
     if (user?.role !== "SUPER_ADMIN") {
       navigate("/login");
@@ -804,7 +825,7 @@ export const SuperAdmin: React.FC = () => {
           <div style={{
             padding: "10px",
             borderRadius: "var(--radius-md)",
-            background: "rgba(255, 71, 87, 0.1)"
+            background: "color-mix(in srgb, var(--brand-red) 10%, transparent)"
           }}>
             <Shield size={28} color="var(--accent-primary)" />
           </div>
@@ -840,9 +861,9 @@ export const SuperAdmin: React.FC = () => {
               alignItems: "center",
               gap: "6px",
               padding: "8px 16px",
-              backgroundColor: "rgba(255, 71, 87, 0.1)",
-              border: "1px solid rgba(255, 71, 87, 0.2)",
-              color: "#b91c1c",
+              backgroundColor: "color-mix(in srgb, var(--brand-red) 10%, transparent)",
+              border: "1px solid color-mix(in srgb, var(--brand-red) 20%, transparent)",
+              color: "#d42518",
               borderRadius: "var(--radius-md)",
               cursor: "pointer",
               fontWeight: 600,
@@ -887,8 +908,8 @@ export const SuperAdmin: React.FC = () => {
             {/* Banner de alerta de solicitudes pendientes */}
             {pendingRestaurantsCount > 0 && (
               <div style={{
-                backgroundColor: "rgba(245, 158, 11, 0.12)",
-                border: "1px solid rgba(245, 158, 11, 0.35)",
+                backgroundColor: "color-mix(in srgb, var(--brand-orange) 12%, transparent)",
+                border: "1px solid color-mix(in srgb, var(--brand-orange) 35%, transparent)",
                 borderRadius: "var(--radius-md)",
                 padding: "16px 20px",
                 marginBottom: "22px",
@@ -897,14 +918,14 @@ export const SuperAdmin: React.FC = () => {
                 justifyContent: "space-between",
                 gap: "15px",
                 flexWrap: "wrap",
-                boxShadow: "0 4px 15px rgba(245, 158, 11, 0.08)"
+                boxShadow: "0 4px 15px color-mix(in srgb, var(--brand-orange) 8%, transparent)"
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
                   <div style={{
                     width: "42px",
                     height: "42px",
                     borderRadius: "50%",
-                    backgroundColor: "#f59e0b",
+                    backgroundColor: "var(--brand-orange)",
                     color: "#fff",
                     display: "flex",
                     alignItems: "center",
@@ -929,8 +950,8 @@ export const SuperAdmin: React.FC = () => {
                     padding: "9px 18px",
                     fontSize: "13px",
                     fontWeight: 600,
-                    backgroundColor: "#f59e0b",
-                    borderColor: "#d97706",
+                    backgroundColor: "var(--brand-orange)",
+                    borderColor: "#f86015",
                     color: "#fff"
                   }}
                 >
@@ -967,8 +988,8 @@ export const SuperAdmin: React.FC = () => {
                   fontWeight: 600,
                   cursor: "pointer",
                   border: "none",
-                  backgroundColor: restaurantStatusFilter === "PENDING" ? "#f59e0b" : "rgba(245, 158, 11, 0.12)",
-                  color: restaurantStatusFilter === "PENDING" ? "#fff" : "#d97706",
+                  backgroundColor: restaurantStatusFilter === "PENDING" ? "var(--brand-orange)" : "color-mix(in srgb, var(--brand-orange) 12%, transparent)",
+                  color: restaurantStatusFilter === "PENDING" ? "#fff" : "#f86015",
                   display: "flex",
                   alignItems: "center",
                   gap: "6px",
@@ -987,8 +1008,8 @@ export const SuperAdmin: React.FC = () => {
                   fontWeight: 600,
                   cursor: "pointer",
                   border: "none",
-                  backgroundColor: restaurantStatusFilter === "UNDER_REVIEW" ? "#3b82f6" : "rgba(59, 130, 246, 0.12)",
-                  color: restaurantStatusFilter === "UNDER_REVIEW" ? "#fff" : "#2563eb",
+                  backgroundColor: restaurantStatusFilter === "UNDER_REVIEW" ? "#000000" : "rgba(243, 232, 204, 0.72)",
+                  color: restaurantStatusFilter === "UNDER_REVIEW" ? "#ffca26" : "#000000",
                   display: "flex",
                   alignItems: "center",
                   gap: "6px",
@@ -1007,8 +1028,8 @@ export const SuperAdmin: React.FC = () => {
                   fontWeight: 600,
                   cursor: "pointer",
                   border: "none",
-                  backgroundColor: restaurantStatusFilter === "APPROVED" ? "#10b981" : "rgba(16, 185, 129, 0.12)",
-                  color: restaurantStatusFilter === "APPROVED" ? "#fff" : "#059669",
+                  backgroundColor: restaurantStatusFilter === "APPROVED" ? "#1e8f4e" : "rgba(16, 185, 129, 0.12)",
+                  color: restaurantStatusFilter === "APPROVED" ? "#fff" : "#1e8f4e",
                   display: "flex",
                   alignItems: "center",
                   gap: "6px",
@@ -1027,8 +1048,8 @@ export const SuperAdmin: React.FC = () => {
                   fontWeight: 600,
                   cursor: "pointer",
                   border: "none",
-                  backgroundColor: restaurantStatusFilter === "REJECTED" ? "#ef4444" : "rgba(239, 68, 68, 0.12)",
-                  color: restaurantStatusFilter === "REJECTED" ? "#fff" : "#dc2626",
+                  backgroundColor: restaurantStatusFilter === "REJECTED" ? "var(--brand-red)" : "color-mix(in srgb, var(--brand-red) 12%, transparent)",
+                  color: restaurantStatusFilter === "REJECTED" ? "#fff" : "var(--brand-red)",
                   display: "flex",
                   alignItems: "center",
                   gap: "6px",
@@ -1083,7 +1104,7 @@ export const SuperAdmin: React.FC = () => {
               <div className="glass-card" style={{
                 padding: "20px",
                 color: "var(--accent-primary)",
-                border: "1px solid rgba(255, 71, 87, 0.2)",
+                border: "1px solid color-mix(in srgb, var(--brand-red) 20%, transparent)",
                 marginBottom: "20px"
               }}>
                 {error}
@@ -1195,7 +1216,7 @@ export const SuperAdmin: React.FC = () => {
                                   {ownerUser.isActive ? (
                                     <span style={{ color: "var(--success)", fontWeight: 600, fontSize: "13px" }}>● Activo</span>
                                   ) : (
-                                    <span style={{ color: "#f59e0b", fontWeight: 600, fontSize: "13px" }}>● Inactivo</span>
+                                    <span style={{ color: "var(--brand-orange)", fontWeight: 600, fontSize: "13px" }}>● Inactivo</span>
                                   )}
                                 </div>
                                 {ownerUser.email && (
@@ -1234,8 +1255,8 @@ export const SuperAdmin: React.FC = () => {
                                 gap: "5px",
                                 padding: "5px 10px",
                                 borderRadius: "12px",
-                                backgroundColor: "rgba(245, 158, 11, 0.15)",
-                                color: "#d97706",
+                                backgroundColor: "color-mix(in srgb, var(--brand-orange) 15%, transparent)",
+                                color: "#f86015",
                                 fontSize: "13px",
                                 fontWeight: 700
                               }}>
@@ -1249,8 +1270,8 @@ export const SuperAdmin: React.FC = () => {
                                 gap: "5px",
                                 padding: "5px 10px",
                                 borderRadius: "12px",
-                                backgroundColor: "rgba(59, 130, 246, 0.15)",
-                                color: "#2563eb",
+                                backgroundColor: "rgba(243, 232, 204, 0.9)",
+                                color: "#000000",
                                 fontSize: "13px",
                                 fontWeight: 700
                               }}>
@@ -1264,8 +1285,8 @@ export const SuperAdmin: React.FC = () => {
                                 gap: "5px",
                                 padding: "5px 10px",
                                 borderRadius: "12px",
-                                backgroundColor: "rgba(239, 68, 68, 0.15)",
-                                color: "#dc2626",
+                                backgroundColor: "color-mix(in srgb, var(--brand-red) 15%, transparent)",
+                                color: "var(--brand-red)",
                                 fontSize: "13px",
                                 fontWeight: 700
                               }}>
@@ -1279,7 +1300,7 @@ export const SuperAdmin: React.FC = () => {
                                 gap: "5px",
                                 padding: "5px 10px",
                                 borderRadius: "12px",
-                                backgroundColor: "rgba(46, 213, 115, 0.15)",
+                                backgroundColor: "rgba(30, 143, 78, 0.15)",
                                 color: "var(--success)",
                                 fontSize: "13px",
                                 fontWeight: 700
@@ -1294,7 +1315,7 @@ export const SuperAdmin: React.FC = () => {
                                 gap: "5px",
                                 padding: "5px 10px",
                                 borderRadius: "12px",
-                                backgroundColor: "rgba(255, 71, 87, 0.15)",
+                                backgroundColor: "color-mix(in srgb, var(--brand-red) 15%, transparent)",
                                 color: "var(--accent-primary)",
                                 fontSize: "13px",
                                 fontWeight: 700
@@ -1323,7 +1344,7 @@ export const SuperAdmin: React.FC = () => {
                                       gap: "5px",
                                       backgroundColor: "rgba(16, 185, 129, 0.15)",
                                       border: "1px solid rgba(16, 185, 129, 0.4)",
-                                      color: "#059669",
+                                      color: "#1e8f4e",
                                       transition: "all var(--transition-fast)"
                                     }}
                                     title="Aprobar local y activar cuenta del dueño"
@@ -1344,9 +1365,9 @@ export const SuperAdmin: React.FC = () => {
                                         display: "inline-flex",
                                         alignItems: "center",
                                         gap: "4px",
-                                        backgroundColor: "rgba(59, 130, 246, 0.1)",
-                                        border: "1px solid rgba(59, 130, 246, 0.3)",
-                                        color: "#2563eb",
+                                        backgroundColor: "rgba(243, 232, 204, 0.6)",
+                                        border: "1px solid rgba(243, 232, 204, 1.0)",
+                                        color: "#000000",
                                         transition: "all var(--transition-fast)"
                                       }}
                                       title="Poner en estado de revisión"
@@ -1370,9 +1391,9 @@ export const SuperAdmin: React.FC = () => {
                                       display: "inline-flex",
                                       alignItems: "center",
                                       gap: "4px",
-                                      backgroundColor: "rgba(239, 68, 68, 0.1)",
-                                      border: "1px solid rgba(239, 68, 68, 0.3)",
-                                      color: "#dc2626",
+                                      backgroundColor: "color-mix(in srgb, var(--brand-red) 10%, transparent)",
+                                      border: "1px solid color-mix(in srgb, var(--brand-red) 30%, transparent)",
+                                      color: "var(--brand-red)",
                                       transition: "all var(--transition-fast)"
                                     }}
                                     title="Rechazar solicitud de afiliación"
@@ -1392,8 +1413,8 @@ export const SuperAdmin: React.FC = () => {
                                       fontWeight: 600,
                                       cursor: "pointer",
                                       transition: "all var(--transition-fast)",
-                                      backgroundColor: restaurant.isActive ? "rgba(255, 71, 87, 0.1)" : "rgba(46, 213, 115, 0.1)",
-                                      border: restaurant.isActive ? "1px solid rgba(255, 71, 87, 0.2)" : "1px solid rgba(46, 213, 115, 0.2)",
+                                      backgroundColor: restaurant.isActive ? "color-mix(in srgb, var(--brand-red) 10%, transparent)" : "rgba(30, 143, 78, 0.1)",
+                                      border: restaurant.isActive ? "1px solid color-mix(in srgb, var(--brand-red) 20%, transparent)" : "1px solid rgba(30, 143, 78, 0.2)",
                                       color: restaurant.isActive ? "var(--accent-primary)" : "var(--success)",
                                     }}
                                   >
@@ -1412,9 +1433,9 @@ export const SuperAdmin: React.FC = () => {
                                         fontSize: "13px",
                                         fontWeight: 600,
                                         cursor: "pointer",
-                                        backgroundColor: "rgba(239, 68, 68, 0.08)",
-                                        border: "1px solid rgba(239, 68, 68, 0.2)",
-                                        color: "#dc2626",
+                                        backgroundColor: "color-mix(in srgb, var(--brand-red) 8%, transparent)",
+                                        border: "1px solid color-mix(in srgb, var(--brand-red) 20%, transparent)",
+                                        color: "var(--brand-red)",
                                         transition: "all var(--transition-fast)"
                                       }}
                                       title="Suspender este restaurante"
@@ -1602,7 +1623,7 @@ export const SuperAdmin: React.FC = () => {
                             type="button"
                             onClick={() => handleDeleteCategory(cat.id)}
                             className="secondary-btn"
-                            style={{ padding: "4px 8px", color: "var(--accent-primary)", borderColor: "rgba(255, 71, 87, 0.2)", display: "flex", alignItems: "center", gap: "4px" }}
+                            style={{ padding: "4px 8px", color: "var(--accent-primary)", borderColor: "color-mix(in srgb, var(--brand-red) 20%, transparent)", display: "flex", alignItems: "center", gap: "4px" }}
                             title="Eliminar"
                           >
                             <Trash2 size={12} />
@@ -1743,7 +1764,7 @@ export const SuperAdmin: React.FC = () => {
                           {r.isActive && (
                             <span style={{
                               fontSize: "13px",
-                              backgroundColor: "rgba(46, 213, 115, 0.1)",
+                              backgroundColor: "rgba(30, 143, 78, 0.1)",
                               color: "var(--success)",
                               padding: "2px 6px",
                               borderRadius: "10px",
@@ -2018,7 +2039,7 @@ export const SuperAdmin: React.FC = () => {
                           <span style={{
                             padding: "3px 8px",
                             borderRadius: "12px",
-                            backgroundColor: "#f1f5f9",
+                            backgroundColor: "#f7f0de",
                             fontWeight: 600,
                             fontSize: "13px"
                           }}>
@@ -2036,11 +2057,11 @@ export const SuperAdmin: React.FC = () => {
                               display: "inline-block",
                               padding: "4px 10px",
                               borderRadius: "20px",
-                              backgroundColor: "rgba(46, 213, 115, 0.12)",
-                              color: "#2ed573",
+                              backgroundColor: "rgba(30, 143, 78, 0.12)",
+                              color: "#1e8f4e",
                               fontWeight: 700,
                               fontSize: "13px",
-                              border: "1px solid rgba(46, 213, 115, 0.3)"
+                              border: "1px solid rgba(30, 143, 78, 0.3)"
                             }}>
                               {systemIconForEmoji("✅")} Aprobado / Activo
                             </span>
@@ -2050,7 +2071,7 @@ export const SuperAdmin: React.FC = () => {
                               padding: "4px 10px",
                               borderRadius: "20px",
                               backgroundColor: "rgba(255, 171, 0, 0.12)",
-                              color: "#d97706",
+                              color: "#f86015",
                               fontWeight: 700,
                               fontSize: "13px",
                               border: "1px solid rgba(255, 171, 0, 0.3)"
@@ -2061,13 +2082,13 @@ export const SuperAdmin: React.FC = () => {
                         </td>
                         <td style={{ padding: "18px 20px", textAlign: "right", fontWeight: "bold" }}>
                           <div style={{
-                            color: driver.walletBalance > 0 ? "var(--success)" : driver.walletBalance <= -50 ? "#ff4757" : "var(--accent-primary)",
+                            color: driver.walletBalance > 0 ? "var(--success)" : driver.walletBalance <= -50 ? "var(--brand-red)" : "var(--accent-primary)",
                             fontSize: "15px"
                           }}>
                             {driver.walletBalance < 0 ? `-$${Math.abs(driver.walletBalance).toFixed(2)}` : `$${driver.walletBalance.toFixed(2)}`}
                           </div>
                           {driver.walletBalance <= -50 && (
-                            <span style={{ fontSize: "13px", color: "#ff4757", fontWeight: "bold" }}>
+                            <span style={{ fontSize: "13px", color: "var(--brand-red)", fontWeight: "bold" }}>
                               {systemIconForEmoji("⚠️")} DEUDA &gt; $50 (PAUSADO)
                             </span>
                           )}
@@ -2106,8 +2127,8 @@ export const SuperAdmin: React.FC = () => {
                                 borderRadius: "8px",
                                 border: "none",
                                 cursor: "pointer",
-                                backgroundColor: driver.isActive ? "#fee2e2" : "#dcfce7",
-                                color: driver.isActive ? "#dc2626" : "#16a34a",
+                                backgroundColor: driver.isActive ? "#f8dedc" : "#dcfce7",
+                                color: driver.isActive ? "var(--brand-red)" : "#1e8f4e",
                               }}
                               title={driver.isActive ? "Suspender acceso" : "Aprobar y habilitar cuenta"}
                             >
@@ -2184,9 +2205,9 @@ export const SuperAdmin: React.FC = () => {
                               gap: "4px",
                               padding: "4px 10px",
                               borderRadius: "20px",
-                              backgroundColor: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)",
-                              border: "1px solid #fbbf24",
-                              color: "#d97706",
+                              backgroundColor: "linear-gradient(135deg, #fffaea 0%, #fff4d4 100%)",
+                              border: "1px solid var(--brand-yellow)",
+                              color: "#f86015",
                               fontSize: "13px",
                               fontWeight: "bold"
                             }}>
@@ -2218,7 +2239,7 @@ export const SuperAdmin: React.FC = () => {
                                 padding: "6px 12px",
                                 fontSize: "13px",
                                 color: customer.isPlus ? "var(--accent-primary)" : "var(--success)",
-                                borderColor: customer.isPlus ? "rgba(255, 71, 87, 0.2)" : "rgba(46, 213, 115, 0.2)"
+                                borderColor: customer.isPlus ? "color-mix(in srgb, var(--brand-red) 20%, transparent)" : "rgba(30, 143, 78, 0.2)"
                               }}
                             >
                               {customer.isPlus ? "Quitar Plus" : "Hacer Plus"}
@@ -2235,9 +2256,9 @@ export const SuperAdmin: React.FC = () => {
                                 justifyContent: "center",
                                 padding: "6px 10px",
                                 borderRadius: "8px",
-                                border: "1px solid rgba(239, 68, 68, 0.3)",
-                                backgroundColor: "rgba(239, 68, 68, 0.1)",
-                                color: "#ef4444",
+                                border: "1px solid color-mix(in srgb, var(--brand-red) 30%, transparent)",
+                                backgroundColor: "color-mix(in srgb, var(--brand-red) 10%, transparent)",
+                                color: "var(--brand-red)",
                                 cursor: deletingCustomerId === customer.id ? "not-allowed" : "pointer",
                                 transition: "all 0.2s ease"
                               }}
@@ -2319,7 +2340,7 @@ export const SuperAdmin: React.FC = () => {
                               {p.discount && (
                                 <span style={{
                                   fontSize: "13px",
-                                  backgroundColor: "rgba(255, 71, 87, 0.05)",
+                                  backgroundColor: "color-mix(in srgb, var(--brand-red) 5%, transparent)",
                                   color: "var(--accent-primary)",
                                   padding: "2px 6px",
                                   borderRadius: "10px",
@@ -2350,7 +2371,7 @@ export const SuperAdmin: React.FC = () => {
                               type="button"
                               onClick={() => handleDeletePlan(p.id)}
                               className="secondary-btn"
-                              style={{ padding: "6px", color: "var(--accent-primary)", borderColor: "rgba(255,71,87,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}
+                              style={{ padding: "6px", color: "var(--accent-primary)", borderColor: "color-mix(in srgb, var(--brand-red) 15%, transparent)", display: "flex", alignItems: "center", justifyContent: "center" }}
                               title="Eliminar"
                             >
                               <Trash2 size={12} />
@@ -2405,7 +2426,7 @@ export const SuperAdmin: React.FC = () => {
                               type="button"
                               onClick={() => handleDeletePlan(p.id)}
                               className="secondary-btn"
-                              style={{ padding: "6px", color: "var(--accent-primary)", borderColor: "rgba(255,71,87,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}
+                              style={{ padding: "6px", color: "var(--accent-primary)", borderColor: "color-mix(in srgb, var(--brand-red) 15%, transparent)", display: "flex", alignItems: "center", justifyContent: "center" }}
                               title="Eliminar"
                             >
                               <Trash2 size={12} />
@@ -2606,8 +2627,8 @@ export const SuperAdmin: React.FC = () => {
                               borderRadius: "10px",
                               fontSize: "13px",
                               fontWeight: "bold",
-                              backgroundColor: order.status === "APPROVED" ? "rgba(46, 213, 115, 0.1)" : order.status === "PENDING" ? "rgba(251, 191, 36, 0.1)" : "rgba(255, 71, 87, 0.1)",
-                              color: order.status === "APPROVED" ? "var(--success)" : order.status === "PENDING" ? "#d97706" : "var(--accent-primary)"
+                              backgroundColor: order.status === "APPROVED" ? "rgba(30, 143, 78, 0.1)" : order.status === "PENDING" ? "color-mix(in srgb, var(--brand-yellow) 10%, transparent)" : "color-mix(in srgb, var(--brand-red) 10%, transparent)",
+                              color: order.status === "APPROVED" ? "var(--success)" : order.status === "PENDING" ? "#f86015" : "var(--accent-primary)"
                             }}>
                               {order.status === "APPROVED" ? "Aprobado" : order.status === "PENDING" ? "Pendiente" : "Rechazado"}
                             </span>
@@ -2669,7 +2690,7 @@ export const SuperAdmin: React.FC = () => {
 
             {modalError && (
               <div style={{
-                backgroundColor: "rgba(255, 71, 87, 0.1)",
+                backgroundColor: "color-mix(in srgb, var(--brand-red) 10%, transparent)",
                 border: "1px solid var(--accent-primary)",
                 color: "var(--accent-primary)",
                 padding: "10px",
@@ -2794,7 +2815,7 @@ export const SuperAdmin: React.FC = () => {
                       transform: "translateY(-50%)",
                       background: "transparent",
                       border: "none",
-                      color: showPassword ? "var(--accent-primary, #ff4757)" : "var(--text-muted, #718096)",
+                      color: showPassword ? "var(--accent-primary, var(--brand-red))" : "var(--text-muted, #737373)",
                       cursor: "pointer",
                       padding: "4px",
                       display: "flex",
@@ -2965,7 +2986,7 @@ export const SuperAdmin: React.FC = () => {
                 type="button"
                 onClick={() => handleRejectSaaSOrder(selectedReceiptOrder.id)}
                 className="secondary-btn"
-                style={{ padding: "10px 18px", color: "var(--accent-primary)", borderColor: "rgba(255, 71, 87, 0.2)" }}
+                style={{ padding: "10px 18px", color: "var(--accent-primary)", borderColor: "color-mix(in srgb, var(--brand-red) 20%, transparent)" }}
               >
                 Rechazar
               </button>
@@ -3047,7 +3068,7 @@ export const SuperAdmin: React.FC = () => {
               borderRadius: "var(--radius-sm)",
               padding: "12px 14px",
               fontSize: "13px",
-              color: "#059669",
+              color: "#1e8f4e",
               marginBottom: "25px",
               display: "flex",
               alignItems: "flex-start",
@@ -3118,8 +3139,8 @@ export const SuperAdmin: React.FC = () => {
                 width: "44px",
                 height: "44px",
                 borderRadius: "50%",
-                backgroundColor: "rgba(239, 68, 68, 0.15)",
-                color: "#dc2626",
+                backgroundColor: "color-mix(in srgb, var(--brand-red) 15%, transparent)",
+                color: "var(--brand-red)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center"
@@ -3149,12 +3170,12 @@ export const SuperAdmin: React.FC = () => {
             </div>
 
             <div style={{
-              backgroundColor: "rgba(239, 68, 68, 0.08)",
-              border: "1px solid rgba(239, 68, 68, 0.2)",
+              backgroundColor: "color-mix(in srgb, var(--brand-red) 8%, transparent)",
+              border: "1px solid color-mix(in srgb, var(--brand-red) 20%, transparent)",
               borderRadius: "var(--radius-sm)",
               padding: "12px 14px",
               fontSize: "13px",
-              color: "#dc2626",
+              color: "var(--brand-red)",
               marginBottom: "25px"
             }}>
               Al rechazar la solicitud, el local no aparecerá en el catálogo público y el dueño recibirá una notificación con las observaciones para que pueda corregirlas.
@@ -3180,8 +3201,8 @@ export const SuperAdmin: React.FC = () => {
                 className="glow-btn"
                 style={{
                   padding: "10px 22px",
-                  backgroundColor: "#dc2626",
-                  borderColor: "#dc2626",
+                  backgroundColor: "var(--brand-red)",
+                  borderColor: "var(--brand-red)",
                   display: "flex",
                   alignItems: "center",
                   gap: "8px"
