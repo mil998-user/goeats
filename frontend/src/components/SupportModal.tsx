@@ -172,11 +172,11 @@ export const SupportModal: React.FC<SupportModalProps> = ({
           borderRadius: "24px",
           width: "100%",
           maxWidth: "480px",
-          maxHeight: "90vh",
+          maxHeight: "90dvh",
           display: "flex",
           flexDirection: "column",
           boxShadow: "0 25px 60px -15px rgba(0, 0, 0, 0.35)",
-          border: "1px solid #e2e8f0",
+          border: "1px solid var(--brand-cream)",
           overflow: "hidden",
         }}
       >
@@ -185,7 +185,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
           style={{
             padding: "20px 24px",
             backgroundColor: "#ffffff",
-            borderBottom: "1px solid #f1f5f9",
+            borderBottom: "1px solid #f7f0de",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -197,22 +197,22 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                 width: "42px",
                 height: "42px",
                 borderRadius: "12px",
-                backgroundColor: "#eff6ff",
-                color: "#2563eb",
+                backgroundColor: "#fdf8ee",
+                color: "#000000",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                border: "1px solid #dbeafe",
+                border: "1px solid #fdf8ee",
                 flexShrink: 0,
               }}
             >
-              <HelpCircle size={22} color="#2563eb" />
+              <HelpCircle size={22} color="#000000" />
             </div>
             <div>
-              <h2 style={{ margin: 0, fontSize: "17px", fontWeight: "700", color: "#0f172a", lineHeight: 1.3 }}>
+              <h2 style={{ margin: 0, fontSize: "17px", fontWeight: "700", color: "var(--brand-black)", lineHeight: 1.3 }}>
                 Centro de Ayuda & Soporte
               </h2>
-              <p style={{ margin: "2px 0 0 0", fontSize: "13px", color: "#64748b" }}>
+              <p style={{ margin: "2px 0 0 0", fontSize: "13px", color: "#737373" }}>
                 Canal oficial de atención para la comunidad GoEats
               </p>
             </div>
@@ -221,7 +221,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
             type="button"
             onClick={onClose}
             style={{
-              background: "#f1f5f9",
+              background: "#f7f0de",
               border: "none",
               borderRadius: "50%",
               width: "34px",
@@ -229,17 +229,17 @@ export const SupportModal: React.FC<SupportModalProps> = ({
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "#64748b",
+              color: "#737373",
               cursor: "pointer",
               transition: "all 0.2s ease",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "#e2e8f0";
-              e.currentTarget.style.color = "#0f172a";
+              e.currentTarget.style.backgroundColor = "var(--brand-cream)";
+              e.currentTarget.style.color = "var(--brand-black)";
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "#f1f5f9";
-              e.currentTarget.style.color = "#64748b";
+              e.currentTarget.style.backgroundColor = "#f7f0de";
+              e.currentTarget.style.color = "#737373";
             }}
             title="Cerrar"
           >
@@ -253,7 +253,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
             style={{
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
-              backgroundColor: "#f1f5f9",
+              backgroundColor: "#f7f0de",
               padding: "4px",
               borderRadius: "12px",
               gap: "4px",
@@ -269,7 +269,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                 border: "none",
                 borderRadius: "9px",
                 backgroundColor: activeTab === "direct" ? "#ffffff" : "transparent",
-                color: activeTab === "direct" ? "#0f172a" : "#64748b",
+                color: activeTab === "direct" ? "var(--brand-black)" : "#737373",
                 boxShadow: activeTab === "direct" ? "0 2px 6px rgba(0,0,0,0.08)" : "none",
                 cursor: "pointer",
                 display: "flex",
@@ -279,7 +279,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                 transition: "all 0.2s ease"
               }}
             >
-              <Phone size={14} color={activeTab === "direct" ? "#0f172a" : "#64748b"} />
+              <Phone size={14} color={activeTab === "direct" ? "var(--brand-black)" : "#737373"} />
               Contactos
             </button>
 
@@ -293,7 +293,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                 border: "none",
                 borderRadius: "9px",
                 backgroundColor: activeTab === "ticket" ? "#ffffff" : "transparent",
-                color: activeTab === "ticket" ? "#0f172a" : "#64748b",
+                color: activeTab === "ticket" ? "var(--brand-black)" : "#737373",
                 boxShadow: activeTab === "ticket" ? "0 2px 6px rgba(0,0,0,0.08)" : "none",
                 cursor: "pointer",
                 display: "flex",
@@ -303,7 +303,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                 transition: "all 0.2s ease"
               }}
             >
-              <Mail size={14} color={activeTab === "ticket" ? "#0f172a" : "#64748b"} />
+              <Mail size={14} color={activeTab === "ticket" ? "var(--brand-black)" : "#737373"} />
               Enviar Ticket
             </button>
           </div>
@@ -323,7 +323,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                       height: "60px",
                       borderRadius: "50%",
                       backgroundColor: "#dcfce7",
-                      color: "#16a34a",
+                      color: "#1e8f4e",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -332,24 +332,24 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                   >
                     <CheckCircle2 size={36} />
                   </div>
-                  <h3 style={{ margin: "0 0 8px 0", fontSize: "20px", color: "#0f172a" }}>
+                  <h3 style={{ margin: "0 0 8px 0", fontSize: "20px", color: "var(--brand-black)" }}>
                     ¡Ticket Registrado con Éxito!
                   </h3>
                   <div
                     style={{
                       display: "inline-block",
-                      backgroundColor: "#f1f5f9",
+                      backgroundColor: "#f7f0de",
                       padding: "8px 20px",
                       borderRadius: "20px",
                       fontSize: "16px",
                       fontWeight: "700",
-                      color: "#ff4757",
+                      color: "var(--brand-red)",
                       margin: "10px 0",
                     }}
                   >
                     Código: #{submittedCode}
                   </div>
-                  <p style={{ fontSize: "14px", color: "#64748b", maxWidth: "420px", margin: "10px auto 25px auto" }}>
+                  <p style={{ fontSize: "14px", color: "#737373", maxWidth: "420px", margin: "10px auto 25px auto" }}>
                     Hemos enviado una confirmación a tu correo. Un asesor revisará los detalles y te responderá a la brevedad.
                   </p>
                   <button
@@ -360,7 +360,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                     }}
                     style={{
                       padding: "10px 24px",
-                      backgroundColor: "#0f172a",
+                      backgroundColor: "var(--brand-black)",
                       color: "#ffffff",
                       borderRadius: "8px",
                       border: "none",
@@ -377,10 +377,10 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                     <div
                       style={{
                         padding: "12px",
-                        backgroundColor: "#fef2f2",
-                        border: "1px solid #fecaca",
+                        backgroundColor: "#fbe9e8",
+                        border: "1px solid #f4c9c5",
                         borderRadius: "8px",
-                        color: "#b91c1c",
+                        color: "#d42518",
                         fontSize: "13px",
                         display: "flex",
                         alignItems: "center",
@@ -394,7 +394,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                     <div>
-                      <label style={{ fontSize: "13px", fontWeight: "600", color: "#475569", marginBottom: "4px", display: "block" }}>
+                      <label style={{ fontSize: "13px", fontWeight: "600", color: "#595959", marginBottom: "4px", display: "block" }}>
                         Tu Nombre *
                       </label>
                       <input
@@ -407,14 +407,14 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                           width: "100%",
                           padding: "10px 12px",
                           borderRadius: "8px",
-                          border: "1px solid #cbd5e1",
+                          border: "1px solid #f3e8cc",
                           fontSize: "14px",
                           boxSizing: "border-box",
                         }}
                       />
                     </div>
                     <div>
-                      <label style={{ fontSize: "13px", fontWeight: "600", color: "#475569", marginBottom: "4px", display: "block" }}>
+                      <label style={{ fontSize: "13px", fontWeight: "600", color: "#595959", marginBottom: "4px", display: "block" }}>
                         Correo Electrónico *
                       </label>
                       <input
@@ -427,7 +427,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                           width: "100%",
                           padding: "10px 12px",
                           borderRadius: "8px",
-                          border: "1px solid #cbd5e1",
+                          border: "1px solid #f3e8cc",
                           fontSize: "14px",
                           boxSizing: "border-box",
                         }}
@@ -437,7 +437,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                     <div>
-                      <label style={{ fontSize: "13px", fontWeight: "600", color: "#475569", marginBottom: "4px", display: "block" }}>
+                      <label style={{ fontSize: "13px", fontWeight: "600", color: "#595959", marginBottom: "4px", display: "block" }}>
                         Teléfono / Celular
                       </label>
                       <input
@@ -449,14 +449,14 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                           width: "100%",
                           padding: "10px 12px",
                           borderRadius: "8px",
-                          border: "1px solid #cbd5e1",
+                          border: "1px solid #f3e8cc",
                           fontSize: "14px",
                           boxSizing: "border-box",
                         }}
                       />
                     </div>
                     <div>
-                      <label style={{ fontSize: "13px", fontWeight: "600", color: "#475569", marginBottom: "4px", display: "block" }}>
+                      <label style={{ fontSize: "13px", fontWeight: "600", color: "#595959", marginBottom: "4px", display: "block" }}>
                         Nº de Pedido (Opcional)
                       </label>
                       <input
@@ -468,7 +468,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                           width: "100%",
                           padding: "10px 12px",
                           borderRadius: "8px",
-                          border: "1px solid #cbd5e1",
+                          border: "1px solid #f3e8cc",
                           fontSize: "14px",
                           boxSizing: "border-box",
                         }}
@@ -478,7 +478,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                     <div>
-                      <label style={{ fontSize: "13px", fontWeight: "600", color: "#475569", marginBottom: "4px", display: "block" }}>
+                      <label style={{ fontSize: "13px", fontWeight: "600", color: "#595959", marginBottom: "4px", display: "block" }}>
                         Tu Perfil
                       </label>
                       <select
@@ -492,7 +492,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                           width: "100%",
                           padding: "10px 12px",
                           borderRadius: "8px",
-                          border: "1px solid #cbd5e1",
+                          border: "1px solid #f3e8cc",
                           fontSize: "14px",
                           boxSizing: "border-box",
                           backgroundColor: "#ffffff",
@@ -505,7 +505,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                     </div>
 
                     <div>
-                      <label style={{ fontSize: "13px", fontWeight: "600", color: "#475569", marginBottom: "4px", display: "block" }}>
+                      <label style={{ fontSize: "13px", fontWeight: "600", color: "#595959", marginBottom: "4px", display: "block" }}>
                         Motivo / Categoría
                       </label>
                       <select
@@ -515,7 +515,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                           width: "100%",
                           padding: "10px 12px",
                           borderRadius: "8px",
-                          border: "1px solid #cbd5e1",
+                          border: "1px solid #f3e8cc",
                           fontSize: "14px",
                           boxSizing: "border-box",
                           backgroundColor: "#ffffff",
@@ -529,7 +529,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                   </div>
 
                   <div>
-                    <label style={{ fontSize: "13px", fontWeight: "600", color: "#475569", marginBottom: "4px", display: "block" }}>
+                    <label style={{ fontSize: "13px", fontWeight: "600", color: "#595959", marginBottom: "4px", display: "block" }}>
                       Asunto / Título (Opcional)
                     </label>
                     <input
@@ -541,7 +541,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                         width: "100%",
                         padding: "10px 12px",
                         borderRadius: "8px",
-                        border: "1px solid #cbd5e1",
+                        border: "1px solid #f3e8cc",
                         fontSize: "14px",
                         boxSizing: "border-box",
                       }}
@@ -549,7 +549,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                   </div>
 
                   <div>
-                    <label style={{ fontSize: "13px", fontWeight: "600", color: "#475569", marginBottom: "4px", display: "block" }}>
+                    <label style={{ fontSize: "13px", fontWeight: "600", color: "#595959", marginBottom: "4px", display: "block" }}>
                       Detalle de tu problema o consulta *
                     </label>
                     <textarea
@@ -562,7 +562,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                         width: "100%",
                         padding: "10px 12px",
                         borderRadius: "8px",
-                        border: "1px solid #cbd5e1",
+                        border: "1px solid #f3e8cc",
                         fontSize: "14px",
                         boxSizing: "border-box",
                         fontFamily: "inherit",
@@ -576,7 +576,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                     disabled={loading}
                     style={{
                       padding: "12px",
-                      backgroundColor: "#ff4757",
+                      backgroundColor: "var(--brand-red)",
                       color: "#ffffff",
                       border: "none",
                       borderRadius: "10px",
@@ -587,7 +587,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                       alignItems: "center",
                       justifyContent: "center",
                       gap: "8px",
-                      boxShadow: "0 4px 12px rgba(255, 71, 87, 0.3)",
+                      boxShadow: "0 4px 12px color-mix(in srgb, var(--brand-red) 30%, transparent)",
                       opacity: loading ? 0.7 : 1,
                     }}
                   >
@@ -607,7 +607,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                 style={{
                   padding: "16px 18px",
                   borderRadius: "16px",
-                  border: "1px solid #e2e8f0",
+                  border: "1px solid var(--brand-cream)",
                   backgroundColor: "#ffffff",
                   display: "flex",
                   alignItems: "center",
@@ -624,7 +624,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                       height: "42px",
                       borderRadius: "12px",
                       backgroundColor: "#f0fdf4",
-                      color: "#16a34a",
+                      color: "#1e8f4e",
                       border: "1px solid #dcfce7",
                       display: "flex",
                       alignItems: "center",
@@ -636,7 +636,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                   </div>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                      <span style={{ fontSize: "14px", fontWeight: "700", color: "#0f172a" }}>
+                      <span style={{ fontSize: "14px", fontWeight: "700", color: "var(--brand-black)" }}>
                         WhatsApp
                       </span>
                       <span
@@ -645,7 +645,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                           alignItems: "center",
                           gap: "4px",
                           backgroundColor: "#f0fdf4",
-                          color: "#15803d",
+                          color: "#1e8f4e",
                           fontSize: "13px",
                           fontWeight: "600",
                           padding: "2px 7px",
@@ -664,7 +664,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                         En línea
                       </span>
                     </div>
-                    <div style={{ fontSize: "13px", color: "#64748b", marginTop: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    <div style={{ fontSize: "13px", color: "#737373", marginTop: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {supportPhone} · Asistencia rápida
                     </div>
                   </div>
@@ -676,7 +676,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                   rel="noopener noreferrer"
                   style={{
                     padding: "8px 14px",
-                    backgroundColor: "#16a34a",
+                    backgroundColor: "#1e8f4e",
                     color: "#ffffff",
                     border: "none",
                     borderRadius: "10px",
@@ -691,8 +691,8 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                     transition: "all 0.15s ease",
                     whiteSpace: "nowrap",
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#15803d")}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#16a34a")}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#1e8f4e")}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#1e8f4e")}
                 >
                   <MessageSquare size={13} />
                   <span>Chatear</span>
@@ -705,7 +705,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                 style={{
                   padding: "16px 18px",
                   borderRadius: "16px",
-                  border: "1px solid #e2e8f0",
+                  border: "1px solid var(--brand-cream)",
                   backgroundColor: "#ffffff",
                   display: "flex",
                   alignItems: "center",
@@ -721,8 +721,8 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                       width: "42px",
                       height: "42px",
                       borderRadius: "12px",
-                      backgroundColor: "#f1f5f9",
-                      color: "#475569",
+                      backgroundColor: "#f7f0de",
+                      color: "#595959",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -732,10 +732,10 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                     <Mail size={20} />
                   </div>
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: "14px", fontWeight: "700", color: "#0f172a" }}>
+                    <div style={{ fontSize: "14px", fontWeight: "700", color: "var(--brand-black)" }}>
                       Correo Electrónico
                     </div>
-                    <div style={{ fontSize: "13px", color: "#64748b", marginTop: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    <div style={{ fontSize: "13px", color: "#737373", marginTop: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                       {supportEmail}
                     </div>
                   </div>
@@ -744,9 +744,9 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                   href={`mailto:${supportEmail}?subject=Consulta%20GoEats%20[${selectedRole}]`}
                   style={{
                     padding: "8px 14px",
-                    backgroundColor: "#f8fafc",
-                    color: "#0f172a",
-                    border: "1px solid #cbd5e1",
+                    backgroundColor: "#fdf8ee",
+                    color: "var(--brand-black)",
+                    border: "1px solid #f3e8cc",
                     borderRadius: "10px",
                     fontWeight: "600",
                     fontSize: "13px",
@@ -759,12 +759,12 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                     whiteSpace: "nowrap",
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = "#f1f5f9";
-                    e.currentTarget.style.borderColor = "#94a3b8";
+                    e.currentTarget.style.backgroundColor = "#f7f0de";
+                    e.currentTarget.style.borderColor = "#a6a6a6";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "#f8fafc";
-                    e.currentTarget.style.borderColor = "#cbd5e1";
+                    e.currentTarget.style.backgroundColor = "#fdf8ee";
+                    e.currentTarget.style.borderColor = "#f3e8cc";
                   }}
                 >
                   <Mail size={13} />
@@ -782,11 +782,11 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                   gap: "6px",
                   padding: "10px 14px",
                   borderRadius: "10px",
-                  backgroundColor: "#f8fafc",
+                  backgroundColor: "#fdf8ee",
                   fontSize: "13px",
-                  color: "#64748b",
+                  color: "#737373",
                   textAlign: "center",
-                  border: "1px solid #f1f5f9",
+                  border: "1px solid #f7f0de",
                   marginTop: "2px",
                 }}
               >

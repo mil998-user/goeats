@@ -1,4 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
+import { OpenBadge } from "../components/OpenBadge";
+import { BrandLogo } from "../components/BrandLogo";
 import { Link, useNavigate } from "react-router-dom";
 import { apiRequest } from "../utils/api";
 import {
@@ -489,7 +491,7 @@ export const Aggregator: React.FC = () => {
     badge: string
   ) => (
     <section aria-label={title}>
-      <h2 style={{ fontSize: "22px", fontWeight: 800, color: "#202124", margin: "0 0 18px" }}>
+      <h2 className="brand-marker" style={{ fontSize: "22px", fontWeight: 800, color: "#000000", margin: "0 0 18px" }}>
         {title}
       </h2>
       <div style={{
@@ -503,14 +505,14 @@ export const Aggregator: React.FC = () => {
             key={`${keyPrefix}-${restaurant.id}`}
             style={{
               overflow: "hidden",
-              border: "1px solid #e5e7eb",
+              border: "1px solid #f3e8cc",
               borderRadius: "16px",
               color: "inherit",
               textDecoration: "none",
               background: "#fff",
             }}
           >
-            <div style={{ position: "relative", height: "150px", background: "#f1f3f4" }}>
+            <div style={{ position: "relative", height: "150px", background: "#f7f0de" }}>
               <img
                 src={restaurant.coverImage}
                 alt={restaurant.name}
@@ -525,8 +527,8 @@ export const Aggregator: React.FC = () => {
                 left: "10px",
                 padding: "5px 9px",
                 borderRadius: "999px",
-                background: "#fff",
-                color: "#202124",
+                background: "#ffca26",
+                color: "#000000",
                 fontSize: "13px",
                 fontWeight: 700,
               }}>
@@ -551,7 +553,7 @@ export const Aggregator: React.FC = () => {
                     cursor: "pointer",
                   }}
                 >
-                  <Heart size={16} fill={favorites.includes(restaurant.id) ? "#111111" : "none"} />
+                  <Heart size={16} fill={favorites.includes(restaurant.id) ? "#000000" : "none"} />
                 </button>
               )}
             </div>
@@ -559,7 +561,7 @@ export const Aggregator: React.FC = () => {
               <h3 style={{
                 margin: 0,
                 overflow: "hidden",
-                color: "#202124",
+                color: "#000000",
                 fontSize: "15px",
                 fontWeight: 700,
                 textOverflow: "ellipsis",
@@ -567,7 +569,9 @@ export const Aggregator: React.FC = () => {
               }}>
                 {restaurant.name}
               </h3>
-              <p style={{ margin: "5px 0 0", color: "#5f6368", fontSize: "13px" }}>
+
+                <OpenBadge hours={(restaurant as any).openingHours} />
+              <p style={{ margin: "5px 0 0", color: "#737373", fontSize: "13px" }}>
                 {restaurant.category}
               </p>
             </div>
@@ -585,7 +589,7 @@ export const Aggregator: React.FC = () => {
         position: "sticky",
         top: 0,
         backgroundColor: "#ffffff",
-        borderBottom: "1px solid #e2e8f0",
+        borderBottom: "1px solid #f3e8cc",
         zIndex: 1000,
         padding: "15px 30px",
         display: "flex",
@@ -593,28 +597,19 @@ export const Aggregator: React.FC = () => {
         alignItems: "center"
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: "25px", flex: 1 }} className="aggregator-left-wrapper">
-          <h1 style={{
-            fontSize: "24px",
-            fontWeight: "800",
-            color: "#111111",
-            letterSpacing: "-0.5px",
-            margin: 0,
-            cursor: "pointer"
-          }} onClick={() => navigate("/restaurants")}>
-            Go<span style={{ color: "#2f3542" }}>Eats</span>
-          </h1>
+          <BrandLogo size={30} onClick={() => navigate("/restaurants")} />
 
           {/* Search bar inside header */}
           <div className="aggregator-search-bar" style={{
             display: "flex",
             alignItems: "center",
-            backgroundColor: "#f1f3f4",
+            backgroundColor: "var(--brand-cream-mid)",
             padding: "8px 15px",
             borderRadius: "30px",
             width: "350px",
             position: "relative"
           }}>
-            <Search size={16} style={{ color: "#5f6368", marginRight: "10px" }} />
+            <Search size={16} style={{ color: "#d42518", marginRight: "10px" }} />
             <input
               type="text"
               placeholder="Buscar comida, restaurante o antojo..."
@@ -623,7 +618,7 @@ export const Aggregator: React.FC = () => {
               style={{
                 width: "100%",
                 fontSize: "13px",
-                color: "#202124",
+                color: "#000000",
                 border: "none",
                 backgroundColor: "transparent",
                 outline: "none"
@@ -638,11 +633,11 @@ export const Aggregator: React.FC = () => {
             style={{
               fontSize: "13px",
               fontWeight: "700",
-              color: user?.isPlus ? "#111111" : "#111111",
+              color: user?.isPlus ? "#ffca26" : "#000000",
               padding: "8px 16px",
               borderRadius: "30px",
-              backgroundColor: user?.isPlus ? "#eeeeee" : "rgba(0, 0, 0, 0.06)",
-              border: "1px solid #333333",
+              backgroundColor: user?.isPlus ? "#000000" : "#ffca26",
+              border: "none",
               textDecoration: "none",
               display: "flex",
               alignItems: "center",
@@ -650,7 +645,7 @@ export const Aggregator: React.FC = () => {
               transition: "all 0.2s ease"
             }}
           >
-            <Sparkles size={14} color="#111111" />
+            <Sparkles size={14} color={user?.isPlus ? "#ffca26" : "#000000"} />
             {user?.isPlus ? "Miembro Plus" : "Hazte Plus"}
           </Link>
 
@@ -666,21 +661,21 @@ export const Aggregator: React.FC = () => {
                   gap: "10px",
                   padding: "5px 14px 5px 6px",
                   borderRadius: "30px",
-                  backgroundColor: userDropdownOpen ? "#f8fafc" : "#ffffff",
-                  border: "1px solid #e2e8f0",
+                  backgroundColor: userDropdownOpen ? "#fdf8ee" : "#ffffff",
+                  border: "1px solid #f3e8cc",
                   cursor: "pointer",
                   transition: "all 0.2s ease",
                   boxShadow: "0 1px 3px rgba(0,0,0,0.04)"
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#cbd5e1")}
-                onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#e2e8f0")}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#f3e8cc")}
+                onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#f3e8cc")}
               >
                 <div
                   style={{
                     width: "32px",
                     height: "32px",
                     borderRadius: "50%",
-                    background: "linear-gradient(135deg, #111111 0%, #333333 100%)",
+                    background: "linear-gradient(135deg, #000000 0%, #333333 100%)",
                     color: "#ffffff",
                     display: "flex",
                     alignItems: "center",
@@ -699,7 +694,7 @@ export const Aggregator: React.FC = () => {
                     style={{
                       fontSize: "13px",
                       fontWeight: 600,
-                      color: "#0f172a",
+                      color: "#000000",
                       maxWidth: "130px",
                       whiteSpace: "nowrap",
                       overflow: "hidden",
@@ -708,14 +703,14 @@ export const Aggregator: React.FC = () => {
                   >
                     {user.name}
                   </div>
-                  <div style={{ fontSize: "13px", color: "#64748b" }}>
+                  <div style={{ fontSize: "13px", color: "#737373" }}>
                     {getRoleLabel(user.role)}
                   </div>
                 </div>
 
                 <ChevronDown
                   size={14}
-                  color="#64748b"
+                  color="#737373"
                   style={{
                     transform: userDropdownOpen ? "rotate(180deg)" : "rotate(0deg)",
                     transition: "transform 0.2s ease"
@@ -733,21 +728,21 @@ export const Aggregator: React.FC = () => {
                     width: "260px",
                     backgroundColor: "#ffffff",
                     borderRadius: "16px",
-                    border: "1px solid #e2e8f0",
+                    border: "1px solid #f3e8cc",
                     boxShadow: "0 12px 30px rgba(0, 0, 0, 0.12)",
                     zIndex: 1000,
                     overflow: "hidden",
                   }}
                 >
                   {/* User Profile Header */}
-                  <div style={{ padding: "16px", backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+                  <div style={{ padding: "16px", backgroundColor: "#fdf8ee", borderBottom: "1px solid #f3e8cc" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                       <div
                         style={{
                           width: "38px",
                           height: "38px",
                           borderRadius: "50%",
-                          background: "linear-gradient(135deg, #111111 0%, #333333 100%)",
+                          background: "linear-gradient(135deg, #000000 0%, #333333 100%)",
                           color: "#ffffff",
                           display: "flex",
                           alignItems: "center",
@@ -764,7 +759,7 @@ export const Aggregator: React.FC = () => {
                           style={{
                             fontSize: "14px",
                             fontWeight: "700",
-                            color: "#0f172a",
+                            color: "#000000",
                             whiteSpace: "nowrap",
                             overflow: "hidden",
                             textOverflow: "ellipsis"
@@ -775,7 +770,7 @@ export const Aggregator: React.FC = () => {
                         <div
                           style={{
                             fontSize: "13px",
-                            color: "#64748b",
+                            color: "#737373",
                             whiteSpace: "nowrap",
                             overflow: "hidden",
                             textOverflow: "ellipsis"
@@ -793,8 +788,8 @@ export const Aggregator: React.FC = () => {
                           borderRadius: "12px",
                           fontSize: "13px",
                           fontWeight: "600",
-                          backgroundColor: "#eff6ff",
-                          color: "#2563eb",
+                          backgroundColor: "#fdf8ee",
+                          color: "#000000",
                           border: "1px solid #bfdbfe"
                         }}
                       >
@@ -808,8 +803,8 @@ export const Aggregator: React.FC = () => {
                             borderRadius: "12px",
                             fontSize: "13px",
                             fontWeight: "600",
-                            backgroundColor: "#eeeeee",
-                            color: "#111111",
+                            backgroundColor: "#f7f0de",
+                            color: "#000000",
                             border: "1px solid #fde68a"
                           }}
                         >
@@ -834,14 +829,14 @@ export const Aggregator: React.FC = () => {
                             borderRadius: "10px",
                             fontSize: "13px",
                             fontWeight: "600",
-                            color: "#1e293b",
+                            color: "#000000",
                             textDecoration: "none",
                             transition: "background 0.15s ease"
                           }}
-                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f1f5f9")}
+                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f7f0de")}
                           onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                         >
-                          <ShoppingBag size={16} color="#111111" />
+                          <ShoppingBag size={16} color="#000000" />
                           <span>Mis Pedidos</span>
                         </Link>
 
@@ -856,14 +851,14 @@ export const Aggregator: React.FC = () => {
                             borderRadius: "10px",
                             fontSize: "13px",
                             fontWeight: "600",
-                            color: "#1e293b",
+                            color: "#000000",
                             textDecoration: "none",
                             transition: "background 0.15s ease"
                           }}
-                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f1f5f9")}
+                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f7f0de")}
                           onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                         >
-                          <User size={16} color="#64748b" />
+                          <User size={16} color="#737373" />
                           <span>Mi Perfil</span>
                         </Link>
 
@@ -882,18 +877,18 @@ export const Aggregator: React.FC = () => {
                             borderRadius: "10px",
                             fontSize: "13px",
                             fontWeight: "600",
-                            color: "#1e293b",
+                            color: "#000000",
                             backgroundColor: "transparent",
                             border: "none",
                             cursor: "pointer",
                             textAlign: "left",
                             transition: "background 0.15s ease"
                           }}
-                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f1f5f9")}
+                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f7f0de")}
                           onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                         >
                           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                            <Sparkles size={16} color="#111111" />
+                            <Sparkles size={16} color="#000000" />
                             <span>Mis Preferencias</span>
                           </div>
                           {userPreferences.length > 0 && (
@@ -901,8 +896,8 @@ export const Aggregator: React.FC = () => {
                               style={{
                                 fontSize: "13px",
                                 fontWeight: "700",
-                                backgroundColor: "#eeeeee",
-                                color: "#111111",
+                                backgroundColor: "#f7f0de",
+                                color: "#000000",
                                 padding: "2px 8px",
                                 borderRadius: "10px"
                               }}
@@ -926,14 +921,14 @@ export const Aggregator: React.FC = () => {
                           borderRadius: "10px",
                           fontSize: "13px",
                           fontWeight: "600",
-                          color: "#1e293b",
+                          color: "#000000",
                           textDecoration: "none",
                           transition: "background 0.15s ease"
                         }}
-                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f1f5f9")}
+                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f7f0de")}
                         onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                       >
-                        <Bike size={16} color="#10b981" />
+                        <Bike size={16} color="#1e8f4e" />
                         <span>Panel de Repartos</span>
                       </Link>
                     )}
@@ -950,11 +945,11 @@ export const Aggregator: React.FC = () => {
                           borderRadius: "10px",
                           fontSize: "13px",
                           fontWeight: "600",
-                          color: "#1e293b",
+                          color: "#000000",
                           textDecoration: "none",
                           transition: "background 0.15s ease"
                         }}
-                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f1f5f9")}
+                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f7f0de")}
                         onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                       >
                         <Store size={16} color="#333333" />
@@ -974,19 +969,19 @@ export const Aggregator: React.FC = () => {
                           borderRadius: "10px",
                           fontSize: "13px",
                           fontWeight: "600",
-                          color: "#1e293b",
+                          color: "#000000",
                           textDecoration: "none",
                           transition: "background 0.15s ease"
                         }}
-                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f1f5f9")}
+                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f7f0de")}
                         onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                       >
-                        <Shield size={16} color="#8b5cf6" />
+                        <Shield size={16} color="#000000" />
                         <span>Panel Super Admin</span>
                       </Link>
                     )}
 
-                    <div style={{ height: "1px", backgroundColor: "#f1f5f9", margin: "6px 0" }} />
+                    <div style={{ height: "1px", backgroundColor: "#f7f0de", margin: "6px 0" }} />
 
                     {/* Centro de Ayuda */}
                     <button
@@ -1004,21 +999,21 @@ export const Aggregator: React.FC = () => {
                         borderRadius: "10px",
                         fontSize: "13px",
                         fontWeight: "600",
-                        color: "#1e293b",
+                        color: "#000000",
                         backgroundColor: "transparent",
                         border: "none",
                         cursor: "pointer",
                         textAlign: "left",
                         transition: "background 0.15s ease"
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f1f5f9")}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f7f0de")}
                       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                     >
-                      <HelpCircle size={16} color="#3b82f6" />
+                      <HelpCircle size={16} color="#000000" />
                       <span>Ayuda y Soporte</span>
                     </button>
 
-                    <div style={{ height: "1px", backgroundColor: "#f1f5f9", margin: "6px 0" }} />
+                    <div style={{ height: "1px", backgroundColor: "#f7f0de", margin: "6px 0" }} />
 
                     {/* Cerrar Sesion */}
                     <button
@@ -1036,17 +1031,17 @@ export const Aggregator: React.FC = () => {
                         borderRadius: "10px",
                         fontSize: "13px",
                         fontWeight: "600",
-                        color: "#ef4444",
+                        color: "#d42518",
                         backgroundColor: "transparent",
                         border: "none",
                         cursor: "pointer",
                         textAlign: "left",
                         transition: "background 0.15s ease"
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#fef2f2")}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#fbe9e8")}
                       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                     >
-                      <LogOut size={16} color="#ef4444" />
+                      <LogOut size={16} color="#d42518" />
                       <span>Cerrar Sesión</span>
                     </button>
                   </div>
@@ -1064,8 +1059,8 @@ export const Aggregator: React.FC = () => {
                   padding: "8px 14px",
                   borderRadius: "30px",
                   backgroundColor: "transparent",
-                  border: "1px solid #cbd5e1",
-                  color: "#475569",
+                  border: "1px solid #f3e8cc",
+                  color: "#595959",
                   cursor: "pointer",
                   fontSize: "13px",
                   fontWeight: 600,
@@ -1117,7 +1112,7 @@ export const Aggregator: React.FC = () => {
               left: 0,
               right: 0,
               backgroundColor: "#ffffff",
-              borderBottom: "1px solid #e2e8f0",
+              borderBottom: "1px solid #f3e8cc",
               padding: "20px 30px",
               zIndex: 999,
               display: "flex",
@@ -1137,7 +1132,7 @@ export const Aggregator: React.FC = () => {
                   gap: "8px",
                   fontSize: "14px",
                   fontWeight: "700",
-                  color: "#111111",
+                  color: "#000000",
                   padding: "12px 16px",
                   borderRadius: "30px",
                   backgroundColor: "rgba(0, 0, 0, 0.06)",
@@ -1157,7 +1152,7 @@ export const Aggregator: React.FC = () => {
                   gap: "8px",
                   fontSize: "14px",
                   fontWeight: 600,
-                  color: "#111111",
+                  color: "#000000",
                   padding: "12px 16px",
                   borderRadius: "30px",
                   backgroundColor: "rgba(0, 0, 0, 0.08)",
@@ -1185,7 +1180,7 @@ export const Aggregator: React.FC = () => {
                           fontWeight: 600,
                           padding: "12px 16px",
                           borderRadius: "30px",
-                          color: "#111111",
+                          color: "#000000",
                           backgroundColor: "rgba(0, 0, 0, 0.05)",
                           border: "1px solid rgba(0, 0, 0, 0.15)",
                           textDecoration: "none"
@@ -1206,13 +1201,13 @@ export const Aggregator: React.FC = () => {
                           fontWeight: 600,
                           padding: "12px 16px",
                           borderRadius: "30px",
-                          color: "#1e293b",
-                          backgroundColor: "#f8fafc",
-                          border: "1px solid #cbd5e1",
+                          color: "#000000",
+                          backgroundColor: "#fdf8ee",
+                          border: "1px solid #f3e8cc",
                           textDecoration: "none"
                         }}
                       >
-                        <User size={16} color="#111111" />
+                        <User size={16} color="#000000" />
                         Mi Perfil e Información
                       </Link>
                     </>
@@ -1231,7 +1226,7 @@ export const Aggregator: React.FC = () => {
                         fontWeight: 600,
                         padding: "12px 16px",
                         borderRadius: "30px",
-                        color: "#111111",
+                        color: "#000000",
                         backgroundColor: "rgba(0, 0, 0, 0.05)",
                         border: "1px solid rgba(0, 0, 0, 0.15)",
                         textDecoration: "none"
@@ -1254,7 +1249,7 @@ export const Aggregator: React.FC = () => {
                         fontWeight: 600,
                         padding: "12px 16px",
                         borderRadius: "30px",
-                        color: "#111111",
+                        color: "#000000",
                         backgroundColor: "rgba(0, 0, 0, 0.05)",
                         border: "1px solid rgba(0, 0, 0, 0.15)",
                         textDecoration: "none"
@@ -1277,7 +1272,7 @@ export const Aggregator: React.FC = () => {
                         fontWeight: 600,
                         padding: "12px 16px",
                         borderRadius: "30px",
-                        color: "#111111",
+                        color: "#000000",
                         backgroundColor: "rgba(0, 0, 0, 0.05)",
                         border: "1px solid rgba(0, 0, 0, 0.15)",
                         textDecoration: "none"
@@ -1318,7 +1313,7 @@ export const Aggregator: React.FC = () => {
                   gap: "8px",
                   fontSize: "14px",
                   fontWeight: 600,
-                  color: "#3b82f6",
+                  color: "#000000",
                   padding: "12px 16px",
                   borderRadius: "30px",
                   backgroundColor: "rgba(0, 0, 0, 0.05)",
@@ -1334,7 +1329,7 @@ export const Aggregator: React.FC = () => {
 
             {isAuthenticated && user && (
               <div style={{
-                borderTop: "1px solid #e2e8f0",
+                borderTop: "1px solid #f3e8cc",
                 paddingTop: "15px",
                 display: "flex",
                 justifyContent: "space-between",
@@ -1342,7 +1337,7 @@ export const Aggregator: React.FC = () => {
               }}>
                 <div>
                   <div style={{ fontSize: "14px", fontWeight: 600 }}>{user.name}</div>
-                  <div style={{ fontSize: "13px", color: "#5f6368" }}>{user.role}</div>
+                  <div style={{ fontSize: "13px", color: "#737373" }}>{user.role}</div>
                 </div>
                 <button
                   onClick={() => { logout(); setMenuOpen(false); }}
@@ -1354,7 +1349,7 @@ export const Aggregator: React.FC = () => {
                     borderRadius: "30px",
                     backgroundColor: "rgba(0, 0, 0, 0.1)",
                     border: "1px solid rgba(0, 0, 0, 0.2)",
-                    color: "#111111",
+                    color: "#000000",
                     cursor: "pointer",
                     fontSize: "13px",
                     fontWeight: 600
@@ -1371,6 +1366,20 @@ export const Aggregator: React.FC = () => {
 
       {/* Main Aggregator Body */}
       <div id="goeats-restaurants" style={{ maxWidth: "1240px", margin: "0 auto", padding: "0 20px", scrollMarginTop: "90px" }}>
+
+        {/* Banner de bienvenida con el amarillo de marca */}
+        {!searchQuery.trim() && activeCategory === "all" && (
+          <div className="brand-hero-band">
+            <div style={{ minWidth: 0 }}>
+              <p className="brand-hero-eyebrow">GoEats Loja</p>
+              <p className="brand-hero-title brand-accent-text">
+                {isAuthenticated && user?.name ? `¡Hola, ${user.name.split(" ")[0]}! ` : ""}¿Qué se te antoja hoy?
+              </p>
+              <p className="brand-hero-text">Sabores locales, desde la cocina hasta tu puerta.</p>
+            </div>
+            <img src="/brand/boca-negra.png" alt="" className="brand-hero-mouth" />
+          </div>
+        )}
 
         {/* Categories Bar Horizontal Slider with Navigation Arrows */}
         <div style={{ position: "relative", margin: "10px 0" }}>
@@ -1394,19 +1403,19 @@ export const Aggregator: React.FC = () => {
                   height: "38px",
                   borderRadius: "50%",
                   backgroundColor: "#ffffff",
-                  border: "1px solid #e2e8f0",
+                  border: "1px solid #f3e8cc",
                   boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   cursor: "pointer",
-                  color: "#1e293b",
+                  color: "#000000",
                   transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)"
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.transform = "scale(1.1)";
                   e.currentTarget.style.boxShadow = "0 6px 16px rgba(0,0,0,0.18)";
-                  e.currentTarget.style.backgroundColor = "#f8fafc";
+                  e.currentTarget.style.backgroundColor = "#fdf8ee";
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.transform = "scale(1)";
@@ -1445,6 +1454,7 @@ export const Aggregator: React.FC = () => {
                   key={cat.id}
                   type="button"
                   aria-pressed={isSelected}
+                  className="agg-cat"
                   onClick={() => {
                     setActiveCategory(cat.id);
                     setActiveSubcategory(null);
@@ -1469,19 +1479,19 @@ export const Aggregator: React.FC = () => {
                   width: "60px",
                   height: "60px",
                   borderRadius: "50%",
-                  backgroundColor: isSelected ? "#eeeeee" : "#f1f3f4",
-                  border: isSelected ? "2px solid #111111" : "2px solid transparent",
+                  backgroundColor: isSelected ? "#ffca26" : "var(--brand-cream-mid)",
+                  border: isSelected ? "2px solid #000000" : "2px solid transparent",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   transition: "all 0.2s ease"
                 }}>
-                  <CategoryIcon size={25} strokeWidth={1.8} color={isSelected ? "#111111" : "#5f6368"} />
+                  <CategoryIcon size={25} strokeWidth={1.8} color={isSelected ? "#000000" : "#d42518"} />
                 </div>
                 <span style={{
                   fontSize: "13px",
                   fontWeight: isSelected ? "700" : "500",
-                  color: isSelected ? "#111111" : "#202124",
+                  color: isSelected ? "#000000" : "#000000",
                   lineHeight: 1.3,
                   textAlign: "center",
                   whiteSpace: "normal"
@@ -1513,19 +1523,19 @@ export const Aggregator: React.FC = () => {
                   height: "38px",
                   borderRadius: "50%",
                   backgroundColor: "#ffffff",
-                  border: "1px solid #e2e8f0",
+                  border: "1px solid #f3e8cc",
                   boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   cursor: "pointer",
-                  color: "#1e293b",
+                  color: "#000000",
                   transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)"
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.transform = "scale(1.1)";
                   e.currentTarget.style.boxShadow = "0 6px 16px rgba(0,0,0,0.18)";
-                  e.currentTarget.style.backgroundColor = "#f8fafc";
+                  e.currentTarget.style.backgroundColor = "#fdf8ee";
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.transform = "scale(1)";
@@ -1550,10 +1560,10 @@ export const Aggregator: React.FC = () => {
               aria-pressed={activeSubcategory === null}
               style={{
                 padding: "8px 14px",
-                border: `1px solid ${activeSubcategory === null ? "#111111" : "#e0e0e0"}`,
+                border: `1px solid ${activeSubcategory === null ? "#000000" : "#f3e8cc"}`,
                 borderRadius: "999px",
-                color: activeSubcategory === null ? "#111111" : "#5f6368",
-                background: activeSubcategory === null ? "#f1f1f1" : "#ffffff",
+                color: activeSubcategory === null ? "#000000" : "#737373",
+                background: activeSubcategory === null ? "#f7f0de" : "#ffffff",
                 fontSize: "13px",
                 fontWeight: 600,
               }}
@@ -1570,10 +1580,11 @@ export const Aggregator: React.FC = () => {
                   aria-pressed={isSelected}
                   style={{
                     padding: "8px 14px",
-                    border: `1px solid ${isSelected ? "#111111" : "#e0e0e0"}`,
+                    border: `1px solid ${isSelected ? "#ffca26" : "#f3e8cc"}`,
                     borderRadius: "999px",
-                    color: isSelected ? "#111111" : "#5f6368",
-                    background: isSelected ? "#f1f1f1" : "#ffffff",
+                    color: isSelected ? "#000000" : "#595959",
+                    background: isSelected ? "#ffca26" : "#ffffff",
+                    minHeight: "40px",
                     fontSize: "13px",
                     fontWeight: 600,
                   }}
@@ -1600,13 +1611,13 @@ export const Aggregator: React.FC = () => {
             ))}
           </div>
         ) : error ? (
-          <div style={{ padding: "40px", textAlign: "center", color: "#111111", border: "1px solid #cbd5e1", borderRadius: "12px", marginTop: "20px" }}>
+          <div style={{ padding: "40px", textAlign: "center", color: "#000000", border: "1px solid #f3e8cc", borderRadius: "12px", marginTop: "20px" }}>
             <p data-testid="marketplace-error" style={{ fontSize: "16px" }}>{error}</p>
           </div>
         ) : filteredRestaurants.length === 0 ? (
-          <div style={{ padding: "60px 40px", textAlign: "center", color: "#5f6368", border: "1px dashed #cbd5e1", borderRadius: "16px", marginTop: "20px" }}>
-            <Compass size={40} style={{ color: "#cbd5e1", marginBottom: "15px" }} />
-            <h3 style={{ fontSize: "16px", color: "#202124", margin: "0 0 5px 0" }}>No se encontraron restaurantes</h3>
+          <div style={{ padding: "60px 40px", textAlign: "center", color: "#737373", border: "1px dashed #f3e8cc", borderRadius: "16px", marginTop: "20px" }}>
+            <Compass size={40} style={{ color: "#f3e8cc", marginBottom: "15px" }} />
+            <h3 style={{ fontSize: "16px", color: "#000000", margin: "0 0 5px 0" }}>No se encontraron restaurantes</h3>
             <p style={{ fontSize: "13px", margin: 0 }}>Intenta removiendo filtros o buscando un término diferente.</p>
           </div>
         ) : (
@@ -1629,14 +1640,14 @@ export const Aggregator: React.FC = () => {
                         gap: "6px",
                         fontSize: "13px",
                         fontWeight: 700,
-                        color: "#111111",
+                        color: "#000000",
                         textTransform: "uppercase",
                         letterSpacing: "0.5px",
                         marginBottom: "4px"
                       }}>
                         <Sparkles size={14} /> Recomendaciones Personalizadas
                       </div>
-                      <h2 style={{ fontSize: "22px", fontWeight: "800", color: "#202124", margin: 0 }}>
+                      <h2 className="brand-marker" style={{ fontSize: "22px", fontWeight: "800", color: "#000000", margin: 0 }}>
                         Recomendados para ti según tus gustos
                       </h2>
                       <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "8px" }}>
@@ -1648,8 +1659,8 @@ export const Aggregator: React.FC = () => {
                             <span key={prefId} style={{
                               fontSize: "13px",
                               backgroundColor: "#ffffff",
-                              border: "1px solid #d6d6d6",
-                              color: "#111111",
+                              border: "1px solid #f3e8cc",
+                              color: "#000000",
                               padding: "2px 8px",
                               borderRadius: "12px",
                               fontWeight: 600,
@@ -1671,7 +1682,7 @@ export const Aggregator: React.FC = () => {
                         alignItems: "center",
                         gap: "6px",
                         fontSize: "13px",
-                        color: "#111111",
+                        color: "#000000",
                         fontWeight: "700",
                         cursor: "pointer",
                         background: "#ffffff",
@@ -1713,7 +1724,7 @@ export const Aggregator: React.FC = () => {
                           height: "165px",
                           borderRadius: "16px",
                           overflow: "hidden",
-                          backgroundColor: "#f1f3f4"
+                          backgroundColor: "#f7f0de"
                         }}>
                           <img
                             src={rest.coverImage}
@@ -1758,34 +1769,36 @@ export const Aggregator: React.FC = () => {
                                 alignItems: "center",
                                 justifyContent: "center",
                                 cursor: "pointer",
-                                color: favorites.includes(rest.id) ? "#111111" : "#5f6368"
+                                color: favorites.includes(rest.id) ? "#000000" : "#737373"
                               }}
                             >
-                              <Heart size={16} fill={favorites.includes(rest.id) ? "#111111" : "none"} />
+                              <Heart size={16} fill={favorites.includes(rest.id) ? "#000000" : "none"} />
                             </button>
                           )}
                         </div>
 
                         <div>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                            <h3 style={{ fontSize: "16px", fontWeight: "700", color: "#202124", margin: 0 }}>
+                            <h3 style={{ fontSize: "16px", fontWeight: "700", color: "#000000", margin: 0 }}>
                               {rest.name}
                             </h3>
+
+                              <OpenBadge hours={(rest as any).openingHours} />
                             <div style={{
                               display: "flex",
                               alignItems: "center",
                               gap: "3px",
                               fontSize: "13px",
                               fontWeight: "700",
-                              backgroundColor: "#f1f3f4",
+                              backgroundColor: "#f7f0de",
                               padding: "2px 6px",
                               borderRadius: "6px"
                             }}>
-                              <Star size={12} fill="#111111" color="#111111" />
+                              <Star size={12} fill="#000000" color="#000000" />
                               <span>{rest.rating}</span>
                             </div>
                           </div>
-                          <p style={{ fontSize: "13px", color: "#5f6368", margin: "4px 0 0 0" }}>
+                          <p style={{ fontSize: "13px", color: "#737373", margin: "4px 0 0 0" }}>
                             {rest.category} • {rest.deliveryTime} • {rest.deliveryCost}
                           </p>
                         </div>
@@ -1805,11 +1818,11 @@ export const Aggregator: React.FC = () => {
             {activeCategory === "all" && !searchQuery && filteredRestaurants.length > 0 && (
               <div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px" }}>
-                  <h2 style={{ fontSize: "22px", fontWeight: "800", color: "#202124", margin: 0 }}>
+                  <h2 className="brand-marker" style={{ fontSize: "22px", fontWeight: "800", color: "#000000", margin: 0 }}>
                     Lo más pedido esta semana
                   </h2>
                   <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <span style={{ fontSize: "13px", color: "#5f6368", fontWeight: "600", cursor: "pointer" }}>Ver todos</span>
+                    <span style={{ fontSize: "13px", color: "#737373", fontWeight: "600", cursor: "pointer" }}>Ver todos</span>
                     <div style={{ display: "flex", gap: "6px" }}>
                       <button
                         type="button"
@@ -1819,17 +1832,17 @@ export const Aggregator: React.FC = () => {
                           width: "32px",
                           height: "32px",
                           borderRadius: "50%",
-                          backgroundColor: "#f1f5f9",
+                          backgroundColor: "#f7f0de",
                           border: "none",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
                           cursor: "pointer",
-                          color: "#334155",
+                          color: "#333333",
                           transition: "all 0.15s ease"
                         }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#e2e8f0"}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#f1f5f9"}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f3e8cc"}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#f7f0de"}
                       >
                         <ChevronLeft size={16} />
                       </button>
@@ -1841,17 +1854,17 @@ export const Aggregator: React.FC = () => {
                           width: "32px",
                           height: "32px",
                           borderRadius: "50%",
-                          backgroundColor: "#f1f5f9",
+                          backgroundColor: "#f7f0de",
                           border: "none",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
                           cursor: "pointer",
-                          color: "#334155",
+                          color: "#333333",
                           transition: "all 0.15s ease"
                         }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#e2e8f0"}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#f1f5f9"}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f3e8cc"}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#f7f0de"}
                       >
                         <ChevronRight size={16} />
                       </button>
@@ -1891,7 +1904,7 @@ export const Aggregator: React.FC = () => {
                         height: "170px",
                         borderRadius: "16px",
                         overflow: "hidden",
-                        backgroundColor: "#f1f3f4"
+                        backgroundColor: "#f7f0de"
                       }}>
                         <img
                           src={rest.coverImage}
@@ -1908,7 +1921,7 @@ export const Aggregator: React.FC = () => {
                             position: "absolute",
                             top: "15px",
                             left: "0px",
-                            backgroundColor: "#111111",
+                            backgroundColor: "#000000",
                             color: "#ffffff",
                             padding: "4px 10px",
                             fontSize: "13px",
@@ -1944,8 +1957,8 @@ export const Aggregator: React.FC = () => {
                           >
                             <Heart
                               size={16}
-                              fill={favorites.includes(rest.id) ? "#111111" : "none"}
-                              color={favorites.includes(rest.id) ? "#111111" : "#5f6368"}
+                              fill={favorites.includes(rest.id) ? "#000000" : "none"}
+                              color={favorites.includes(rest.id) ? "#000000" : "#737373"}
                             />
                           </button>
                         )}
@@ -1974,15 +1987,17 @@ export const Aggregator: React.FC = () => {
                                 }}
                               />
                             )}
-                            <h3 style={{ fontSize: "15px", fontWeight: "700", color: "#202124", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            <h3 style={{ fontSize: "15px", fontWeight: "700", color: "#000000", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                               {rest.name}
                             </h3>
+
+                              <OpenBadge hours={(rest as any).openingHours} />
                           </div>
                           <div style={{
                             display: "flex",
                             alignItems: "center",
                             gap: "4px",
-                            backgroundColor: "#f1f3f4",
+                            backgroundColor: "#f7f0de",
                             padding: "4px 8px",
                             borderRadius: "999px",
                             fontSize: "13px",
@@ -1993,7 +2008,7 @@ export const Aggregator: React.FC = () => {
                             <span>{rest.ordersThisWeek} pedidos</span>
                           </div>
                         </div>
-                        <div style={{ fontSize: "13px", color: "#5f6368", marginTop: "3px" }}>
+                        <div style={{ fontSize: "13px", color: "#737373", marginTop: "3px" }}>
                           {rest.category}
                         </div>
                       </div>
@@ -2001,7 +2016,7 @@ export const Aggregator: React.FC = () => {
                     ))}
                   </div>
                 ) : (
-                  <p style={{ margin: 0, padding: "18px 20px", borderRadius: "12px", backgroundColor: "#f8f9fa", color: "#5f6368", fontSize: "14px" }}>
+                  <p style={{ margin: 0, padding: "18px 20px", borderRadius: "12px", backgroundColor: "#fdf8ee", color: "#737373", fontSize: "14px" }}>
                     Aún no hay pedidos registrados esta semana.
                   </p>
                 )}
@@ -2015,11 +2030,11 @@ export const Aggregator: React.FC = () => {
             {activeCategory === "all" && !searchQuery && offerRestaurants.length > 0 && (
               <div id="popular-offers">
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px" }}>
-                  <h2 style={{ fontSize: "22px", fontWeight: "800", color: "#202124", margin: 0 }}>
+                  <h2 className="brand-marker" style={{ fontSize: "22px", fontWeight: "800", color: "#000000", margin: 0 }}>
                     Ofertas de restaurantes
                   </h2>
                   <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <span style={{ fontSize: "13px", color: "#5f6368", fontWeight: "600", cursor: "pointer" }}>Ver todos</span>
+                    <span style={{ fontSize: "13px", color: "#737373", fontWeight: "600", cursor: "pointer" }}>Ver todos</span>
                     <div style={{ display: "flex", gap: "6px" }}>
                       <button
                         type="button"
@@ -2029,17 +2044,17 @@ export const Aggregator: React.FC = () => {
                           width: "32px",
                           height: "32px",
                           borderRadius: "50%",
-                          backgroundColor: "#f1f5f9",
+                          backgroundColor: "#f7f0de",
                           border: "none",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
                           cursor: "pointer",
-                          color: "#334155",
+                          color: "#333333",
                           transition: "all 0.15s ease"
                         }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#e2e8f0"}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#f1f5f9"}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f3e8cc"}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#f7f0de"}
                       >
                         <ChevronLeft size={16} />
                       </button>
@@ -2051,17 +2066,17 @@ export const Aggregator: React.FC = () => {
                           width: "32px",
                           height: "32px",
                           borderRadius: "50%",
-                          backgroundColor: "#f1f5f9",
+                          backgroundColor: "#f7f0de",
                           border: "none",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
                           cursor: "pointer",
-                          color: "#334155",
+                          color: "#333333",
                           transition: "all 0.15s ease"
                         }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#e2e8f0"}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#f1f5f9"}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f3e8cc"}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#f7f0de"}
                       >
                         <ChevronRight size={16} />
                       </button>
@@ -2100,7 +2115,7 @@ export const Aggregator: React.FC = () => {
                         height: "170px",
                         borderRadius: "16px",
                         overflow: "hidden",
-                        backgroundColor: "#f1f3f4"
+                        backgroundColor: "#f7f0de"
                       }}>
                         <img
                           src={rest.coverImage}
@@ -2116,7 +2131,7 @@ export const Aggregator: React.FC = () => {
                           position: "absolute",
                           top: "15px",
                           left: "0px",
-                          backgroundColor: "#111111",
+                          backgroundColor: "#000000",
                           color: "#ffffff",
                           padding: "4px 10px",
                           fontSize: "13px",
@@ -2153,8 +2168,8 @@ export const Aggregator: React.FC = () => {
                           >
                             <Heart
                               size={16}
-                              fill={favorites.includes(rest.id) ? "#111111" : "none"}
-                              color={favorites.includes(rest.id) ? "#111111" : "#5f6368"}
+                              fill={favorites.includes(rest.id) ? "#000000" : "none"}
+                              color={favorites.includes(rest.id) ? "#000000" : "#737373"}
                             />
                           </button>
                         )}
@@ -2183,15 +2198,17 @@ export const Aggregator: React.FC = () => {
                                 }}
                               />
                             )}
-                            <h3 style={{ fontSize: "15px", fontWeight: "700", color: "#202124", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            <h3 style={{ fontSize: "15px", fontWeight: "700", color: "#000000", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                               {rest.name}
                             </h3>
+
+                              <OpenBadge hours={(rest as any).openingHours} />
                           </div>
                           <div style={{
                             display: "flex",
                             alignItems: "center",
                             gap: "2px",
-                            backgroundColor: "#f1f3f4",
+                            backgroundColor: "#f7f0de",
                             padding: "3px 6px",
                             borderRadius: "12px",
                             fontSize: "13px",
@@ -2203,12 +2220,12 @@ export const Aggregator: React.FC = () => {
                             <span>{rest.rating}</span>
                           </div>
                         </div>
-                        <div style={{ display: "flex", gap: "5px", fontSize: "13px", color: "#5f6368", marginTop: "3px", alignItems: "center" }}>
+                        <div style={{ display: "flex", gap: "5px", fontSize: "13px", color: "#737373", marginTop: "3px", alignItems: "center" }}>
                           <span>{rest.reviews}</span>
                           <span>•</span>
                           <span>{rest.deliveryTime}</span>
                         </div>
-                        <div style={{ fontSize: "13px", color: "#80868b", marginTop: "2px" }}>
+                        <div style={{ fontSize: "13px", color: "#737373", marginTop: "2px" }}>
                           {rest.deliveryCost}
                         </div>
                       </div>
@@ -2220,7 +2237,7 @@ export const Aggregator: React.FC = () => {
 
             {/* SECTION 3: Grid General de Opciones */}
             <div>
-              <h2 style={{ fontSize: "22px", fontWeight: "800", color: "#202124", marginBottom: "18px" }}>
+              <h2 className="brand-marker" style={{ fontSize: "22px", fontWeight: "800", color: "#000000", marginBottom: "18px" }}>
                 {activeCategory === "all" && !searchQuery ? "Todos los restaurantes" : "Resultados de búsqueda"}
               </h2>
 
@@ -2247,7 +2264,7 @@ export const Aggregator: React.FC = () => {
                       height: "190px",
                       borderRadius: "16px",
                       overflow: "hidden",
-                      backgroundColor: "#f1f3f4"
+                      backgroundColor: "#f7f0de"
                     }}>
                       <img
                         src={rest.coverImage}
@@ -2264,7 +2281,7 @@ export const Aggregator: React.FC = () => {
                           position: "absolute",
                           top: "15px",
                           left: "0px",
-                          backgroundColor: "#111111",
+                          backgroundColor: "#000000",
                           color: "#ffffff",
                           padding: "4px 12px",
                           fontSize: "13px",
@@ -2299,8 +2316,8 @@ export const Aggregator: React.FC = () => {
                         >
                           <Heart
                             size={16}
-                            fill={favorites.includes(rest.id) ? "#111111" : "none"}
-                            color={favorites.includes(rest.id) ? "#111111" : "#5f6368"}
+                            fill={favorites.includes(rest.id) ? "#000000" : "none"}
+                            color={favorites.includes(rest.id) ? "#000000" : "#737373"}
                           />
                         </button>
                       )}
@@ -2338,15 +2355,15 @@ export const Aggregator: React.FC = () => {
                           width: "48px",
                           height: "48px",
                           borderRadius: "10px",
-                          backgroundColor: "#f1f3f4",
+                          backgroundColor: "#f7f0de",
                           flexShrink: 0,
-                          border: "1px solid #cbd5e1",
+                          border: "1px solid #f3e8cc",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
                           fontSize: "18px",
                           fontWeight: "bold",
-                          color: "#111111"
+                          color: "#000000"
                         }}>
                           {rest.name[0].toUpperCase()}
                         </div>
@@ -2355,14 +2372,16 @@ export const Aggregator: React.FC = () => {
                       {/* Details block */}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <h3 style={{ fontSize: "16px", fontWeight: "700", color: "#202124", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          <h3 style={{ fontSize: "16px", fontWeight: "700", color: "#000000", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {rest.name}
                           </h3>
+
+                            <OpenBadge hours={(rest as any).openingHours} />
                           <div style={{
                             display: "flex",
                             alignItems: "center",
                             gap: "2px",
-                            backgroundColor: "#f1f3f4",
+                            backgroundColor: "#f7f0de",
                             padding: "3px 8px",
                             borderRadius: "12px",
                             fontSize: "13px",
@@ -2375,7 +2394,7 @@ export const Aggregator: React.FC = () => {
                           </div>
                         </div>
 
-                        <div style={{ display: "flex", gap: "5px", fontSize: "13px", color: "#5f6368", marginTop: "3px", alignItems: "center" }}>
+                        <div style={{ display: "flex", gap: "5px", fontSize: "13px", color: "#737373", marginTop: "3px", alignItems: "center" }}>
                           <span>{rest.category}</span>
                           <span>•</span>
                           <span>{rest.deliveryTime}</span>
@@ -2383,14 +2402,14 @@ export const Aggregator: React.FC = () => {
                           <span>{rest.reviews}</span>
                         </div>
 
-                        <div style={{ fontSize: "13px", color: "#80868b", marginTop: "3px", display: "flex", alignItems: "center", gap: "6px" }}>
+                        <div style={{ fontSize: "13px", color: "#737373", marginTop: "3px", display: "flex", alignItems: "center", gap: "6px" }}>
                           <span>{rest.deliveryCost}</span>
                           {rest.specialLabel && (
                             <>
                               <span>•</span>
                               <span style={{
-                                backgroundColor: "#eeeeee",
-                                color: "#111111",
+                                backgroundColor: "#f7f0de",
+                                color: "#000000",
                                 padding: "2px 6px",
                                 borderRadius: "4px",
                                 fontWeight: "600",
@@ -2414,33 +2433,33 @@ export const Aggregator: React.FC = () => {
       {/* Styled Footer */}
       <footer style={{
         marginTop: "100px",
-        borderTop: "1px solid #e2e8f0",
+        borderTop: "1px solid #f3e8cc",
         padding: "40px 20px",
         textAlign: "center",
-        backgroundColor: "#f8f9fa"
+        backgroundColor: "#fdf8ee"
       }}>
         <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "8px", marginBottom: "15px" }}>
-          <Utensils size={24} color="#111111" />
-          <strong style={{ fontSize: "18px", color: "#202124" }}>GoEats Marketplace</strong>
+          <Utensils size={24} color="#000000" />
+          <strong style={{ fontSize: "18px", color: "#000000" }}>GoEats Marketplace</strong>
         </div>
-        <p style={{ color: "#5f6368", fontSize: "13px", margin: "0 0 10px 0" }}>
+        <p style={{ color: "#737373", fontSize: "13px", margin: "0 0 10px 0" }}>
           &copy; {new Date().getFullYear()} GoEats Platform. Todos los derechos reservados.
         </p>
         <div style={{ display: "flex", justifyContent: "center", gap: "20px", fontSize: "13px" }}>
-          <Link to="/login?role=restaurant&mode=register" style={{ color: "#111111", fontWeight: "600", textDecoration: "underline" }}>
+          <Link to="/login?role=restaurant&mode=register" style={{ color: "#000000", fontWeight: "600", textDecoration: "underline" }}>
             Inscribir Establecimiento
           </Link>
-          <span style={{ color: "#cbd5e1" }}>|</span>
-          <Link to="/login" style={{ color: "#5f6368", textDecoration: "underline" }}>
+          <span style={{ color: "#f3e8cc" }}>|</span>
+          <Link to="/login" style={{ color: "#737373", textDecoration: "underline" }}>
             Panel de Control POS
           </Link>
-          <span style={{ color: "#cbd5e1" }}>|</span>
+          <span style={{ color: "#f3e8cc" }}>|</span>
           <button
             onClick={() => setSupportModalOpen(true)}
             style={{
               background: "none",
               border: "none",
-              color: "#3b82f6",
+              color: "#000000",
               fontWeight: "600",
               textDecoration: "underline",
               cursor: "pointer",

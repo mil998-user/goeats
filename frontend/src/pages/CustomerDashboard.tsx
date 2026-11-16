@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { EmptyState } from "../components/EmptyState";
 import { PlatformBankInfo } from "../components/PlatformBankInfo";
 import { createPortal } from "react-dom";
 import { useAuth } from "../context/AuthContext";
@@ -236,6 +237,52 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
     loadCustomerData();
   }, []);
 
+  // Tiempo real: lista de pedidos y solicitudes de Plus sin recargar la pagina
+  const refreshQuietly = async () => {
+    try {
+      const [ordersRes, statsRes, saasRes] = await Promise.all([
+        apiRequest("/orders/customer/my-orders"),
+        apiRequest("/orders/customer/stats"),
+        apiRequest("/saas/my"),
+      ]);
+      if (ordersRes.success) setOrders(ordersRes.orders || []);
+      if (statsRes.success) setStats(statsRes.stats);
+      if (saasRes.success) setSaasOrders(saasRes.orders || []);
+    } catch {
+      // Se intenta otra vez con el siguiente aviso
+    }
+  };
+
+  // Escuchar los pedidos que siguen abiertos
+  const openOrderIds = orders
+    .filter((o: any) => o.status !== "DELIVERED" && o.status !== "CANCELLED")
+    .map((o: any) => o.id)
+    .join(",");
+
+  useEffect(() => {
+    if (!socket) return;
+    openOrderIds.split(",").filter(Boolean).forEach((id) => socket.emit("join-order", Number(id)));
+  }, [socket, openOrderIds]);
+
+  useEffect(() => {
+    let timer: number | undefined;
+    const refresh = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(refreshQuietly, 400);
+    };
+    const onVisible = () => {
+      if (!document.hidden) refresh();
+    };
+    const events = ["order-status-updated", "order-cancelled", "saas-order-changed", "connect"];
+    events.forEach((name) => socket?.on(name, refresh));
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearTimeout(timer);
+      events.forEach((name) => socket?.off(name, refresh));
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [socket]);
+
   // Poll active orders every 8 seconds to update status in tracking modal (fallback)
   useEffect(() => {
     const activeOrders = orders.some(o => 
@@ -437,8 +484,23 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
         comments: item.comments || "",
       }));
 
-      // Store in localStorage for the specific restaurant slug
-      localStorage.setItem(`goeats_cart_${order.restaurant.slug}`, JSON.stringify(cartItems));
+      // El catalogo lee el carrito de esta pestana; la marca abre el carrito para editarlo antes de pedir
+      sessionStorage.setItem(`goeats_cart_${order.restaurant.slug}`, JSON.stringify(cartItems));
+      sessionStorage.setItem(`goeats_reorder_${order.restaurant.slug}`, "1");
+      // Tambien la forma de recibir, la direccion y el pago del pedido anterior (el cliente puede cambiarlos)
+      if (order.type === "DELIVERY" || order.type === "TAKEOUT") {
+        sessionStorage.setItem(
+          `goeats_reorder_prefs_${order.restaurant.slug}`,
+          JSON.stringify({
+            type: order.type,
+            address: order.deliveryAddress || "",
+            lat: order.deliveryLat ?? null,
+            lng: order.deliveryLng ?? null,
+            phone: order.deliveryPhone || "",
+            paymentMethod: order.paymentMethod || "CASH",
+          })
+        );
+      }
 
       // Redirect client to that restaurant's catalog
       navigate(`/r/${order.restaurant.slug}`);
@@ -467,13 +529,13 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "PENDING": return { bg: "#fffbeb", text: "#d97706", border: "#fef3c7" };
-      case "PREPARING": return { bg: "#eff6ff", text: "#2563eb", border: "#dbeafe" };
+      case "PENDING": return { bg: "#fffaea", text: "#f86015", border: "#fff4d4" };
+      case "PREPARING": return { bg: "#fdf8ee", text: "#000000", border: "#fdf8ee" };
       case "READY": return { bg: "#fdf2f8", text: "#db2777", border: "#fce7f3" };
-      case "DELIVERING": return { bg: "#faf5ff", text: "#7c3aed", border: "#f3e8ff" };
-      case "DELIVERED": return { bg: "#f0fdf4", text: "#16a34a", border: "#dcfce7" };
-      case "CANCELLED": return { bg: "#fef2f2", text: "#dc2626", border: "#fee2e2" };
-      default: return { bg: "#f3f4f6", text: "#4b5563", border: "#e5e7eb" };
+      case "DELIVERING": return { bg: "#faf5ff", text: "#000000", border: "#f3e8ff" };
+      case "DELIVERED": return { bg: "#f0fdf4", text: "#1e8f4e", border: "#dcfce7" };
+      case "CANCELLED": return { bg: "#fbe9e8", text: "var(--brand-red)", border: "#f8dedc" };
+      default: return { bg: "#f7f0de", text: "#595959", border: "#f3e8cc" };
     }
   };
 
@@ -534,13 +596,13 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
             gap: "8px",
             padding: "9px 18px",
             backgroundColor: "#ffffff",
-            border: "1px solid rgba(255, 71, 87, 0.3)",
+            border: "1px solid color-mix(in srgb, var(--brand-red) 30%, transparent)",
             borderRadius: "30px",
-            color: "#ff4757",
+            color: "var(--brand-red)",
             fontWeight: 700,
             fontSize: "13px",
             cursor: "pointer",
-            boxShadow: "0 2px 6px rgba(255, 71, 87, 0.08)",
+            boxShadow: "0 2px 6px color-mix(in srgb, var(--brand-red) 8%, transparent)",
             transition: "all 0.2s ease",
             whiteSpace: "nowrap"
           }}
@@ -558,9 +620,9 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
           className="customer-tab-btn"
           style={{
             border: "none",
-            backgroundColor: activeTab === "orders" ? "#ff4757" : "#f1f5f9",
-            color: activeTab === "orders" ? "#ffffff" : "#475569",
-            boxShadow: activeTab === "orders" ? "0 4px 12px rgba(255, 71, 87, 0.25)" : "none",
+            backgroundColor: activeTab === "orders" ? "var(--brand-red)" : "#f7f0de",
+            color: activeTab === "orders" ? "#ffffff" : "#595959",
+            boxShadow: activeTab === "orders" ? "0 4px 12px color-mix(in srgb, var(--brand-red) 25%, transparent)" : "none",
           }}
         >
           <ShoppingBag size={16} />
@@ -573,9 +635,9 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
           className="customer-tab-btn"
           style={{
             border: "none",
-            backgroundColor: activeTab === "reservations" ? "#ff4757" : "#f1f5f9",
-            color: activeTab === "reservations" ? "#ffffff" : "#475569",
-            boxShadow: activeTab === "reservations" ? "0 4px 12px rgba(255, 71, 87, 0.25)" : "none",
+            backgroundColor: activeTab === "reservations" ? "var(--brand-red)" : "#f7f0de",
+            color: activeTab === "reservations" ? "#ffffff" : "#595959",
+            boxShadow: activeTab === "reservations" ? "0 4px 12px color-mix(in srgb, var(--brand-red) 25%, transparent)" : "none",
           }}
         >
           <CalendarDays size={16} />
@@ -588,9 +650,9 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
           className="customer-tab-btn"
           style={{
             border: "none",
-            backgroundColor: activeTab === "profile" ? "#ff4757" : "#f1f5f9",
-            color: activeTab === "profile" ? "#ffffff" : "#475569",
-            boxShadow: activeTab === "profile" ? "0 4px 12px rgba(255, 71, 87, 0.25)" : "none",
+            backgroundColor: activeTab === "profile" ? "var(--brand-red)" : "#f7f0de",
+            color: activeTab === "profile" ? "#ffffff" : "#595959",
+            boxShadow: activeTab === "profile" ? "0 4px 12px color-mix(in srgb, var(--brand-red) 25%, transparent)" : "none",
           }}
         >
           <UserIcon size={16} />
@@ -605,9 +667,9 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
           }}
           className="customer-tab-btn"
           style={{
-            border: "1px solid #cbd5e1",
+            border: "1px solid #f3e8cc",
             backgroundColor: "#ffffff",
-            color: "#2563eb",
+            color: "#000000",
           }}
         >
           <HelpCircle size={16} />
@@ -624,7 +686,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
       ) : (
         <>
           {error && (
-            <div style={{ padding: "12px 16px", backgroundColor: "#fef2f2", border: "1px solid #fee2e2", color: "#dc2626", borderRadius: "var(--radius-sm)", marginBottom: "20px", fontSize: "14px" }}>
+            <div style={{ padding: "12px 16px", backgroundColor: "#fbe9e8", border: "1px solid #f8dedc", color: "var(--brand-red)", borderRadius: "var(--radius-sm)", marginBottom: "20px", fontSize: "14px" }}>
               {error}
             </div>
           )}
@@ -632,8 +694,8 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
           {/* Subscription Card GoEats Plus - Active */}
       {user?.isPlus ? (
         <div style={{
-          background: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)",
-          border: "2px solid #fbbf24",
+          background: "linear-gradient(135deg, #fffaea 0%, #fff4d4 100%)",
+          border: "2px solid var(--brand-yellow)",
           borderRadius: "var(--radius-md)",
           padding: "24px",
           marginBottom: "30px",
@@ -644,8 +706,8 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
             position: "absolute",
             top: "12px",
             right: "12px",
-            backgroundColor: "#fbbf24",
-            color: "#78350f",
+            backgroundColor: "var(--brand-yellow)",
+            color: "#000000",
             fontWeight: 800,
             fontSize: "13px",
             padding: "4px 10px",
@@ -656,15 +718,15 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
           </div>
           <div style={{ display: "flex", gap: "16px", alignItems: "flex-start" }}>
             <div style={{
-              backgroundColor: "#fef3c7",
-              color: "#fbbf24",
+              backgroundColor: "#fff4d4",
+              color: "var(--brand-yellow)",
               padding: "12px",
               borderRadius: "50px",
               display: "flex",
               alignItems: "center",
               justifyContent: "center"
             }}>
-              <Award size={32} style={{ color: "#d97706" }} />
+              <Award size={32} style={{ color: "#ffca26" }} />
             </div>
             <div style={{ flex: 1 }}>
               <h3 style={{ fontSize: "18px", fontWeight: 800, color: "var(--text-primary)", margin: "0 0 4px 0" }}>
@@ -677,7 +739,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                 onClick={handleTogglePlus}
                 disabled={plusLoading}
                 style={{
-                  backgroundColor: "#dc2626",
+                  backgroundColor: "var(--brand-red)",
                   color: "#ffffff",
                   border: "none",
                   padding: "10px 20px",
@@ -708,8 +770,8 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
           if (pendingOrder) {
             return (
               <div style={{
-                background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
-                border: "1px dashed #64748b",
+                background: "linear-gradient(135deg, #fdf8ee 0%, #f7f0de 100%)",
+                border: "1px dashed #737373",
                 borderRadius: "var(--radius-md)",
                 padding: "24px",
                 marginBottom: "30px",
@@ -718,14 +780,14 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                 alignItems: "center"
               }}>
                 <div style={{
-                  backgroundColor: "#e2e8f0",
+                  backgroundColor: "var(--brand-cream)",
                   padding: "12px",
                   borderRadius: "50px",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center"
                 }}>
-                  <Clock size={32} style={{ color: "#475569" }} />
+                  <Clock size={32} style={{ color: "#595959" }} />
                 </div>
                 <div style={{ flex: 1 }}>
                   <h3 style={{ fontSize: "17px", fontWeight: 800, color: "var(--text-primary)", margin: "0 0 4px 0" }}>
@@ -743,29 +805,30 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
           // If no active or pending plus subscription, show plan checkout flow
           return (
             <div style={{
-              backgroundColor: "var(--bg-secondary)",
-              border: "1px solid var(--border-light)",
-              borderRadius: "var(--radius-md)",
+              backgroundColor: "var(--brand-yellow-soft)",
+              color: "var(--brand-black)",
+              border: "1px solid color-mix(in srgb, var(--brand-yellow) 45%, transparent)",
+              borderRadius: "var(--radius-lg)",
               padding: "24px",
               marginBottom: "30px"
             }}>
               <div style={{ display: "flex", gap: "16px", alignItems: "flex-start", marginBottom: "20px" }}>
                 <div style={{
-                  backgroundColor: "rgba(251, 191, 36, 0.1)",
-                  color: "#fbbf24",
+                  backgroundColor: "var(--brand-black)",
+                  color: "var(--brand-yellow)",
                   padding: "12px",
                   borderRadius: "50px",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center"
                 }}>
-                  <Award size={32} style={{ color: "#d97706" }} />
+                  <Award size={32} style={{ color: "#f86015" }} />
                 </div>
                 <div>
                   <h3 style={{ fontSize: "18px", fontWeight: 800, color: "var(--text-primary)", margin: "0 0 4px 0" }}>
                     Únete a Club GoEats Plus {systemIconForEmoji("✨")}
                   </h3>
-                  <p style={{ fontSize: "14px", color: "var(--text-secondary)", margin: 0 }}>
+                  <p style={{ fontSize: "14px", color: "var(--brand-black-80)", margin: 0 }}>
                     Disfruta de envíos completamente gratis ($0.00 de envío) en todos los locales de la plataforma. Tus pedidos serán priorizados y los repartidores recibirán un bono adicional pagado por GoEats.
                   </p>
                 </div>
@@ -781,8 +844,8 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                         key={idx}
                         onClick={() => setSelectedPlan(plan)}
                         style={{
-                          backgroundColor: "var(--bg-primary)",
-                          border: `2px solid ${selectedPlan?.name === plan.name ? "#fbbf24" : "var(--border-light)"}`,
+                          backgroundColor: "var(--brand-white)",
+                          border: `2px solid ${selectedPlan?.name === plan.name ? "var(--brand-black)" : "transparent"}`,
                           borderRadius: "var(--radius-sm)",
                           padding: "16px",
                           cursor: "pointer",
@@ -793,7 +856,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                         }}
                       >
                         <div style={{ fontWeight: "bold", fontSize: "13px" }}>{plan.name}</div>
-                        <div style={{ fontSize: "22px", fontWeight: "800", color: "#d97706" }}>
+                        <div style={{ fontSize: "22px", fontWeight: "800", color: "#f86015" }}>
                           ${plan.amount.toFixed(2)}
                         </div>
                         <p style={{ fontSize: "13px", color: "var(--text-muted)", margin: 0 }}>{plan.description}</p>
@@ -804,9 +867,9 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
 
                 {/* Subscription Checkout Box */}
                 <div style={{
-                  backgroundColor: "var(--bg-primary)",
-                  border: "1px solid var(--border-light)",
-                  borderRadius: "var(--radius-sm)",
+                  backgroundColor: "var(--brand-white)",
+                  border: "none",
+                  borderRadius: "var(--radius-md)",
                   padding: "20px"
                 }}>
                   <h4 style={{ fontSize: "14px", fontWeight: 700, margin: "0 0 12px 0" }}>Confirmar Suscripción</h4>
@@ -815,7 +878,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                       <div style={{ marginBottom: "12px", padding: "8px 12px", backgroundColor: "var(--bg-secondary)", borderRadius: "4px", border: "1px solid var(--border-light)" }}>
                         <div style={{ fontSize: "13px", color: "var(--text-muted)", fontWeight: "bold" }}>PLAN:</div>
                         <div style={{ fontWeight: "bold", fontSize: "13px" }}>{selectedPlan.name}</div>
-                        <div style={{ fontSize: "16px", fontWeight: "bold", color: "#d97706" }}>${selectedPlan.amount.toFixed(2)}</div>
+                        <div style={{ fontSize: "16px", fontWeight: "bold", color: "#f86015" }}>${selectedPlan.amount.toFixed(2)}</div>
                       </div>
 
                       {/* Payment Method Selector */}
@@ -836,8 +899,8 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                               fontSize: "13px",
                               cursor: "pointer",
                               borderRadius: "4px",
-                              border: paymentMethod === "CARD" ? "1px solid #fbbf24" : "1px solid var(--border-light)",
-                              backgroundColor: paymentMethod === "CARD" ? "rgba(251, 191, 36, 0.08)" : "var(--bg-primary)",
+                              border: paymentMethod === "CARD" ? "1px solid var(--brand-yellow)" : "1px solid var(--border-light)",
+                              backgroundColor: paymentMethod === "CARD" ? "color-mix(in srgb, var(--brand-yellow) 8%, transparent)" : "var(--bg-primary)",
                               fontWeight: paymentMethod === "CARD" ? "bold" : "normal"
                             }}
                           >
@@ -854,8 +917,8 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                               fontSize: "13px",
                               cursor: "pointer",
                               borderRadius: "4px",
-                              border: paymentMethod === "TRANSFER" ? "1px solid #fbbf24" : "1px solid var(--border-light)",
-                              backgroundColor: paymentMethod === "TRANSFER" ? "rgba(251, 191, 36, 0.08)" : "var(--bg-primary)",
+                              border: paymentMethod === "TRANSFER" ? "1px solid var(--brand-yellow)" : "1px solid var(--border-light)",
+                              backgroundColor: paymentMethod === "TRANSFER" ? "color-mix(in srgb, var(--brand-yellow) 8%, transparent)" : "var(--bg-primary)",
                               fontWeight: paymentMethod === "TRANSFER" ? "bold" : "normal"
                             }}
                           >
@@ -872,7 +935,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                               display: "flex",
                               alignItems: "center",
                               gap: "6px",
-                              backgroundColor: "rgba(46, 213, 115, 0.05)",
+                              backgroundColor: "rgba(30, 143, 78, 0.05)",
                               border: "1px solid var(--success)",
                               padding: "8px",
                               borderRadius: "4px",
@@ -892,7 +955,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                               style={{
                                 width: "100%",
                                 padding: "8px",
-                                backgroundColor: "#ff5a00",
+                                backgroundColor: "var(--brand-orange)",
                                 color: "#ffffff",
                                 border: "none",
                                 borderRadius: "4px",
@@ -940,7 +1003,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                         style={{
                           width: "100%",
                           padding: "10px",
-                          backgroundColor: "#000000",
+                          backgroundColor: "var(--brand-black)",
                           color: "#ffffff",
                           border: "none",
                           borderRadius: "4px",
@@ -982,7 +1045,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
           gap: "16px"
         }}>
           <div style={{
-            backgroundColor: "rgba(255, 71, 87, 0.05)",
+            backgroundColor: "color-mix(in srgb, var(--brand-red) 5%, transparent)",
             color: "var(--accent-primary)",
             padding: "12px",
             borderRadius: "var(--radius-md)"
@@ -1031,8 +1094,8 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
           gap: "16px"
         }}>
           <div style={{
-            backgroundColor: "rgba(52, 152, 219, 0.05)",
-            color: "#3498db",
+            backgroundColor: "rgba(243, 232, 204, 0.3)",
+            color: "#000000",
             padding: "12px",
             borderRadius: "var(--radius-md)"
           }}>
@@ -1059,11 +1122,11 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
         </h2>
 
         {orders.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--text-secondary)" }}>
-            <ShoppingBag size={48} style={{ margin: "0 auto 12px auto", opacity: 0.3 }} />
-            <p style={{ margin: 0, fontWeight: 600 }}>Aún no has realizado ningún pedido.</p>
-            <p style={{ fontSize: "13px", color: "var(--text-muted)", margin: "4px 0 0 0" }}>Navega en el agregador y realiza tu primera compra.</p>
-          </div>
+          <EmptyState
+            title="¡Tu primera comida te espera!"
+            message="Aún no has hecho ningún pedido. Elige un restaurante de Loja y pide lo que se te antoje."
+            action={<button type="button" className="glow-btn" onClick={() => navigate("/restaurants")}>Ver restaurantes</button>}
+          />
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             {orders.map((order) => {
@@ -1197,9 +1260,9 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                           setIsSupportOpen(true);
                         }}
                         style={{
-                          backgroundColor: "#f8fafc",
-                          color: "#475569",
-                          border: "1px solid #cbd5e1",
+                          backgroundColor: "#fdf8ee",
+                          color: "#595959",
+                          border: "1px solid #f3e8cc",
                           padding: "6px 12px",
                           borderRadius: "4px",
                           fontSize: "13px",
@@ -1211,7 +1274,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                         }}
                         title="Reportar problema o solicitar asistencia con esta orden"
                       >
-                        <HelpCircle size={13} color="#3b82f6" />
+                        <HelpCircle size={13} color="#000000" />
                         Ayuda
                       </button>
                     </div>
@@ -1350,13 +1413,13 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                       gap: "5px",
                       fontSize: "13px",
                       fontWeight: "700",
-                      color: "#2ed573",
-                      background: "rgba(46, 213, 115, 0.12)",
+                      color: "#1e8f4e",
+                      background: "rgba(30, 143, 78, 0.12)",
                       padding: "3px 8px",
                       borderRadius: "12px",
-                      border: "1px solid rgba(46, 213, 115, 0.3)"
+                      border: "1px solid rgba(30, 143, 78, 0.3)"
                     }}>
-                      <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#2ed573", display: "inline-block" }}></span>
+                      <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#1e8f4e", display: "inline-block" }}></span>
                       {trackingOrder.driverLat ? "Repartidor en camino (GPS Activo)" : "Repartidor asignado"}
                     </span>
                   )}
@@ -1437,8 +1500,8 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
           <div className="global-modal-card" style={{ maxWidth: "380px", padding: "25px" }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px", borderBottom: "1px solid var(--border-light)", paddingBottom: "10px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#ff5a00", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", fontWeight: "bold" }}>P</div>
-                <h3 style={{ fontSize: "1.1rem", fontWeight: "bold", margin: 0, color: "#ff5a00" }}>Payphone: demostración, sin cobro real</h3>
+                <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "var(--brand-orange)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", fontWeight: "bold" }}>P</div>
+                <h3 style={{ fontSize: "1.1rem", fontWeight: "bold", margin: 0, color: "var(--brand-orange)" }}>Payphone: demostración, sin cobro real</h3>
               </div>
               <button
                 type="button"
@@ -1480,7 +1543,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                 style={{
                   width: "100%",
                   padding: "12px",
-                  backgroundColor: "#ff5a00",
+                  backgroundColor: "var(--brand-orange)",
                   color: "#ffffff",
                   border: "none",
                   borderRadius: "4px",

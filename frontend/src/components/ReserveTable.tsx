@@ -58,7 +58,7 @@ export const ReserveTable: React.FC<{
     >
       <div
         className="glass-card"
-        style={{ width: "100%", maxWidth: "440px", maxHeight: "90vh", overflowY: "auto", padding: "22px", background: "var(--bg-primary)" }}
+        style={{ width: "100%", maxWidth: "440px", maxHeight: "90dvh", overflowY: "auto", padding: "22px", background: "var(--bg-primary)" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", marginBottom: "14px" }}>

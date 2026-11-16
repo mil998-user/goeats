@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { EmptyState } from "../components/EmptyState";
 import { useParams, useSearchParams, useNavigate, Link } from "react-router-dom";
 import { apiRequest } from "../utils/api";
 import { ShoppingCart, Wifi, MapPin, Phone, Utensils, Check, Plus, Minus, AlertCircle, Clock, X, ArrowLeft, BellRing, Receipt, HelpCircle } from "lucide-react";
@@ -13,6 +14,9 @@ import { getMapEmbedUrl } from "../utils/maps";
 import { StarAverage } from "../components/Stars";
 import { ReserveTable } from "../components/ReserveTable";
 import { WifiQR } from "../components/WifiQR";
+import { BrandLogo } from "../components/BrandLogo";
+import { Drawer } from "vaul";
+import { describeWeek, getOpenStatus, parseWeeklyHours } from "../utils/openingHours";
 
 // Pago con tarjeta apagado hasta tener proveedor (VITE_CARD_PAYMENTS=true lo enciende)
 const CARD_PAYMENTS_ENABLED = import.meta.env.VITE_CARD_PAYMENTS === "true";
@@ -101,11 +105,11 @@ export const PublicCatalog: React.FC = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
 
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
+      setIsMobile(window.innerWidth <= 768);
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
@@ -119,18 +123,42 @@ export const PublicCatalog: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   
   // Checkout states
-  const [orderType, setOrderType] = useState<"DINE_IN" | "DELIVERY" | "TAKEOUT">("DELIVERY");
+  // "Pedir de nuevo": datos del pedido anterior para no escribirlos otra vez
+  const [reorderPrefs] = useState<{
+    type?: "DELIVERY" | "TAKEOUT";
+    address?: string;
+    lat?: number | null;
+    lng?: number | null;
+    phone?: string;
+    paymentMethod?: "CASH" | "CARD" | "TRANSFER";
+  } | null>(() => {
+    try {
+      const key = `goeats_reorder_prefs_${slug}`;
+      const raw = sessionStorage.getItem(key);
+      sessionStorage.removeItem(key);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [orderType, setOrderType] = useState<"DINE_IN" | "DELIVERY" | "TAKEOUT">(() =>
+    reorderPrefs?.type === "TAKEOUT" ? "TAKEOUT" : "DELIVERY"
+  );
   const [selectedTable, setSelectedTable] = useState<string>("");
   const [customerName, setCustomerName] = useState("");
-  const [deliveryAddress, setDeliveryAddress] = useState(() => user?.deliveryAddress || "");
+  const [deliveryAddress, setDeliveryAddress] = useState(() => reorderPrefs?.address || user?.deliveryAddress || "");
   const [deliveryReference, setDeliveryReference] = useState(() =>
     [user?.deliveryFloorApartment, user?.deliverySecondaryStreet, user?.deliveryReferences]
       .filter(Boolean)
       .join(", ")
   );
-  const [deliveryPhone, setDeliveryPhone] = useState(() => user?.phone || "");
-  const [deliveryLat, setDeliveryLat] = useState<number | null>(() => user?.deliveryLatitude ?? null);
-  const [deliveryLng, setDeliveryLng] = useState<number | null>(() => user?.deliveryLongitude ?? null);
+  const [deliveryPhone, setDeliveryPhone] = useState(() => reorderPrefs?.phone || user?.phone || "");
+  const [deliveryLat, setDeliveryLat] = useState<number | null>(() =>
+    reorderPrefs?.lat != null && reorderPrefs?.lng != null ? reorderPrefs.lat : user?.deliveryLatitude ?? null
+  );
+  const [deliveryLng, setDeliveryLng] = useState<number | null>(() =>
+    reorderPrefs?.lat != null && reorderPrefs?.lng != null ? reorderPrefs.lng : user?.deliveryLongitude ?? null
+  );
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
   // The cart survives going to the login page and back, only in this tab and for this restaurant
@@ -162,6 +190,7 @@ export const PublicCatalog: React.FC = () => {
   const [orderSuccess, setOrderSuccess] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState(false);
   const [isCartMobileOpen, setIsCartMobileOpen] = useState(false);
+  const [reorderNotice, setReorderNotice] = useState<string | null>(null);
 
   // PedidosYa Tracking & Dine-In Table Call states
   const { socket } = useSocket();
@@ -182,7 +211,12 @@ export const PublicCatalog: React.FC = () => {
   const [deliveryRate, setDeliveryRate] = useState<any>(null);
 
   // Payment states for DELIVERY/TAKEOUT
-  const [paymentMethod, setPaymentMethod] = useState<"CASH" | "CARD" | "TRANSFER">("CASH");
+  const [paymentMethod, setPaymentMethod] = useState<"CASH" | "CARD" | "TRANSFER">(() => {
+    const previous = reorderPrefs?.paymentMethod;
+    if (previous === "TRANSFER") return "TRANSFER";
+    if (previous === "CARD" && CARD_PAYMENTS_ENABLED) return "CARD";
+    return "CASH";
+  });
   const [paymentReceipt, setPaymentReceipt] = useState<string>("");
   const [payphoneTransactionId, setPayphoneTransactionId] = useState<string>("");
   const [showPayphoneSimulator, setShowPayphoneSimulator] = useState(false);
@@ -235,11 +269,34 @@ export const PublicCatalog: React.FC = () => {
             .flatMap((i) => i.variants)
             .map((v) => [v.id, v])
         );
-        setCart((saved) =>
-          saved
+        // "Pedir de nuevo": abrir el carrito y contar lo que cambio desde el pedido anterior
+        const reorderKey = `goeats_reorder_${slug}`;
+        let isReorder = false;
+        try {
+          isReorder = sessionStorage.getItem(reorderKey) === "1";
+          sessionStorage.removeItem(reorderKey);
+        } catch {
+          // Sin almacenamiento no hay aviso, el carrito igual funciona
+        }
+        setCart((saved) => {
+          const kept = saved
             .filter((line) => variants.has(line.variantId))
-            .map((line) => ({ ...line, price: Number(variants.get(line.variantId)!.price) }))
-        );
+            .map((line) => ({ ...line, price: Number(variants.get(line.variantId)!.price) }));
+
+          if (isReorder) {
+            const removed = saved.length - kept.length;
+            const repriced = kept.filter((line) => {
+              const before = saved.find((old) => old.variantId === line.variantId);
+              return before && Math.abs(Number(before.price) - line.price) > 0.001;
+            }).length;
+            const notes: string[] = ["Cargamos tu pedido anterior. Quita o agrega lo que quieras y confirma."];
+            if (removed > 0) notes.push(removed === 1 ? "1 plato ya no está disponible y se quitó." : `${removed} platos ya no están disponibles y se quitaron.`);
+            if (repriced > 0) notes.push(repriced === 1 ? "1 plato cambió de precio; se usa el precio actual." : `${repriced} platos cambiaron de precio; se usa el precio actual.`);
+            setReorderNotice(notes.join(" "));
+            setIsCartMobileOpen(true);
+          }
+          return kept;
+        });
 
         // Auto-configure DINE_IN if table is provided via QR scan
         if (activeTableId) {
@@ -277,7 +334,8 @@ export const PublicCatalog: React.FC = () => {
         const main = list.find((a) => a.isDefault);
         if (!main) return;
         // The session loads after the first render, so the form may still be empty: fill it unless the customer already typed
-        setSelectedAddressId(main.id);
+        // Si viene de "pedir de nuevo" con otra direccion, no marcar la principal como elegida
+        if (!reorderPrefs?.address || reorderPrefs.address === main.address) setSelectedAddressId(main.id);
         setDeliveryAddress((current) => current || main.address);
         setDeliveryLat((current) => current ?? main.latitude);
         setDeliveryLng((current) => current ?? main.longitude);
@@ -521,588 +579,14 @@ export const PublicCatalog: React.FC = () => {
     );
   }
 
-  return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-primary)" }}>
-      {/* Stick Header Navigation style UberEats */}
-      <nav style={{
-        position: "sticky",
-        top: 0,
-        backgroundColor: "#ffffff",
-        borderBottom: "1px solid #e2e8f0",
-        zIndex: 1000,
-        padding: isMobile ? "10px 15px" : "15px 30px",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: "1px"
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: isMobile ? "10px" : "20px", flex: 1 }}>
-          <button 
-            onClick={() => navigate("/restaurants")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              background: "none",
-              cursor: "pointer",
-              padding: isMobile ? "8px 10px" : "8px 14px",
-              borderRadius: "30px",
-              fontSize: "14px",
-              fontWeight: "600",
-              color: "#2f3542",
-              border: "1px solid #e2e8f0",
-              transition: "all 0.2s ease",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "#f1f2f6";
-              e.currentTarget.style.borderColor = "#ced6e0";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "transparent";
-              e.currentTarget.style.borderColor = "#e2e8f0";
-            }}
-          >
-            <ArrowLeft size={16} />
-            {!isMobile && <span>Volver</span>}
-          </button>
+  // Horario por dias: abierto o cerrado ahora (hora de Ecuador)
+  const weeklyHours = parseWeeklyHours(restaurant.openingHours);
+  const openStatus = weeklyHours ? getOpenStatus(weeklyHours) : null;
+  const closedNow = !!openStatus && !openStatus.isOpen && orderType !== "DINE_IN";
 
-          <h1 style={{
-            fontSize: isMobile ? "18px" : "24px",
-            fontWeight: "800",
-            color: "#ff4757",
-            letterSpacing: "-0.5px",
-            margin: 0,
-            cursor: "pointer"
-          }} onClick={() => navigate("/restaurants")}>
-            Go<span style={{ color: "#2f3542" }}>Eats</span>
-          </h1>
-        </div>
-
-        <div style={{ display: "flex", gap: isMobile ? "6px" : "12px", alignItems: "center" }}>
-          {!isMobile && (
-            <Link to="/plus" style={{
-              fontSize: "13px",
-              fontWeight: "700",
-              color: "#d97706",
-              padding: "8px 16px",
-              borderRadius: "30px",
-              backgroundColor: "rgba(251, 191, 36, 0.08)",
-              border: "1px solid #fbbf24",
-              textDecoration: "none",
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-              transition: "all 0.2s ease"
-            }}>
-              Hazte Plus {systemIconForEmoji("✨")}
-            </Link>
-          )}
-          {isAuthenticated && user ? (
-            <div style={{ display: "flex", alignItems: "center", gap: isMobile ? "8px" : "15px" }}>
-              {!isMobile && (
-                <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: "13px", fontWeight: 600, color: "#202124" }}>{user.name}</div>
-                  <div style={{ fontSize: "13px", color: "var(--text-muted)" }}>{user.role}</div>
-                </div>
-              )}
-
-              {user.role === "CUSTOMER" && (
-                <Link to="/customer/dashboard" style={{
-                  fontSize: isMobile ? "12px" : "13px",
-                  fontWeight: "600",
-                  color: "#ff4757",
-                  padding: isMobile ? "6px 12px" : "8px 16px",
-                  borderRadius: "30px",
-                  border: "1px solid #ff4757",
-                  textDecoration: "none",
-                  transition: "all 0.2s ease"
-                }}>
-                  {isMobile ? "Pedidos" : systemTextWithIcons("Mis Pedidos 🍔")}
-                </Link>
-              )}
-
-              {user.role === "MOTORIZADO" && (
-                <Link to="/delivery" style={{
-                  fontSize: isMobile ? "12px" : "13px",
-                  fontWeight: "600",
-                  color: "#ff4757",
-                  padding: isMobile ? "6px 12px" : "8px 16px",
-                  borderRadius: "30px",
-                  border: "1px solid #ff4757",
-                  textDecoration: "none",
-                  transition: "all 0.2s ease"
-                }}>
-                  {isMobile ? "Entregas" : systemTextWithIcons("Entregas 🛵")}
-                </Link>
-              )}
-
-              {(user.role === "RESTAURANT_OWNER" || user.role === "CAJERO" || user.role === "MOZO" || user.role === "PRODUCCION") && (
-                <Link to="/pos" style={{
-                  fontSize: isMobile ? "12px" : "13px",
-                  fontWeight: "600",
-                  color: "#ff4757",
-                  padding: isMobile ? "6px 12px" : "8px 16px",
-                  borderRadius: "30px",
-                  border: "1px solid #ff4757",
-                  textDecoration: "none",
-                  transition: "all 0.2s ease"
-                }}>
-                  {isMobile ? "POS" : systemTextWithIcons("Ir al POS 🖥️")}
-                </Link>
-              )}
-
-              {user.role === "SUPER_ADMIN" && (
-                <Link to="/admin/restaurants" style={{
-                  fontSize: isMobile ? "12px" : "13px",
-                  fontWeight: "600",
-                  color: "#ff4757",
-                  padding: isMobile ? "6px 12px" : "8px 16px",
-                  borderRadius: "30px",
-                  border: "1px solid #ff4757",
-                  textDecoration: "none",
-                  transition: "all 0.2s ease"
-                }}>
-                  {isMobile ? "Admin" : systemTextWithIcons("Panel Admin 🛡️")}
-                </Link>
-              )}
-
-              <button
-                onClick={logout}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  padding: isMobile ? "6px 10px" : "8px 12px",
-                  borderRadius: "30px",
-                  backgroundColor: "rgba(255, 71, 87, 0.1)",
-                  border: "1px solid rgba(255, 71, 87, 0.2)",
-                  color: "var(--accent-primary)",
-                  cursor: "pointer",
-                  fontSize: isMobile ? "12px" : "12px",
-                  fontWeight: 600,
-                  transition: "all var(--transition-fast)"
-                }}
-              >
-                Salir
-              </button>
-            </div>
-          ) : (
-            <>
-              <Link to={loginPath} style={{
-                fontSize: isMobile ? "12px" : "13px",
-                fontWeight: "600",
-                backgroundColor: "#000000",
-                color: "#ffffff",
-                padding: isMobile ? "6px 12px" : "8px 20px",
-                borderRadius: "30px",
-                textDecoration: "none",
-                transition: "all 0.2s ease"
-              }}>
-                {isMobile ? "Entrar" : "Iniciar Sesión"}
-              </Link>
-            </>
-          )}
-        </div>
-      </nav>
-
-      {/* Restaurant Header Banner style UberEats */}
-      <div style={{
-        position: "relative",
-        height: "280px",
-        width: "100%",
-        backgroundImage: restaurant.coverImage 
-          ? `linear-gradient(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.6)), url("${restaurant.coverImage}")` 
-          : "linear-gradient(135deg, #ff4757, #ff6b81)",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        display: "flex",
-        alignItems: "flex-end",
-        padding: "30px 40px",
-        color: "#ffffff"
-      }}>
-        <div style={{
-          maxWidth: "1200px",
-          width: "100%",
-          margin: "0 auto",
-          display: "flex",
-          alignItems: "center",
-          gap: "24px",
-          position: "relative",
-          zIndex: 2
-        }}>
-          {restaurant.logo ? (
-            <img 
-              src={restaurant.logo} 
-              alt={restaurant.name} 
-              onError={(e) => {
-                e.currentTarget.src = "/logos/prueba.svg";
-              }}
-              style={{ 
-                width: "90px", 
-                height: "90px", 
-                borderRadius: "16px", 
-                objectFit: "contain",
-                backgroundColor: "#ffffff",
-                padding: "6px",
-                border: "4px solid #ffffff",
-                boxShadow: "0 4px 14px rgba(0,0,0,0.2)"
-              }} 
-            />
-          ) : (
-            <div style={{ 
-              width: "90px", 
-              height: "90px", 
-              borderRadius: "var(--radius-md)", 
-              background: "#ffffff", 
-              color: "var(--accent-primary)",
-              display: "flex", 
-              alignItems: "center", 
-              justifyContent: "center", 
-              fontSize: "2rem", 
-              fontWeight: "bold",
-              boxShadow: "var(--shadow-md)",
-              border: "4px solid #ffffff"
-            }}>
-              {restaurant.name[0].toUpperCase()}
-            </div>
-          )}
-          
-          <div style={{ textShadow: "0 2px 4px rgba(0,0,0,0.5)" }}>
-            <h1 style={{ fontSize: "2.4rem", fontWeight: "800", margin: "0 0 5px 0", letterSpacing: "-0.5px" }}>{restaurant.name}</h1>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", marginBottom: "6px" }}>
-              <span style={{ background: "rgba(255,255,255,0.92)", borderRadius: "20px", padding: "3px 10px", textShadow: "none" }}>
-                <StarAverage average={restaurant.ratingAverage} count={restaurant.ratingCount} />
-              </span>
-              {restaurant.reservationsEnabled && !activeTableId && (
-                <button
-                  type="button"
-                  onClick={() => (isAuthenticated && user?.role === "CUSTOMER" ? setReserveOpen(true) : navigate(loginPath))}
-                  style={{ background: "#ffffff", color: "#000000", border: "none", borderRadius: "20px", padding: "6px 14px", minHeight: "36px", fontWeight: 700, cursor: "pointer", textShadow: "none" }}
-                >
-                  Reservar mesa
-                </button>
-              )}
-            </div>
-            {restaurant.description && (
-              <p style={{ fontSize: "1.1rem", fontStyle: "italic", margin: "0 0 10px 0", opacity: 0.9 }}>
-                {restaurant.description}
-              </p>
-            )}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "20px", fontSize: "0.95rem", opacity: 0.95 }}>
-              {restaurant.address && (
-                <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-                  <MapPin size={16} />
-                  <span>{restaurant.address} {restaurant.reference ? `(${restaurant.reference})` : ""}</span>
-                </div>
-              )}
-              {restaurant.phone && (
-                <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-                  <Phone size={16} />
-                  <span>{restaurant.phone}</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Table-specific Info bar (SSID) if active */}
-      {activeTableId && restaurant.wifiSsid && (
-        <div style={{ backgroundColor: "#ffeef0", borderBottom: "1px solid #ffe2e5", padding: "10px 30px" }}>
-          <div style={{ maxWidth: "1200px", margin: "0 auto", display: "flex", alignItems: "center", gap: "12px", fontSize: "14px", color: "#d63031", fontWeight: "600" }}>
-            <Wifi size={16} />
-            <span>Estás en la mesa. WiFi local: <strong>{restaurant.wifiSsid}</strong> {restaurant.wifiPassword ? `(Clave: ${restaurant.wifiPassword})` : "(Red libre)"}</span>
-          </div>
-        </div>
-      )}
-
-      {/* Main Grid */}
-      <div className="mobile-column-stack" style={{ maxWidth: "1200px", margin: "40px auto", padding: "0 20px", display: "grid", gridTemplateColumns: "1fr 380px", gap: "40px" }}>
-        
-        {/* Menu Catalog Section */}
-        <main>
-          {/* Bar de Servicio en Mesa (Salón QR) */}
-          {orderType === "DINE_IN" && (
-            <div style={{
-              background: "linear-gradient(135deg, rgba(255, 165, 2, 0.08), rgba(46, 213, 115, 0.08))",
-              border: "1px solid rgba(255, 165, 2, 0.3)",
-              borderRadius: "14px",
-              padding: "16px 20px",
-              marginBottom: "24px",
-              display: "flex",
-              flexWrap: "wrap",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: "14px",
-              boxShadow: "0 4px 15px rgba(0,0,0,0.03)"
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                <div style={{ width: "42px", height: "42px", borderRadius: "12px", background: "#ffa502", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "1.4rem" }}>
-                  {systemIconForEmoji("🪑")}
-                </div>
-                <div>
-                  <div style={{ fontWeight: "800", fontSize: "1.05rem", color: "var(--text-primary)" }}>
-                    {selectedTable 
-                      ? `Mesa ${diningAreas.flatMap(a => a.tables).find(t => String(t.id) === String(selectedTable))?.number || selectedTable} • En Servicio`
-                      : "Servicio en Mesa (Autoservicio QR)"}
-                  </div>
-                  <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-                    {!selectedTable
-                      ? "Elige tu mesa en el carrito para ordenar"
-                      : restaurant.payBeforeEating
-                        ? "Este local cobra antes de preparar: tu pedido pasa a cocina cuando pagas en caja"
-                        : "Tus comandas van directo a la pantalla de cocina"}
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                {restaurant.waiterCallEnabled !== false && (
-                <button
-                  type="button"
-                  onClick={() => handleCallWaiter("CALL")}
-                  disabled={waiterCallLoading || !selectedTable}
-                  style={{
-                    background: "#ffa502",
-                    color: "#fff",
-                    border: "none",
-                    padding: "9px 16px",
-                    borderRadius: "10px",
-                    fontWeight: "700",
-                    fontSize: "0.88rem",
-                    cursor: selectedTable ? "pointer" : "not-allowed",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    boxShadow: "0 2px 8px rgba(255,165,2,0.3)",
-                    opacity: selectedTable ? 1 : 0.6
-                  }}
-                >
-                  <BellRing size={16} />
-                  <span>{waiterCallLoading ? "Avisando..." : "Llamar Mesero"}</span>
-                </button>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => handleCallWaiter("BILL")}
-                  disabled={waiterCallLoading || !selectedTable}
-                  style={{
-                    background: "#2ed573",
-                    color: "#fff",
-                    border: "none",
-                    padding: "9px 16px",
-                    borderRadius: "10px",
-                    fontWeight: "700",
-                    fontSize: "0.88rem",
-                    cursor: selectedTable ? "pointer" : "not-allowed",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    boxShadow: "0 2px 8px rgba(46,213,115,0.3)",
-                    opacity: selectedTable ? 1 : 0.6
-                  }}
-                >
-                  <Receipt size={16} />
-                  <span>{waiterCallLoading ? "Avisando..." : "Pedir Cuenta"}</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Banner de confirmación de llamado a mesero */}
-          {waiterCallStatus && (
-            <div style={{
-              background: "rgba(46, 213, 115, 0.15)",
-              border: "1px solid #2ed573",
-              color: "#2ed573",
-              padding: "14px 20px",
-              borderRadius: "12px",
-              marginBottom: "20px",
-              fontWeight: "700",
-              display: "flex",
-              alignItems: "center",
-              gap: "10px"
-            }}>
-              <span>{waiterCallStatus}</span>
-            </div>
-          )}
-
-          {orderSuccess ? (
-            activeOrder?.type === "DELIVERY" ? (
-              /* LIVE TRACKER ESTILO PEDIDOSYA */
-              <div className="glass-card" style={{ padding: "30px", background: "var(--card-bg, #ffffff)", borderColor: "var(--border-light)", borderRadius: "18px", boxShadow: "0 8px 30px rgba(0,0,0,0.06)" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border-light)", paddingBottom: "16px", marginBottom: "20px" }}>
-                  <div>
-                    <span style={{ fontSize: "0.85rem", fontWeight: "800", color: "var(--accent-primary)", textTransform: "uppercase", letterSpacing: "1px" }}>
-                      {systemIconForEmoji("🛵")} {activeOrder?.status === "DELIVERED" ? "Pedido entregado con éxito" : activeOrder?.status === "CANCELLED" ? "Pedido cancelado" : "Pedido a Domicilio en Curso"}
-                    </span>
-                    <h2 style={{ margin: "4px 0 0 0", fontSize: "1.5rem" }}>
-                      Orden #{activeOrder?.id || "---"}
-                    </h2>
-                  </div>
-                  <div style={{
-                    padding: "6px 14px",
-                    borderRadius: "20px",
-                    fontWeight: "800",
-                    fontSize: "0.85rem",
-                    backgroundColor: activeOrder?.status === "DELIVERED" ? "rgba(46, 213, 115, 0.15)" : activeOrder?.status === "DELIVERING" ? "rgba(30, 144, 255, 0.15)" : "rgba(255, 165, 2, 0.15)",
-                    color: activeOrder?.status === "DELIVERED" ? "#2ed573" : activeOrder?.status === "DELIVERING" ? "#1e90ff" : "#ffa502"
-                  }}>
-                    {activeOrder?.status === "DELIVERED" ? "✓ ENTREGADO" : activeOrder?.status === "DELIVERING" ? "EN CAMINO" : activeOrder?.status === "READY" ? "EMPACADO" : "EN PREPARACIÓN"}
-                  </div>
-                </div>
-
-                {/* PIN DE ENTREGA DESTACADO */}
-                {activeOrder?.deliveryPin && activeOrder?.status !== "DELIVERED" && activeOrder?.status !== "CANCELLED" && (
-                  <div style={{
-                    background: "#f9fafb",
-                    border: "2px solid #111827",
-                    borderRadius: "14px",
-                    padding: "20px",
-                    margin: "20px 0",
-                    textAlign: "center"
-                  }}>
-                    <div style={{ fontSize: "0.95rem", fontWeight: "800", color: "#111827", letterSpacing: "1.5px", textTransform: "uppercase" }}>
-                      {systemIconForEmoji("🔑")} CÓDIGO DE ENTREGA
-                    </div>
-                    <div style={{ fontSize: "3.2rem", fontWeight: "900", letterSpacing: "12px", color: "#111827", margin: "10px 0", fontFamily: "monospace" }}>
-                      {activeOrder.deliveryPin}
-                    </div>
-                    <p style={{ margin: 0, fontSize: "1rem", color: "#374151", lineHeight: 1.5 }}>
-                      <strong>Muéstrale este código al motorizado cuando te entregue el pedido.</strong> Sin el código no puede cerrar la entrega. También está en "Mis pedidos".
-                    </p>
-                  </div>
-                )}
-
-                {/* STEPPER DE PROGRESO EN VIVO */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "8px", margin: "28px 0", textAlign: "center" }}>
-                  {[
-                    { label: "1. Confirmado", icon: "✓", active: true },
-                    { label: "2. En Cocina", icon: systemTextWithIcons("🔥"), active: activeOrder?.status !== "PENDING" },
-                    { label: "3. En Camino", icon: systemTextWithIcons("🛵"), active: activeOrder?.status === "DELIVERING" || activeOrder?.status === "DELIVERED" },
-                    { label: "4. Entregado", icon: systemTextWithIcons("🎉"), active: activeOrder?.status === "DELIVERED" }
-                  ].map((step, idx) => (
-                    <div key={idx} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
-                      <div style={{
-                        width: "36px",
-                        height: "36px",
-                        borderRadius: "50%",
-                        background: step.active ? "#2ed573" : "#e2e8f0",
-                        color: step.active ? "#fff" : "#a4b0be",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontWeight: "bold",
-                        fontSize: "0.9rem",
-                        boxShadow: step.active ? "0 3px 10px rgba(46,213,115,0.3)" : "none"
-                      }}>
-                        {step.icon}
-                      </div>
-                      <span style={{ fontSize: "0.78rem", fontWeight: step.active ? "700" : "500", color: step.active ? "var(--text-primary)" : "var(--text-secondary)" }}>
-                        {step.label}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* DETALLES DE ENTREGA */}
-                <div style={{ background: "rgba(0,0,0,0.02)", borderRadius: "12px", padding: "16px", margin: "20px 0", fontSize: "0.9rem", display: "flex", flexDirection: "column", gap: "8px" }}>
-                  <div><strong>Destino:</strong> {activeOrder?.deliveryAddress || deliveryAddress || "Dirección indicada"}</div>
-                  {(activeOrder?.deliveryObservation || deliveryReference) && (
-                    <div><strong>Referencia:</strong> {activeOrder?.deliveryObservation || deliveryReference}</div>
-                  )}
-                  {Number(activeOrder?.tipAmount || 0) > 0 && (
-                    <div><strong>Propina al motorizado:</strong> ${Number(activeOrder.tipAmount).toFixed(2)}</div>
-                  )}
-                  <div><strong>Total a pagar:</strong> ${(Number(activeOrder?.total || 0) + Number(activeOrder?.tipAmount || 0)).toFixed(2)} ({activeOrder?.paymentMethodString === "CASH" ? "Efectivo contraentrega" : "Pagado digitalmente"})</div>
-                  <div><strong>Repartidor:</strong> {activeOrder?.deliveryDriverName || "Buscando repartidor cercano..."}</div>
-                </div>
-
-                <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
-                  <button className="secondary-btn" onClick={() => { rememberActiveOrder(null); setOrderSuccess(false); }} style={{ padding: "12px 24px" }}>
-                    Hacer otro pedido
-                  </button>
-                  <button className="secondary-btn" onClick={() => navigate("/restaurants")} style={{ padding: "12px 24px" }}>
-                    Ver más restaurantes
-                  </button>
-                  <button className="glow-btn" onClick={() => navigate("/customer/dashboard")} style={{ padding: "12px 24px" }}>
-                    Ver en Mis pedidos
-                  </button>
-                </div>
-              </div>
-            ) : (
-              /* CONFIRMACIÓN EN MESA (DINE-IN QR) */
-              <div className="glass-card" style={{ padding: "40px", textAlign: "center", background: "rgba(46, 213, 115, 0.05)", borderColor: "var(--success)" }}>
-                <Check size={48} color="var(--success)" style={{ marginBottom: "15px" }} />
-                <h2 style={{ marginBottom: "10px" }}>¡Comanda Enviada a Cocina!</h2>
-                <p style={{ color: "var(--text-secondary)", marginBottom: "25px", fontSize: "1rem" }}>
-                  Los platos seleccionados para tu <strong>Mesa</strong> ya se encuentran en la pantalla del cocinero.
-                </p>
-
-                <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap", marginBottom: "20px" }}>
-                  <button className="secondary-btn" onClick={() => handleCallWaiter("CALL")} style={{ padding: "10px 20px" }}>
-                    {systemIconForEmoji("🛎️")} Llamar al Mesero
-                  </button>
-                  <button className="secondary-btn" onClick={() => handleCallWaiter("BILL")} style={{ padding: "10px 20px" }}>
-                    {systemIconForEmoji("🧾")} Solicitar Cuenta
-                  </button>
-                  <button className="glow-btn" onClick={() => setOrderSuccess(false)} style={{ padding: "10px 20px" }}>
-                    {systemIconForEmoji("🍽️")} Pedir más platos
-                  </button>
-                </div>
-              </div>
-            )
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "40px" }}>
-              {categories.map((cat) => (
-                <section key={cat.id}>
-                  <h2 style={{ fontSize: "1.6rem", borderBottom: "1px solid var(--border-light)", paddingBottom: "12px", marginBottom: "20px" }}>{cat.name}</h2>
-                  {cat.description && <p style={{ color: "var(--text-secondary)", marginBottom: "20px", fontSize: "0.95rem" }}>{cat.description}</p>}
-
-                  <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-                    {cat.items.map((item) => (
-                      <div key={item.id} className="glass-card" style={{ padding: "20px", display: "grid", gridTemplateColumns: "1fr 140px", gap: "20px", alignItems: "center" }}>
-                        <div>
-                          <h3 style={{ fontSize: "1.2rem", marginBottom: "8px" }}>{item.name}</h3>
-                          {item.description && <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", marginBottom: "15px" }}>{item.description}</p>}
-                          
-                          {/* Variants presentation pricing selection */}
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
-                            {item.variants.map((v) => (
-                              <button key={v.id} className="secondary-btn" onClick={() => addToCart(v, item)} style={{ padding: "8px 14px", fontSize: "0.85rem" }}>
-                                <Plus size={14} color="var(--accent-primary)" />
-                                <span>{v.name}: <strong>${v.price.toFixed(2)}</strong></span>
-                                {v.regularPrice && (
-                                  <span data-testid="catalog-promo" style={{ fontSize: "0.85rem" }}>
-                                    <s style={{ opacity: 0.7 }}>${v.regularPrice.toFixed(2)}</s>{" "}
-                                    <span style={{ background: "#b91c1c", color: "#ffffff", borderRadius: "6px", padding: "1px 6px", fontWeight: 700 }}>Promo</span>
-                                  </span>
-                                )}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        {item.image ? (
-                          <img src={item.image} alt={item.name} style={{ width: "100%", height: "100px", borderRadius: "var(--radius-md)", objectFit: "cover" }} />
-                        ) : (
-                          <div style={{ width: "100%", height: "100px", borderRadius: "var(--radius-md)", background: "var(--bg-tertiary)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <Utensils size={24} color="var(--text-muted)" />
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              ))}
-            </div>
-          )}
-        </main>
-
-        {/* Sidebar Cart & Info Section */}
-        {/* Sidebar Cart & Info Section */}
-        <aside className={`mobile-cart-aside ${isCartMobileOpen ? "open" : ""}`} style={{ display: "flex", flexDirection: "column", gap: "25px" }}>
+  // Contenido del carrito: en computadora va al costado, en celular dentro de la hoja deslizable
+  const cartPanel = (
+    <>
           <div className="glass-card" style={{ padding: "25px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px", borderBottom: "1px solid var(--border-light)", paddingBottom: "15px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -1125,10 +609,35 @@ export const PublicCatalog: React.FC = () => {
               </button>
             </div>
 
-            {cart.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "40px 10px", color: "var(--text-secondary)", fontSize: "0.95rem" }}>
-                <p>Tu carrito está vacío. Agrega platos del menú para comenzar.</p>
+            {reorderNotice && (
+              <div
+                role="status"
+                style={{
+                  display: "flex",
+                  gap: "10px",
+                  alignItems: "flex-start",
+                  padding: "12px 14px",
+                  borderRadius: "10px",
+                  backgroundColor: "rgba(30, 143, 78, 0.08)",
+                  border: "1px solid rgba(30, 143, 78, 0.25)",
+                  fontSize: "13px",
+                  lineHeight: 1.45,
+                  color: "var(--text-primary)",
+                }}
+              >
+                <span style={{ flex: 1, minWidth: 0 }}>{reorderNotice}</span>
+                <button
+                  type="button"
+                  onClick={() => setReorderNotice(null)}
+                  aria-label="Cerrar aviso"
+                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: "16px", color: "var(--text-secondary)", padding: 0 }}
+                >
+                  ×
+                </button>
               </div>
+            )}
+            {cart.length === 0 ? (
+              <EmptyState size={56} title="¿Qué se te antoja hoy?" message="Tu carrito está vacío. Toca un plato del menú para agregarlo." />
             ) : (
               <form onSubmit={handleCheckout}>
                 {/* Cart Items List */}
@@ -1189,7 +698,7 @@ export const PublicCatalog: React.FC = () => {
                 {activeTableId ? (
                   <div style={{
                     padding: "12px",
-                    backgroundColor: "rgba(46, 213, 115, 0.05)",
+                    backgroundColor: "rgba(30, 143, 78, 0.05)",
                     border: "1px solid var(--success)",
                     borderRadius: "var(--radius-sm)",
                     color: "var(--success)",
@@ -1225,7 +734,7 @@ export const PublicCatalog: React.FC = () => {
                 {/* Force Login Message for Off-Premise */}
                 {(orderType === "DELIVERY" || orderType === "TAKEOUT") && !isAuthenticated ? (
                   <div style={{
-                    backgroundColor: "rgba(255, 71, 87, 0.05)",
+                    backgroundColor: "color-mix(in srgb, var(--brand-red) 5%, transparent)",
                     border: "1px solid var(--accent-primary)",
                     padding: "15px",
                     borderRadius: "var(--radius-md)",
@@ -1312,7 +821,7 @@ export const PublicCatalog: React.FC = () => {
                         }}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
                             <span style={{ fontSize: "13px", fontWeight: "700" }}>Distancia Calculada al Local:</span>
-                            <span style={{ backgroundColor: "rgba(255, 71, 87, 0.1)", color: "#ff4757", padding: "2px 8px", borderRadius: "12px", fontSize: "13px", fontWeight: "800" }}>
+                            <span style={{ backgroundColor: "color-mix(in srgb, var(--brand-red) 10%, transparent)", color: "var(--brand-red)", padding: "2px 8px", borderRadius: "12px", fontSize: "13px", fontWeight: "800" }}>
                               {shippingDistance.toFixed(1)} km
                             </span>
                           </div>
@@ -1421,7 +930,7 @@ export const PublicCatalog: React.FC = () => {
                                 display: "flex",
                                   alignItems: "center",
                                 gap: "8px",
-                                backgroundColor: "rgba(46, 213, 115, 0.05)",
+                                backgroundColor: "rgba(30, 143, 78, 0.05)",
                                 border: "1px solid var(--success)",
                                 padding: "10px",
                                 borderRadius: "var(--radius-sm)",
@@ -1439,7 +948,7 @@ export const PublicCatalog: React.FC = () => {
                                 type="button"
                                 className="glow-btn"
                                 onClick={() => setShowPayphoneSimulator(true)}
-                                style={{ width: "100%", padding: "10px", backgroundColor: "#ff5a00", borderColor: "#ff5a00" }}
+                                style={{ width: "100%", padding: "10px", backgroundColor: "var(--brand-orange)", borderColor: "var(--brand-orange)" }}
                               >
                                 Pagar con Tarjeta (Payphone)
                               </button>
@@ -1566,14 +1075,21 @@ export const PublicCatalog: React.FC = () => {
 
                     {/* QR Ordering Toggle Guard */}
                     {orderType === "DINE_IN" && !restaurant.qrOrderingEnabled ? (
-                      <div style={{ background: "rgba(255, 71, 87, 0.1)", border: "1px solid var(--accent-primary)", padding: "15px", borderRadius: "var(--radius-md)", display: "flex", gap: "12px", color: "var(--text-primary)", fontSize: "0.85rem", marginBottom: "20px" }}>
+                      <div style={{ background: "color-mix(in srgb, var(--brand-red) 10%, transparent)", border: "1px solid var(--accent-primary)", padding: "15px", borderRadius: "var(--radius-md)", display: "flex", gap: "12px", color: "var(--text-primary)", fontSize: "0.85rem", marginBottom: "20px" }}>
                         <AlertCircle size={24} style={{ flexShrink: 0, color: "var(--accent-primary)" }} />
                         <p><strong>Pedidos QR Desactivados:</strong> El restaurante no tiene activo el autopendiente desde mesas. Por favor contacta a un mesero para realizar tu orden.</p>
                       </div>
                     ) : (
-                      <button type="submit" className="glow-btn" style={{ width: "100%" }} disabled={submitting}>
-                        {submitting ? "Procesando..." : "Confirmar Pedido"}
-                      </button>
+                      <>
+                        {closedNow && (
+                          <p role="status" style={{ margin: "0 0 10px", padding: "10px 12px", borderRadius: "var(--radius-md)", background: "var(--brand-red-tint)", color: "var(--brand-red)", fontSize: "13px", fontWeight: 600 }}>
+                            {openStatus?.label}. Puedes armar tu pedido y enviarlo cuando abra.
+                          </p>
+                        )}
+                        <button type="submit" className="glow-btn" style={{ width: "100%" }} disabled={submitting || closedNow}>
+                          {submitting ? "Procesando..." : closedNow ? "Restaurante cerrado" : "Confirmar Pedido"}
+                        </button>
+                      </>
                     )}
                   </>
                 )}
@@ -1597,7 +1113,7 @@ export const PublicCatalog: React.FC = () => {
                   width: "28px",
                   height: "28px",
                   borderRadius: "8px",
-                  backgroundColor: "rgba(255, 71, 87, 0.1)",
+                  backgroundColor: "color-mix(in srgb, var(--brand-red) 10%, transparent)",
                   color: "var(--accent-primary)",
                   display: "flex",
                   alignItems: "center",
@@ -1625,7 +1141,7 @@ export const PublicCatalog: React.FC = () => {
                   width: "28px",
                   height: "28px",
                   borderRadius: "8px",
-                  backgroundColor: "rgba(46, 213, 115, 0.1)",
+                  backgroundColor: "rgba(30, 143, 78, 0.1)",
                   color: "var(--success)",
                   display: "flex",
                   alignItems: "center",
@@ -1656,8 +1172,8 @@ export const PublicCatalog: React.FC = () => {
                   width: "28px",
                   height: "28px",
                   borderRadius: "8px",
-                  backgroundColor: "rgba(59, 130, 246, 0.1)",
-                  color: "#3b82f6",
+                  backgroundColor: "rgba(243, 232, 204, 0.6)",
+                  color: "#000000",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -1694,8 +1210,8 @@ export const PublicCatalog: React.FC = () => {
                   width: "28px",
                   height: "28px",
                   borderRadius: "8px",
-                  backgroundColor: "rgba(245, 158, 11, 0.1)",
-                  color: "#f59e0b",
+                  backgroundColor: "color-mix(in srgb, var(--brand-orange) 10%, transparent)",
+                  color: "var(--brand-orange)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -1708,9 +1224,33 @@ export const PublicCatalog: React.FC = () => {
                   <span style={{ fontSize: "13px", fontWeight: "700", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px", display: "block" }}>
                     Horarios de Atención
                   </span>
-                  <span style={{ fontSize: "13px", color: "var(--text-primary)", fontWeight: "500" }}>
-                    {restaurant.openingHours}
-                  </span>
+                  {weeklyHours ? (
+                    <>
+                      <span
+                        style={{
+                          display: "inline-block",
+                          margin: "2px 0 4px",
+                          padding: "2px 10px",
+                          borderRadius: "999px",
+                          fontSize: "12px",
+                          fontWeight: 700,
+                          backgroundColor: openStatus?.isOpen ? "rgba(30, 143, 78, 0.12)" : "var(--brand-red-tint)",
+                          color: openStatus?.isOpen ? "#1e8f4e" : "var(--brand-red)",
+                        }}
+                      >
+                        {openStatus?.label}
+                      </span>
+                      {describeWeek(weeklyHours).map((line) => (
+                        <span key={line} style={{ fontSize: "13px", color: "var(--text-primary)", fontWeight: "500", display: "block" }}>
+                          {line}
+                        </span>
+                      ))}
+                    </>
+                  ) : (
+                    <span style={{ fontSize: "13px", color: "var(--text-primary)", fontWeight: "500" }}>
+                      {restaurant.openingHours}
+                    </span>
+                  )}
                 </div>
               </div>
             )}
@@ -1823,9 +1363,9 @@ export const PublicCatalog: React.FC = () => {
                   width: "100%",
                   padding: "10px 14px",
                   borderRadius: "10px",
-                  backgroundColor: "rgba(59, 130, 246, 0.08)",
-                  border: "1px solid rgba(59, 130, 246, 0.25)",
-                  color: "#2563eb",
+                  backgroundColor: "rgba(243, 232, 204, 0.48)",
+                  border: "1px solid rgba(243, 232, 204, 1.0)",
+                  color: "#000000",
                   fontWeight: "600",
                   fontSize: "13px",
                   cursor: "pointer",
@@ -1841,7 +1381,613 @@ export const PublicCatalog: React.FC = () => {
               </button>
             </div>
           </div>
-        </aside>
+    </>
+  );
+
+  return (
+    <div style={{ minHeight: "100vh", background: "var(--bg-primary)" }}>
+      {/* Stick Header Navigation style UberEats */}
+      <nav style={{
+        position: "sticky",
+        top: 0,
+        backgroundColor: "#ffffff",
+        borderBottom: "1px solid var(--brand-cream)",
+        zIndex: 1000,
+        padding: isMobile ? "10px 15px" : "15px 30px",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: "1px"
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: isMobile ? "10px" : "20px", flex: 1 }}>
+          <button 
+            onClick={() => navigate("/restaurants")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              background: "none",
+              cursor: "pointer",
+              padding: isMobile ? "8px 10px" : "8px 14px",
+              borderRadius: "30px",
+              fontSize: "14px",
+              fontWeight: "600",
+              color: "var(--brand-black)",
+              border: "1px solid var(--brand-cream)",
+              transition: "all 0.2s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "#f1f2f6";
+              e.currentTarget.style.borderColor = "#ced6e0";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "transparent";
+              e.currentTarget.style.borderColor = "var(--brand-cream)";
+            }}
+          >
+            <ArrowLeft size={16} />
+            {!isMobile && <span>Volver</span>}
+          </button>
+
+          <BrandLogo size={isMobile ? 26 : 32} onClick={() => navigate("/restaurants")} />
+        </div>
+
+        <div style={{ display: "flex", gap: isMobile ? "6px" : "12px", alignItems: "center" }}>
+          {!isMobile && (
+            <Link to="/plus" style={{
+              fontSize: "13px",
+              fontWeight: "700",
+              color: "var(--brand-black)",
+              padding: "8px 16px",
+              borderRadius: "30px",
+              backgroundColor: "var(--brand-yellow)",
+              border: "none",
+              textDecoration: "none",
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              transition: "all 0.2s ease"
+            }}>
+              Hazte Plus {systemIconForEmoji("✨")}
+            </Link>
+          )}
+          {isAuthenticated && user ? (
+            <div style={{ display: "flex", alignItems: "center", gap: isMobile ? "8px" : "15px" }}>
+              {!isMobile && (
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--brand-black)" }}>{user.name}</div>
+                  <div style={{ fontSize: "13px", color: "var(--text-muted)" }}>{user.role}</div>
+                </div>
+              )}
+
+              {user.role === "CUSTOMER" && (
+                <Link to="/customer/dashboard" style={{
+                  fontSize: isMobile ? "12px" : "13px",
+                  fontWeight: "600",
+                  color: "var(--brand-red)",
+                  padding: isMobile ? "6px 12px" : "8px 16px",
+                  borderRadius: "30px",
+                  border: "1px solid var(--brand-red)",
+                  textDecoration: "none",
+                  transition: "all 0.2s ease"
+                }}>
+                  {isMobile ? "Pedidos" : systemTextWithIcons("Mis Pedidos 🍔")}
+                </Link>
+              )}
+
+              {user.role === "MOTORIZADO" && (
+                <Link to="/delivery" style={{
+                  fontSize: isMobile ? "12px" : "13px",
+                  fontWeight: "600",
+                  color: "var(--brand-red)",
+                  padding: isMobile ? "6px 12px" : "8px 16px",
+                  borderRadius: "30px",
+                  border: "1px solid var(--brand-red)",
+                  textDecoration: "none",
+                  transition: "all 0.2s ease"
+                }}>
+                  {isMobile ? "Entregas" : systemTextWithIcons("Entregas 🛵")}
+                </Link>
+              )}
+
+              {(user.role === "RESTAURANT_OWNER" || user.role === "CAJERO" || user.role === "MOZO" || user.role === "PRODUCCION") && (
+                <Link to="/pos" style={{
+                  fontSize: isMobile ? "12px" : "13px",
+                  fontWeight: "600",
+                  color: "var(--brand-red)",
+                  padding: isMobile ? "6px 12px" : "8px 16px",
+                  borderRadius: "30px",
+                  border: "1px solid var(--brand-red)",
+                  textDecoration: "none",
+                  transition: "all 0.2s ease"
+                }}>
+                  {isMobile ? "POS" : systemTextWithIcons("Ir al POS 🖥️")}
+                </Link>
+              )}
+
+              {user.role === "SUPER_ADMIN" && (
+                <Link to="/admin/restaurants" style={{
+                  fontSize: isMobile ? "12px" : "13px",
+                  fontWeight: "600",
+                  color: "var(--brand-red)",
+                  padding: isMobile ? "6px 12px" : "8px 16px",
+                  borderRadius: "30px",
+                  border: "1px solid var(--brand-red)",
+                  textDecoration: "none",
+                  transition: "all 0.2s ease"
+                }}>
+                  {isMobile ? "Admin" : systemTextWithIcons("Panel Admin 🛡️")}
+                </Link>
+              )}
+
+              <button
+                onClick={logout}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  padding: isMobile ? "6px 10px" : "8px 12px",
+                  borderRadius: "30px",
+                  backgroundColor: "color-mix(in srgb, var(--brand-red) 10%, transparent)",
+                  border: "1px solid color-mix(in srgb, var(--brand-red) 20%, transparent)",
+                  color: "var(--accent-primary)",
+                  cursor: "pointer",
+                  fontSize: isMobile ? "12px" : "12px",
+                  fontWeight: 600,
+                  transition: "all var(--transition-fast)"
+                }}
+              >
+                Salir
+              </button>
+            </div>
+          ) : (
+            <>
+              <Link to={loginPath} style={{
+                fontSize: isMobile ? "12px" : "13px",
+                fontWeight: "600",
+                backgroundColor: "var(--brand-black)",
+                color: "#ffffff",
+                padding: isMobile ? "6px 12px" : "8px 20px",
+                borderRadius: "30px",
+                textDecoration: "none",
+                transition: "all 0.2s ease"
+              }}>
+                {isMobile ? "Entrar" : "Iniciar Sesión"}
+              </Link>
+            </>
+          )}
+        </div>
+      </nav>
+
+      {/* Restaurant Header Banner style UberEats */}
+      <div className="cat-hero" style={{
+        position: "relative",
+        height: "280px",
+        width: "100%",
+        backgroundImage: restaurant.coverImage 
+          ? `linear-gradient(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.6)), url("${restaurant.coverImage}")` 
+          : "linear-gradient(135deg, var(--brand-red), #ff6b81)",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        display: "flex",
+        alignItems: "flex-end",
+        padding: "30px 40px",
+        color: "#ffffff"
+      }}>
+        <div className="cat-hero-inner" style={{
+          maxWidth: "1200px",
+          width: "100%",
+          margin: "0 auto",
+          display: "flex",
+          alignItems: "center",
+          gap: "24px",
+          position: "relative",
+          zIndex: 2
+        }}>
+          {restaurant.logo ? (
+            <img 
+              className="cat-hero-logo"
+              src={restaurant.logo} 
+              alt={restaurant.name} 
+              onError={(e) => {
+                e.currentTarget.src = "/logos/prueba.svg";
+              }}
+              style={{ 
+                width: "90px", 
+                height: "90px", 
+                borderRadius: "16px", 
+                objectFit: "contain",
+                backgroundColor: "#ffffff",
+                padding: "6px",
+                border: "4px solid #ffffff",
+                boxShadow: "0 4px 14px rgba(0,0,0,0.2)"
+              }} 
+            />
+          ) : (
+            <div style={{ 
+              width: "90px", 
+              height: "90px", 
+              borderRadius: "var(--radius-md)", 
+              background: "#ffffff", 
+              color: "var(--accent-primary)",
+              display: "flex", 
+              alignItems: "center", 
+              justifyContent: "center", 
+              fontSize: "2rem", 
+              fontWeight: "bold",
+              boxShadow: "var(--shadow-md)",
+              border: "4px solid #ffffff"
+            }}>
+              {restaurant.name[0].toUpperCase()}
+            </div>
+          )}
+          
+          <div className="cat-hero-info" style={{ textShadow: "0 2px 4px rgba(0,0,0,0.5)", minWidth: 0 }}>
+            <h1 style={{ fontSize: "2.4rem", fontWeight: "800", margin: "0 0 5px 0", letterSpacing: "-0.5px", color: "#ffffff" }}>{restaurant.name}</h1>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", marginBottom: "6px" }}>
+              <span style={{ background: "rgba(255,255,255,0.92)", borderRadius: "20px", padding: "3px 10px", textShadow: "none" }}>
+                <StarAverage average={restaurant.ratingAverage} count={restaurant.ratingCount} />
+              </span>
+              {restaurant.reservationsEnabled && !activeTableId && (
+                <button
+                  type="button"
+                  onClick={() => (isAuthenticated && user?.role === "CUSTOMER" ? setReserveOpen(true) : navigate(loginPath))}
+                  style={{ background: "#ffffff", color: "var(--brand-black)", border: "none", borderRadius: "20px", padding: "6px 14px", minHeight: "36px", fontWeight: 700, cursor: "pointer", textShadow: "none" }}
+                >
+                  Reservar mesa
+                </button>
+              )}
+            </div>
+            {restaurant.description && (
+              <p style={{ fontSize: "1.1rem", fontStyle: "italic", margin: "0 0 10px 0", opacity: 0.9 }}>
+                {restaurant.description}
+              </p>
+            )}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "20px", fontSize: "0.95rem", opacity: 0.95 }}>
+              {restaurant.address && (
+                <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                  <MapPin size={16} />
+                  <span>{restaurant.address} {restaurant.reference ? `(${restaurant.reference})` : ""}</span>
+                </div>
+              )}
+              {restaurant.phone && (
+                <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                  <Phone size={16} />
+                  <span>{restaurant.phone}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Table-specific Info bar (SSID) if active */}
+      {activeTableId && restaurant.wifiSsid && (
+        <div style={{ backgroundColor: "#ffeef0", borderBottom: "1px solid #ffe2e5", padding: "10px 30px" }}>
+          <div style={{ maxWidth: "1200px", margin: "0 auto", display: "flex", alignItems: "center", gap: "12px", fontSize: "14px", color: "#d63031", fontWeight: "600" }}>
+            <Wifi size={16} />
+            <span>Estás en la mesa. WiFi local: <strong>{restaurant.wifiSsid}</strong> {restaurant.wifiPassword ? `(Clave: ${restaurant.wifiPassword})` : "(Red libre)"}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Main Grid */}
+      <div className="mobile-column-stack" style={{ maxWidth: "1200px", margin: "40px auto", padding: "0 20px", display: "grid", gridTemplateColumns: "1fr 380px", gap: "40px" }}>
+        
+        {/* Menu Catalog Section */}
+        <main>
+          {/* Bar de Servicio en Mesa (Salón QR) */}
+          {orderType === "DINE_IN" && (
+            <div style={{
+              background: "linear-gradient(135deg, color-mix(in srgb, var(--brand-orange) 8%, transparent), rgba(30, 143, 78, 0.08))",
+              border: "1px solid color-mix(in srgb, var(--brand-orange) 30%, transparent)",
+              borderRadius: "14px",
+              padding: "16px 20px",
+              marginBottom: "24px",
+              display: "flex",
+              flexWrap: "wrap",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: "14px",
+              boxShadow: "0 4px 15px rgba(0,0,0,0.03)"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <div style={{ width: "42px", height: "42px", borderRadius: "12px", background: "var(--brand-orange)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "1.4rem" }}>
+                  {systemIconForEmoji("🪑")}
+                </div>
+                <div>
+                  <div style={{ fontWeight: "800", fontSize: "1.05rem", color: "var(--text-primary)" }}>
+                    {selectedTable 
+                      ? `Mesa ${diningAreas.flatMap(a => a.tables).find(t => String(t.id) === String(selectedTable))?.number || selectedTable} • En Servicio`
+                      : "Servicio en Mesa (Autoservicio QR)"}
+                  </div>
+                  <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
+                    {!selectedTable
+                      ? "Elige tu mesa en el carrito para ordenar"
+                      : restaurant.payBeforeEating
+                        ? "Este local cobra antes de preparar: tu pedido pasa a cocina cuando pagas en caja"
+                        : "Tus comandas van directo a la pantalla de cocina"}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                {restaurant.waiterCallEnabled !== false && (
+                <button
+                  type="button"
+                  onClick={() => handleCallWaiter("CALL")}
+                  disabled={waiterCallLoading || !selectedTable}
+                  style={{
+                    background: "var(--brand-orange)",
+                    color: "#fff",
+                    border: "none",
+                    padding: "9px 16px",
+                    borderRadius: "10px",
+                    fontWeight: "700",
+                    fontSize: "0.88rem",
+                    cursor: selectedTable ? "pointer" : "not-allowed",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    boxShadow: "0 2px 8px color-mix(in srgb, var(--brand-orange) 30%, transparent)",
+                    opacity: selectedTable ? 1 : 0.6
+                  }}
+                >
+                  <BellRing size={16} />
+                  <span>{waiterCallLoading ? "Avisando..." : "Llamar Mesero"}</span>
+                </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => handleCallWaiter("BILL")}
+                  disabled={waiterCallLoading || !selectedTable}
+                  style={{
+                    background: "#1e8f4e",
+                    color: "#fff",
+                    border: "none",
+                    padding: "9px 16px",
+                    borderRadius: "10px",
+                    fontWeight: "700",
+                    fontSize: "0.88rem",
+                    cursor: selectedTable ? "pointer" : "not-allowed",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    boxShadow: "0 2px 8px rgba(46,213,115,0.3)",
+                    opacity: selectedTable ? 1 : 0.6
+                  }}
+                >
+                  <Receipt size={16} />
+                  <span>{waiterCallLoading ? "Avisando..." : "Pedir Cuenta"}</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Banner de confirmación de llamado a mesero */}
+          {waiterCallStatus && (
+            <div style={{
+              background: "rgba(30, 143, 78, 0.15)",
+              border: "1px solid #1e8f4e",
+              color: "#1e8f4e",
+              padding: "14px 20px",
+              borderRadius: "12px",
+              marginBottom: "20px",
+              fontWeight: "700",
+              display: "flex",
+              alignItems: "center",
+              gap: "10px"
+            }}>
+              <span>{waiterCallStatus}</span>
+            </div>
+          )}
+
+          {orderSuccess ? (
+            activeOrder?.type === "DELIVERY" ? (
+              /* LIVE TRACKER ESTILO PEDIDOSYA */
+              <div className="glass-card" style={{ padding: "30px", background: "var(--card-bg, #ffffff)", borderColor: "var(--border-light)", borderRadius: "18px", boxShadow: "0 8px 30px rgba(0,0,0,0.06)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border-light)", paddingBottom: "16px", marginBottom: "20px" }}>
+                  <div>
+                    <span style={{ fontSize: "0.85rem", fontWeight: "800", color: "var(--accent-primary)", textTransform: "uppercase", letterSpacing: "1px" }}>
+                      {systemIconForEmoji("🛵")} {activeOrder?.status === "DELIVERED" ? "Pedido entregado con éxito" : activeOrder?.status === "CANCELLED" ? "Pedido cancelado" : "Pedido a Domicilio en Curso"}
+                    </span>
+                    <h2 style={{ margin: "4px 0 0 0", fontSize: "1.5rem" }}>
+                      Orden #{activeOrder?.id || "---"}
+                    </h2>
+                  </div>
+                  <div style={{
+                    padding: "6px 14px",
+                    borderRadius: "20px",
+                    fontWeight: "800",
+                    fontSize: "0.85rem",
+                    backgroundColor: activeOrder?.status === "DELIVERED" ? "rgba(30, 143, 78, 0.15)" : activeOrder?.status === "DELIVERING" ? "var(--brand-black)" : "color-mix(in srgb, var(--brand-orange) 15%, transparent)",
+                    color: activeOrder?.status === "DELIVERED" ? "#1e8f4e" : activeOrder?.status === "DELIVERING" ? "var(--brand-yellow)" : "var(--brand-orange)"
+                  }}>
+                    {activeOrder?.status === "DELIVERED" ? "✓ ENTREGADO" : activeOrder?.status === "DELIVERING" ? "EN CAMINO" : activeOrder?.status === "READY" ? "EMPACADO" : "EN PREPARACIÓN"}
+                  </div>
+                </div>
+
+                {/* PIN DE ENTREGA DESTACADO */}
+                {activeOrder?.deliveryPin && activeOrder?.status !== "DELIVERED" && activeOrder?.status !== "CANCELLED" && (
+                  <div style={{
+                    background: "#fdf8ee",
+                    border: "2px solid var(--brand-black)",
+                    borderRadius: "14px",
+                    padding: "20px",
+                    margin: "20px 0",
+                    textAlign: "center"
+                  }}>
+                    <div style={{ fontSize: "0.95rem", fontWeight: "800", color: "var(--brand-black)", letterSpacing: "1.5px", textTransform: "uppercase" }}>
+                      {systemIconForEmoji("🔑")} CÓDIGO DE ENTREGA
+                    </div>
+                    <div style={{ fontSize: "3.2rem", fontWeight: "900", letterSpacing: "12px", color: "var(--brand-black)", margin: "10px 0", fontFamily: "monospace" }}>
+                      {activeOrder.deliveryPin}
+                    </div>
+                    <p style={{ margin: 0, fontSize: "1rem", color: "#333333", lineHeight: 1.5 }}>
+                      <strong>Muéstrale este código al motorizado cuando te entregue el pedido.</strong> Sin el código no puede cerrar la entrega. También está en "Mis pedidos".
+                    </p>
+                  </div>
+                )}
+
+                {/* STEPPER DE PROGRESO EN VIVO */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "8px", margin: "28px 0", textAlign: "center" }}>
+                  {[
+                    { label: "1. Confirmado", icon: "✓", active: true },
+                    { label: "2. En Cocina", icon: systemTextWithIcons("🔥"), active: activeOrder?.status !== "PENDING" },
+                    { label: "3. En Camino", icon: systemTextWithIcons("🛵"), active: activeOrder?.status === "DELIVERING" || activeOrder?.status === "DELIVERED" },
+                    { label: "4. Entregado", icon: systemTextWithIcons("🎉"), active: activeOrder?.status === "DELIVERED" }
+                  ].map((step, idx) => (
+                    <div key={idx} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
+                      <div style={{
+                        width: "36px",
+                        height: "36px",
+                        borderRadius: "50%",
+                        background: step.active ? "#1e8f4e" : "var(--brand-cream)",
+                        color: step.active ? "#fff" : "#a4b0be",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontWeight: "bold",
+                        fontSize: "0.9rem",
+                        boxShadow: step.active ? "0 3px 10px rgba(46,213,115,0.3)" : "none"
+                      }}>
+                        {step.icon}
+                      </div>
+                      <span style={{ fontSize: "0.78rem", fontWeight: step.active ? "700" : "500", color: step.active ? "var(--text-primary)" : "var(--text-secondary)" }}>
+                        {step.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* DETALLES DE ENTREGA */}
+                <div style={{ background: "rgba(0,0,0,0.02)", borderRadius: "12px", padding: "16px", margin: "20px 0", fontSize: "0.9rem", display: "flex", flexDirection: "column", gap: "8px" }}>
+                  <div><strong>Destino:</strong> {activeOrder?.deliveryAddress || deliveryAddress || "Dirección indicada"}</div>
+                  {(activeOrder?.deliveryObservation || deliveryReference) && (
+                    <div><strong>Referencia:</strong> {activeOrder?.deliveryObservation || deliveryReference}</div>
+                  )}
+                  {Number(activeOrder?.tipAmount || 0) > 0 && (
+                    <div><strong>Propina al motorizado:</strong> ${Number(activeOrder.tipAmount).toFixed(2)}</div>
+                  )}
+                  <div><strong>Total a pagar:</strong> ${(Number(activeOrder?.total || 0) + Number(activeOrder?.tipAmount || 0)).toFixed(2)} ({activeOrder?.paymentMethodString === "CASH" ? "Efectivo contraentrega" : "Pagado digitalmente"})</div>
+                  <div><strong>Repartidor:</strong> {activeOrder?.deliveryDriverName || "Buscando repartidor cercano..."}</div>
+                </div>
+
+                <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap" }}>
+                  <button className="secondary-btn" onClick={() => { rememberActiveOrder(null); setOrderSuccess(false); }} style={{ padding: "12px 24px" }}>
+                    Hacer otro pedido
+                  </button>
+                  <button className="secondary-btn" onClick={() => navigate("/restaurants")} style={{ padding: "12px 24px" }}>
+                    Ver más restaurantes
+                  </button>
+                  <button className="glow-btn" onClick={() => navigate("/customer/dashboard")} style={{ padding: "12px 24px" }}>
+                    Ver en Mis pedidos
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* CONFIRMACIÓN EN MESA (DINE-IN QR) */
+              <div className="glass-card" style={{ padding: "40px", textAlign: "center", background: "rgba(30, 143, 78, 0.05)", borderColor: "var(--success)" }}>
+                <Check size={48} color="var(--success)" style={{ marginBottom: "15px" }} />
+                <h2 className="brand-accent-text" style={{ marginBottom: "10px" }}>¡Comanda Enviada a Cocina!</h2>
+                <p style={{ color: "var(--text-secondary)", marginBottom: "25px", fontSize: "1rem" }}>
+                  Los platos seleccionados para tu <strong>Mesa</strong> ya se encuentran en la pantalla del cocinero.
+                </p>
+
+                <div style={{ display: "flex", gap: "12px", justifyContent: "center", flexWrap: "wrap", marginBottom: "20px" }}>
+                  <button className="secondary-btn" onClick={() => handleCallWaiter("CALL")} style={{ padding: "10px 20px" }}>
+                    {systemIconForEmoji("🛎️")} Llamar al Mesero
+                  </button>
+                  <button className="secondary-btn" onClick={() => handleCallWaiter("BILL")} style={{ padding: "10px 20px" }}>
+                    {systemIconForEmoji("🧾")} Solicitar Cuenta
+                  </button>
+                  <button className="glow-btn" onClick={() => setOrderSuccess(false)} style={{ padding: "10px 20px" }}>
+                    {systemIconForEmoji("🍽️")} Pedir más platos
+                  </button>
+                </div>
+              </div>
+            )
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "40px" }}>
+              {/* Atajos a cada categoria de la carta */}
+              {categories.length > 1 && (
+                <nav className="cat-chips" aria-label="Categorías de la carta">
+                  {categories.map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => document.getElementById(`cat-${cat.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                    >
+                      {cat.name}
+                    </button>
+                  ))}
+                </nav>
+              )}
+              {categories.map((cat) => (
+                <section key={cat.id} id={`cat-${cat.id}`} className="cat-section">
+                  <h2 className="brand-marker" style={{ fontSize: "1.6rem", paddingBottom: "4px", marginBottom: "20px" }}>{cat.name}</h2>
+                  {cat.description && <p style={{ color: "var(--text-secondary)", marginBottom: "20px", fontSize: "0.95rem" }}>{cat.description}</p>}
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                    {cat.items.map((item) => (
+                      <div key={item.id} className="glass-card dish-card" style={{ padding: "20px", display: "grid", gridTemplateColumns: "1fr 140px", gap: "20px", alignItems: "center" }}>
+                        <div>
+                          <h3 style={{ fontSize: "1.2rem", marginBottom: "8px" }}>{item.name}</h3>
+                          {item.description && <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", marginBottom: "15px" }}>{item.description}</p>}
+                          
+                          {/* Variants presentation pricing selection */}
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+                            {item.variants.map((v) => (
+                              <button key={v.id} className="price-pill" onClick={() => addToCart(v, item)} aria-label={`Agregar ${item.name} ${v.name} al pedido`}>
+                                <span className="price-pill-plus"><Plus size={14} color="#ffffff" strokeWidth={3} /></span>
+                                <span>{v.name}: <strong>${v.price.toFixed(2)}</strong></span>
+                                {v.regularPrice && (
+                                  <span data-testid="catalog-promo" style={{ fontSize: "0.85rem" }}>
+                                    <s style={{ opacity: 0.7 }}>${v.regularPrice.toFixed(2)}</s>{" "}
+                                    <span style={{ background: "#d42518", color: "#ffffff", borderRadius: "6px", padding: "1px 6px", fontWeight: 700 }}>Promo</span>
+                                  </span>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {item.image ? (
+                          <img className="dish-img" src={item.image} alt={item.name} loading="lazy" style={{ width: "100%", height: "100px", borderRadius: "var(--radius-md)", objectFit: "cover" }} />
+                        ) : (
+                          <div className="dish-img" style={{ width: "100%", height: "100px", borderRadius: "var(--radius-md)", background: "var(--bg-tertiary)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <Utensils size={24} color="#d42518" />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          )}
+        </main>
+
+        {/* Sidebar Cart & Info Section */}
+        {/* Sidebar Cart & Info Section */}
+        {isMobile ? (
+          // En celular el carrito es una hoja que sube desde abajo y se cierra deslizando hacia abajo
+          <Drawer.Root open={isCartMobileOpen} onOpenChange={setIsCartMobileOpen}>
+            <Drawer.Portal>
+              <Drawer.Overlay className="sheet-overlay" />
+              <Drawer.Content className="sheet-content" aria-describedby={undefined}>
+                <div className="sheet-handle" aria-hidden="true" />
+                <Drawer.Title className="sr-only">Tu carrito</Drawer.Title>
+                <div className="sheet-body">{cartPanel}</div>
+              </Drawer.Content>
+            </Drawer.Portal>
+          </Drawer.Root>
+        ) : (
+          <aside className="mobile-cart-aside" style={{ display: "flex", flexDirection: "column", gap: "25px" }}>
+            {cartPanel}
+          </aside>
+        )}
 
       </div>
 
@@ -1865,7 +2011,7 @@ export const PublicCatalog: React.FC = () => {
             <h2 style={{ 
               fontSize: "1.8rem", 
               fontWeight: "800",
-              color: "#202124",
+              color: "var(--brand-black)",
               marginBottom: "25px", 
               borderBottom: "1px solid var(--border-light)", 
               paddingBottom: "12px",
@@ -1905,7 +2051,7 @@ export const PublicCatalog: React.FC = () => {
                         cursor: "pointer",
                         fontSize: "1.05rem",
                         fontWeight: "700",
-                        color: "#202124"
+                        color: "var(--brand-black)"
                       }}
                     >
                       <span>{faq.question}</span>
@@ -1944,8 +2090,8 @@ export const PublicCatalog: React.FC = () => {
           <div className="global-modal-card" style={{ maxWidth: "380px", padding: "25px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px", borderBottom: "1px solid var(--border-light)", paddingBottom: "10px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#ff5a00", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", fontWeight: "bold" }}>P</div>
-                <h3 style={{ fontSize: "1.1rem", fontWeight: "bold", margin: 0, color: "#ff5a00" }}>Payphone: demostración, sin cobro real</h3>
+                <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "var(--brand-orange)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", fontWeight: "bold" }}>P</div>
+                <h3 style={{ fontSize: "1.1rem", fontWeight: "bold", margin: 0, color: "var(--brand-orange)" }}>Payphone: demostración, sin cobro real</h3>
               </div>
               <button
                 type="button"
@@ -1990,7 +2136,7 @@ export const PublicCatalog: React.FC = () => {
                   setPayphoneTransactionId(simulatedId);
                   setShowPayphoneSimulator(false);
                 }}
-                style={{ width: "100%", padding: "12px", backgroundColor: "#ff5a00", borderColor: "#ff5a00", marginTop: "10px" }}
+                style={{ width: "100%", padding: "12px", backgroundColor: "var(--brand-orange)", borderColor: "var(--brand-orange)", marginTop: "10px" }}
               >
                 Confirmar Pago Exitoso
               </button>
@@ -2028,7 +2174,7 @@ export const PublicCatalog: React.FC = () => {
               width: "100%",
               padding: "16px 24px",
               fontSize: "16px",
-              boxShadow: "0 10px 25px rgba(255, 71, 87, 0.3)",
+              boxShadow: "0 10px 25px color-mix(in srgb, var(--brand-red) 30%, transparent)",
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
@@ -2036,8 +2182,8 @@ export const PublicCatalog: React.FC = () => {
             }}
           >
             <span style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <ShoppingCart size={20} />
-              Ver Pedido ({cart.reduce((sum, item) => sum + item.quantity, 0)} ítems)
+              <span className="cart-count">{cart.reduce((sum, item) => sum + item.quantity, 0)}</span>
+              Ver mi pedido
             </span>
             <strong>${(getCartTotal() + currentShippingCost + currentTip).toFixed(2)}</strong>
           </button>

@@ -129,13 +129,13 @@ export const FoodPreferencesModal: React.FC<FoodPreferencesModalProps> = ({
         position: "relative",
         display: "flex",
         flexDirection: "column",
-        maxHeight: "90vh",
+        maxHeight: "90dvh",
         border: "1px solid rgba(226, 232, 240, 0.8)",
       }} role="dialog" aria-modal="true" aria-labelledby="food-preferences-title">
         {/* Top Header */}
         <div style={{
           padding: "22px 24px 18px",
-          borderBottom: "1px solid #f1f5f9",
+          borderBottom: "1px solid #f7f0de",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "flex-start",
@@ -148,8 +148,8 @@ export const FoodPreferencesModal: React.FC<FoodPreferencesModalProps> = ({
               gap: "6px",
               padding: "4px 10px",
               borderRadius: "20px",
-              backgroundColor: "#f1f1f1",
-              color: "#111111",
+              backgroundColor: "#f7f0de",
+              color: "var(--brand-black)",
               fontSize: "13px",
               fontWeight: 700,
               marginBottom: "8px",
@@ -160,7 +160,7 @@ export const FoodPreferencesModal: React.FC<FoodPreferencesModalProps> = ({
             <h2 style={{
               fontSize: "24px",
               fontWeight: 800,
-              color: "#0f172a",
+              color: "var(--brand-black)",
               margin: "0 0 6px 0",
               letterSpacing: "-0.4px"
             }}>
@@ -168,7 +168,7 @@ export const FoodPreferencesModal: React.FC<FoodPreferencesModalProps> = ({
             </h2>
             <p style={{
               fontSize: "13px",
-              color: "#64748b",
+              color: "#737373",
               margin: 0,
               lineHeight: "1.4"
             }}>
@@ -180,7 +180,7 @@ export const FoodPreferencesModal: React.FC<FoodPreferencesModalProps> = ({
             type="button"
             onClick={onClose}
             style={{
-              background: "#f1f5f9",
+              background: "#f7f0de",
               border: "none",
               borderRadius: "50%",
               width: "34px",
@@ -189,7 +189,7 @@ export const FoodPreferencesModal: React.FC<FoodPreferencesModalProps> = ({
               alignItems: "center",
               justifyContent: "center",
               cursor: "pointer",
-              color: "#64748b",
+              color: "#737373",
               transition: "all 0.2s ease",
             }}
             title="Cerrar"
@@ -201,14 +201,14 @@ export const FoodPreferencesModal: React.FC<FoodPreferencesModalProps> = ({
         {/* Action Bar: Counts & Select all */}
         <div style={{
           padding: "12px 28px",
-          backgroundColor: "#f8fafc",
+          backgroundColor: "#fdf8ee",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          borderBottom: "1px solid #f1f5f9",
+          borderBottom: "1px solid #f7f0de",
           fontSize: "13px",
         }}>
-          <span style={{ color: "#475569", fontWeight: 600 }}>
+          <span style={{ color: "#595959", fontWeight: 600 }}>
             {selected.length === 0
               ? "Sin preferencias seleccionadas: verás todos los restaurantes."
               : `${selected.length} categoría${selected.length > 1 ? "s" : ""} seleccionada${selected.length > 1 ? "s" : ""}`}
@@ -219,7 +219,7 @@ export const FoodPreferencesModal: React.FC<FoodPreferencesModalProps> = ({
             style={{
               background: "none",
               border: "none",
-              color: "#111111",
+              color: "var(--brand-black)",
               fontWeight: 700,
               cursor: "pointer",
               fontSize: "13px",
@@ -252,7 +252,7 @@ export const FoodPreferencesModal: React.FC<FoodPreferencesModalProps> = ({
                   borderRadius: "16px",
                   padding: "15px",
                   cursor: "pointer",
-                  border: isSelected ? "1px solid #111111" : "1px solid #e2e2e2",
+                  border: isSelected ? "1px solid var(--brand-black)" : "1px solid #f3e8cc",
                   backgroundColor: isSelected ? "#f5f5f5" : "#ffffff",
                   boxShadow: isSelected ? "0 3px 10px rgba(0, 0, 0, 0.08)" : "none",
                   transition: "border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease",
@@ -270,8 +270,8 @@ export const FoodPreferencesModal: React.FC<FoodPreferencesModalProps> = ({
                     borderRadius: "12px",
                     display: "grid",
                     placeItems: "center",
-                    backgroundColor: isSelected ? "#111111" : "#f1f1f1",
-                    color: isSelected ? "#ffffff" : "#333333",
+                    backgroundColor: isSelected ? "var(--brand-black)" : "#f7f0de",
+                    color: isSelected ? "#ffffff" : "var(--brand-black-80)",
                   }}>
                     <CategoryIcon size={19} strokeWidth={1.8} />
                   </span>
@@ -282,8 +282,8 @@ export const FoodPreferencesModal: React.FC<FoodPreferencesModalProps> = ({
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    border: isSelected ? "1px solid #111111" : "1px solid #cbd5e1",
-                    backgroundColor: isSelected ? "#111111" : "#ffffff",
+                    border: isSelected ? "1px solid var(--brand-black)" : "1px solid #f3e8cc",
+                    backgroundColor: isSelected ? "var(--brand-black)" : "#ffffff",
                     color: "#ffffff",
                   }}>
                     {isSelected ? <Check size={12} strokeWidth={3} /> : null}
@@ -293,7 +293,7 @@ export const FoodPreferencesModal: React.FC<FoodPreferencesModalProps> = ({
                 <div style={{
                   fontSize: "13px",
                   fontWeight: 700,
-                  color: "#1e293b",
+                  color: "var(--brand-black)",
                   lineHeight: 1.35,
                   marginBottom: "5px",
                 }}>
@@ -302,7 +302,7 @@ export const FoodPreferencesModal: React.FC<FoodPreferencesModalProps> = ({
 
                 <div style={{
                   fontSize: "13px",
-                  color: "#64748b",
+                  color: "#737373",
                   lineHeight: 1.4
                 }}>
                   {cat.description}
@@ -315,7 +315,7 @@ export const FoodPreferencesModal: React.FC<FoodPreferencesModalProps> = ({
         {/* Footer */}
         <div style={{
           padding: "14px 20px",
-          borderTop: "1px solid #f1f5f9",
+          borderTop: "1px solid #f7f0de",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
@@ -328,9 +328,9 @@ export const FoodPreferencesModal: React.FC<FoodPreferencesModalProps> = ({
             style={{
               padding: "10px 16px",
               borderRadius: "10px",
-              border: "1px solid #e2e8f0",
+              border: "1px solid var(--brand-cream)",
               backgroundColor: "transparent",
-              color: "#64748b",
+              color: "#737373",
               fontWeight: 600,
               fontSize: "13px",
               cursor: "pointer",
@@ -349,7 +349,7 @@ export const FoodPreferencesModal: React.FC<FoodPreferencesModalProps> = ({
               padding: "11px 20px",
               borderRadius: "10px",
               border: "none",
-              background: "#111111",
+              background: "var(--brand-black)",
               color: "#ffffff",
               fontWeight: 700,
               fontSize: "13px",

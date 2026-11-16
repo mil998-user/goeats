@@ -232,7 +232,7 @@ export const PlusPromo: React.FC = () => {
         borderBottom: "1px solid var(--border-light)"
       }}>
         <Link to="/restaurants" style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--text-primary)", textDecoration: "none", fontWeight: 800, fontSize: "20px" }}>
-          <span style={{ color: "#ff4757" }}>GoEats</span> <span style={{ color: "#fbbf24" }}>Plus {systemIconForEmoji("✨")}</span>
+          <span style={{ color: "var(--brand-red)" }}>GoEats</span> <span style={{ color: "var(--brand-yellow)" }}>Plus {systemIconForEmoji("✨")}</span>
         </Link>
         <div style={{ display: "flex", gap: "20px", alignItems: "center" }}>
           <Link to="/restaurants" style={{ color: "var(--text-secondary)", textDecoration: "none", fontSize: "14px", fontWeight: 500 }}>
@@ -280,9 +280,9 @@ export const PlusPromo: React.FC = () => {
           display: "inline-flex",
           alignItems: "center",
           gap: "6px",
-          backgroundColor: "rgba(251, 191, 36, 0.1)",
-          border: "1px solid rgba(251, 191, 36, 0.3)",
-          color: "#d97706",
+          backgroundColor: "color-mix(in srgb, var(--brand-yellow) 10%, transparent)",
+          border: "1px solid color-mix(in srgb, var(--brand-yellow) 30%, transparent)",
+          color: "#f86015",
           padding: "6px 16px",
           borderRadius: "50px",
           fontSize: "13px",
@@ -296,7 +296,7 @@ export const PlusPromo: React.FC = () => {
           fontWeight: 900, 
           lineHeight: "1.15", 
           margin: "0 0 20px 0",
-          background: "linear-gradient(135deg, var(--text-primary) 0%, #d97706 100%)",
+          background: "linear-gradient(135deg, var(--text-primary) 0%, #f86015 100%)",
           WebkitBackgroundClip: "text",
           WebkitTextFillColor: "transparent"
         }}>
@@ -314,7 +314,7 @@ export const PlusPromo: React.FC = () => {
         <button 
           onClick={scrollToPlans}
           style={{ 
-            backgroundColor: "#000000", 
+            backgroundColor: "var(--brand-black)", 
             color: "#ffffff", 
             border: "none", 
             padding: "16px 36px", 
@@ -351,7 +351,7 @@ export const PlusPromo: React.FC = () => {
           flexDirection: "column",
           gap: "15px"
         }}>
-          <div style={{ backgroundColor: "rgba(46, 213, 115, 0.1)", color: "#2ed573", padding: "12px", borderRadius: "12px", width: "fit-content" }}>
+          <div style={{ backgroundColor: "rgba(30, 143, 78, 0.1)", color: "#1e8f4e", padding: "12px", borderRadius: "12px", width: "fit-content" }}>
             <Zap size={24} />
           </div>
           <h3 style={{ fontSize: "20px", fontWeight: "bold", margin: 0, color: "var(--text-primary)" }}>Envíos Gratis Ilimitados</h3>
@@ -370,7 +370,7 @@ export const PlusPromo: React.FC = () => {
           flexDirection: "column",
           gap: "15px"
         }}>
-          <div style={{ backgroundColor: "rgba(251, 191, 36, 0.1)", color: "#d97706", padding: "12px", borderRadius: "12px", width: "fit-content" }}>
+          <div style={{ backgroundColor: "color-mix(in srgb, var(--brand-yellow) 10%, transparent)", color: "#f86015", padding: "12px", borderRadius: "12px", width: "fit-content" }}>
             <Heart size={24} />
           </div>
           <h3 style={{ fontSize: "20px", fontWeight: "bold", margin: 0, color: "var(--text-primary)" }}>Apoyo e Incentivo al Repartidor</h3>
@@ -389,7 +389,7 @@ export const PlusPromo: React.FC = () => {
           flexDirection: "column",
           gap: "15px"
         }}>
-          <div style={{ backgroundColor: "rgba(52, 152, 219, 0.1)", color: "#3498db", padding: "12px", borderRadius: "12px", width: "fit-content" }}>
+          <div style={{ backgroundColor: "rgba(243, 232, 204, 0.6)", color: "#000000", padding: "12px", borderRadius: "12px", width: "fit-content" }}>
             <ShieldCheck size={24} />
           </div>
           <h3 style={{ fontSize: "20px", fontWeight: "bold", margin: 0, color: "var(--text-primary)" }}>Soporte y Prioridad Premium</h3>
@@ -441,7 +441,7 @@ export const PlusPromo: React.FC = () => {
                 return (
                   <div key={plan.id} style={{ 
                     backgroundColor: "var(--bg-primary)", 
-                    border: isRecommended ? "2px solid #fbbf24" : "1px solid var(--border-light)", 
+                    border: isRecommended ? "2px solid var(--brand-yellow)" : "1px solid var(--border-light)", 
                     borderRadius: "16px", 
                     padding: "40px 30px",
                     display: "flex",
@@ -456,8 +456,8 @@ export const PlusPromo: React.FC = () => {
                         top: "-12px",
                         left: "50%",
                         transform: "translateX(-50%)",
-                        backgroundColor: "#fbbf24",
-                        color: "#78350f",
+                        backgroundColor: "var(--brand-yellow)",
+                        color: "#000000",
                         fontSize: "13px",
                         fontWeight: 900,
                         padding: "4px 12px",
@@ -467,7 +467,7 @@ export const PlusPromo: React.FC = () => {
                         {plan.discount.toUpperCase()}
                       </div>
                     )}
-                    <h3 style={{ fontSize: "18px", color: isRecommended ? "#d97706" : "var(--text-secondary)", margin: 0 }}>{plan.name}</h3>
+                    <h3 style={{ fontSize: "18px", color: isRecommended ? "#f86015" : "var(--text-secondary)", margin: 0 }}>{plan.name}</h3>
                     <div style={{ display: "flex", alignItems: "baseline" }}>
                       <span style={{ fontSize: "42px", fontWeight: 900 }}>${plan.amount.toFixed(2)}</span>
                       <span style={{ color: "var(--text-secondary)", fontSize: "14px", marginLeft: "4px" }}>/ {plan.period || "mes"}</span>
@@ -483,14 +483,14 @@ export const PlusPromo: React.FC = () => {
                       onClick={() => handleSelectPlan(plan)}
                       style={{ 
                         marginTop: "auto", 
-                        backgroundColor: isRecommended ? "#fbbf24" : "#ffffff", 
-                        color: isRecommended ? "#000000" : "var(--text-primary)", 
+                        backgroundColor: isRecommended ? "var(--brand-yellow)" : "#ffffff", 
+                        color: isRecommended ? "var(--brand-black)" : "var(--text-primary)", 
                         border: isRecommended ? "none" : "1px solid var(--border-light)", 
                         padding: "12px", 
                         borderRadius: "8px", 
                         fontWeight: "bold", 
                         cursor: "pointer",
-                        boxShadow: isRecommended ? "0 4px 12px rgba(251, 191, 36, 0.2)" : "0 2px 4px rgba(0,0,0,0.05)"
+                        boxShadow: isRecommended ? "0 4px 12px color-mix(in srgb, var(--brand-yellow) 20%, transparent)" : "0 2px 4px rgba(0,0,0,0.05)"
                       }}
                     >
                       {isRecommended ? "Adquirir Plan" : "Elegir Plan"}
@@ -555,9 +555,9 @@ export const PlusPromo: React.FC = () => {
                       padding: "10px",
                       background: "none",
                       border: "none",
-                      borderBottom: authTab === "login" ? "2px solid #ff4757" : "none",
+                      borderBottom: authTab === "login" ? "2px solid var(--brand-red)" : "none",
                       fontWeight: authTab === "login" ? "bold" : "normal",
-                      color: authTab === "login" ? "#ff4757" : "var(--text-secondary)",
+                      color: authTab === "login" ? "var(--brand-red)" : "var(--text-secondary)",
                       cursor: "pointer"
                     }}
                   >
@@ -570,9 +570,9 @@ export const PlusPromo: React.FC = () => {
                       padding: "10px",
                       background: "none",
                       border: "none",
-                      borderBottom: authTab === "register" ? "2px solid #ff4757" : "none",
+                      borderBottom: authTab === "register" ? "2px solid var(--brand-red)" : "none",
                       fontWeight: authTab === "register" ? "bold" : "normal",
-                      color: authTab === "register" ? "#ff4757" : "var(--text-secondary)",
+                      color: authTab === "register" ? "var(--brand-red)" : "var(--text-secondary)",
                       cursor: "pointer"
                     }}
                   >
@@ -583,9 +583,9 @@ export const PlusPromo: React.FC = () => {
                 {authError && (
                   <div style={{
                     padding: "10px 14px",
-                    backgroundColor: "#fef2f2",
-                    border: "1px solid #fee2e2",
-                    color: "#dc2626",
+                    backgroundColor: "#fbe9e8",
+                    border: "1px solid #f8dedc",
+                    color: "var(--brand-red)",
                     fontSize: "13px",
                     borderRadius: "6px",
                     marginBottom: "15px"
@@ -719,7 +719,7 @@ export const PlusPromo: React.FC = () => {
                   }}>
                     <div style={{ fontSize: "13px", color: "var(--text-muted)", fontWeight: "bold", textTransform: "uppercase" }}>Plan Seleccionado:</div>
                     <div style={{ fontWeight: "bold", fontSize: "15px", margin: "2px 0" }}>{selectedPlan.name}</div>
-                    <div style={{ fontSize: "18px", fontWeight: "800", color: "#d97706" }}>${selectedPlan.amount.toFixed(2)}</div>
+                    <div style={{ fontSize: "18px", fontWeight: "800", color: "#f86015" }}>${selectedPlan.amount.toFixed(2)}</div>
                   </div>
 
                   {/* Payment Method Selector */}
@@ -741,8 +741,8 @@ export const PlusPromo: React.FC = () => {
                           cursor: "pointer",
                           fontWeight: "bold",
                           fontSize: "13px",
-                          border: paymentMethod === "CARD" ? "2px solid #fbbf24" : "1px solid var(--border-light)",
-                          backgroundColor: paymentMethod === "CARD" ? "rgba(251, 191, 36, 0.08)" : "var(--bg-secondary)",
+                          border: paymentMethod === "CARD" ? "2px solid var(--brand-yellow)" : "1px solid var(--border-light)",
+                          backgroundColor: paymentMethod === "CARD" ? "color-mix(in srgb, var(--brand-yellow) 8%, transparent)" : "var(--bg-secondary)",
                           color: "var(--text-primary)"
                         }}
                       >
@@ -760,8 +760,8 @@ export const PlusPromo: React.FC = () => {
                           cursor: "pointer",
                           fontWeight: "bold",
                           fontSize: "13px",
-                          border: paymentMethod === "TRANSFER" ? "2px solid #fbbf24" : "1px solid var(--border-light)",
-                          backgroundColor: paymentMethod === "TRANSFER" ? "rgba(251, 191, 36, 0.08)" : "var(--bg-secondary)",
+                          border: paymentMethod === "TRANSFER" ? "2px solid var(--brand-yellow)" : "1px solid var(--border-light)",
+                          backgroundColor: paymentMethod === "TRANSFER" ? "color-mix(in srgb, var(--brand-yellow) 8%, transparent)" : "var(--bg-secondary)",
                           color: "var(--text-primary)"
                         }}
                       >
@@ -778,7 +778,7 @@ export const PlusPromo: React.FC = () => {
                           display: "flex",
                           alignItems: "center",
                           gap: "8px",
-                          backgroundColor: "rgba(46, 213, 115, 0.05)",
+                          backgroundColor: "rgba(30, 143, 78, 0.05)",
                           border: "1px solid var(--success)",
                           padding: "12px",
                           borderRadius: "6px",
@@ -798,7 +798,7 @@ export const PlusPromo: React.FC = () => {
                           style={{
                             width: "100%",
                             padding: "12px",
-                            backgroundColor: "#ff5a00",
+                            backgroundColor: "var(--brand-orange)",
                             color: "#ffffff",
                             border: "none",
                             borderRadius: "6px",
@@ -872,7 +872,7 @@ export const PlusPromo: React.FC = () => {
                   </>
                 ) : (
                   <>
-                    <Clock size={56} color="#d97706" style={{ margin: "0 auto 15px auto" }} />
+                    <Clock size={56} color="#f86015" style={{ margin: "0 auto 15px auto" }} />
                     <h3 style={{ fontSize: "20px", fontWeight: "800", marginBottom: "8px" }}>Comprobante Recibido {systemIconForEmoji("⏳")}</h3>
                     <p style={{ fontSize: "14px", color: "var(--text-secondary)", lineHeight: "1.5", marginBottom: "25px" }}>
                       Hemos enviado tu comprobante al SuperAdministrador. Tan pronto sea verificado y aprobado, se activará tu membresía Club GoEats Plus.
@@ -898,8 +898,8 @@ export const PlusPromo: React.FC = () => {
           <div className="global-modal-card" style={{ maxWidth: "380px", padding: "25px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px", borderBottom: "1px solid var(--border-light)", paddingBottom: "10px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#ff5a00", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", fontWeight: "bold" }}>P</div>
-                <h3 style={{ fontSize: "1.1rem", fontWeight: "bold", margin: 0, color: "#ff5a00" }}>Payphone: demostración, sin cobro real</h3>
+                <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "var(--brand-orange)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", fontWeight: "bold" }}>P</div>
+                <h3 style={{ fontSize: "1.1rem", fontWeight: "bold", margin: 0, color: "var(--brand-orange)" }}>Payphone: demostración, sin cobro real</h3>
               </div>
               <button
                 type="button"
@@ -941,7 +941,7 @@ export const PlusPromo: React.FC = () => {
                 style={{
                   width: "100%",
                   padding: "12px",
-                  backgroundColor: "#ff5a00",
+                  backgroundColor: "var(--brand-orange)",
                   color: "#ffffff",
                   border: "none",
                   borderRadius: "4px",

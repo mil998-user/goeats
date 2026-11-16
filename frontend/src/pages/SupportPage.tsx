@@ -15,13 +15,13 @@ export const SupportPage: React.FC = () => {
       : "CUSTOMER";
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "#f8fafc" }}>
+    <div style={{ minHeight: "100vh", backgroundColor: "#fdf8ee" }}>
       {/* Top bar */}
       <div
         style={{
           padding: "16px 24px",
           backgroundColor: "#ffffff",
-          borderBottom: "1px solid #e2e8f0",
+          borderBottom: "1px solid var(--brand-cream)",
           display: "flex",
           alignItems: "center",
           gap: "16px",
@@ -35,17 +35,17 @@ export const SupportPage: React.FC = () => {
             gap: "8px",
             padding: "8px 16px",
             borderRadius: "20px",
-            border: "1px solid #cbd5e1",
+            border: "1px solid #f3e8cc",
             backgroundColor: "#ffffff",
             cursor: "pointer",
             fontWeight: "600",
             fontSize: "13px",
-            color: "#475569",
+            color: "#595959",
           }}
         >
           <ArrowLeft size={16} /> Volver
         </button>
-        <h1 style={{ margin: 0, fontSize: "18px", fontWeight: "700", color: "#0f172a" }}>
+        <h1 style={{ margin: 0, fontSize: "18px", fontWeight: "700", color: "var(--brand-black)" }}>
           Centro de Ayuda & Atención GoEats
         </h1>
       </div>
