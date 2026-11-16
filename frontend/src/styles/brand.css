@@ -1,0 +1,107 @@
+/* =====================================================================
+   GOEATS - Manual de marca adaptado al frontend
+   Fuente unica de verdad: "Manual de marca - GOEATS.pdf".
+   Ningun color, fuente o logo de la marca se escribe fuera de este archivo:
+   las pantallas usan las variables de abajo.
+   ===================================================================== */
+
+/* ---------- 1. Tipografias del manual ----------
+   Los archivos van en /public/fonts cuando la empresa los entregue
+   (formato .woff2, con licencia para web). Mientras falten, el navegador
+   usa la letra del sistema (San Francisco en iPhone/Mac). */
+@font-face {
+  font-family: "TAN St Canard";
+  src: url("/fonts/tan-st-canard.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "More Sugar";
+  src: url("/fonts/more-sugar-thin.woff2") format("woff2");
+  font-weight: 200;
+  font-display: swap;
+}
+@font-face {
+  font-family: "More Sugar";
+  src: url("/fonts/more-sugar-regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Cocomat Pro";
+  src: url("/fonts/cocomat-pro-thin.woff2") format("woff2");
+  font-weight: 200;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Cocomat Pro";
+  src: url("/fonts/cocomat-pro-regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Cocomat Pro";
+  src: url("/fonts/cocomat-pro-bold.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Cocomat Pro";
+  src: url("/fonts/cocomat-pro-heavy.woff2") format("woff2");
+  font-weight: 900;
+  font-display: swap;
+}
+
+:root {
+  /* ---------- 2. Paleta oficial (exacta del manual) ---------- */
+  --brand-white: #ffffff;
+  --brand-black: #000000;
+  --brand-yellow: #ffca26;
+  --brand-red: #d42518;
+  --brand-cream: #f3e8cc;
+  --brand-orange: #f86015;
+
+  /* Tonos suaves: la misma paleta mezclada con blanco o negro
+     (no son colores nuevos, solo intensidades de los oficiales) */
+  --brand-cream-soft: color-mix(in srgb, var(--brand-cream) 35%, var(--brand-white));
+  --brand-cream-mid: color-mix(in srgb, var(--brand-cream) 65%, var(--brand-white));
+  --brand-red-dark: color-mix(in srgb, var(--brand-red) 85%, var(--brand-black));
+  --brand-red-tint: color-mix(in srgb, var(--brand-red) 10%, transparent);
+  --brand-orange-tint: color-mix(in srgb, var(--brand-orange) 12%, transparent);
+  --brand-yellow-tint: color-mix(in srgb, var(--brand-yellow) 22%, transparent);
+  /* Fondos suaves solidos: el color de marca como acento, sin cargar la pantalla */
+  --brand-yellow-soft: color-mix(in srgb, var(--brand-yellow) 20%, var(--brand-white));
+  --brand-red-soft: color-mix(in srgb, var(--brand-red) 8%, var(--brand-white));
+  --brand-orange-soft: color-mix(in srgb, var(--brand-orange) 10%, var(--brand-white));
+  --brand-black-80: color-mix(in srgb, var(--brand-black) 80%, var(--brand-white));
+  --brand-black-55: color-mix(in srgb, var(--brand-black) 55%, var(--brand-white));
+  --brand-black-35: color-mix(in srgb, var(--brand-black) 35%, var(--brand-white));
+
+  /* ---------- 3. Roles de color en la interfaz ----------
+     Rojo: accion principal (pedir, confirmar, guardar).
+     Naranja: en proceso / en camino / avisos.
+     Amarillo: resaltar (contadores, etiquetas, seleccion sobre negro).
+     Crema: fondos calidos. Negro: texto y elementos fuertes. Blanco: tarjetas. */
+  --brand-font-logo: "TAN St Canard", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+  --brand-font-accent: "More Sugar", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --brand-font-text: "Cocomat Pro", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* ---------- 4. Logo (variaciones del manual) ---------- */
+  --brand-logo-black: url("/brand/boca-negra.png");
+  --brand-logo-yellow: url("/brand/boca-amarilla.png");
+  --brand-logo-red: url("/brand/boca-roja.png");
+  --brand-logo-orange: url("/brand/boca-naranja.png");
+  --brand-logo-cream: url("/brand/boca-crema.png");
+}
+
+/* Palabra GOEATS con la letra del logo */
+.brand-wordmark {
+  font-family: var(--brand-font-logo);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Frases con caracter (saludos, gracias, pantallas vacias) */
+.brand-accent-text {
+  font-family: var(--brand-font-accent);
+}

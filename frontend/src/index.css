@@ -1,38 +1,46 @@
-@import url('https://fonts.googleapis.com/css2?family=Anton&family=DM+Sans:wght@400;500;600;700&display=swap');
 
 :root {
-  /* Premium Light/White Theme Color System (Material Design 3 Inspired) */
-  --bg-primary: #f8f9fa;       /* Very light grey for viewport backgrounds */
-  --bg-secondary: #ffffff;     /* Pure white for cards, headers, containers */
-  --bg-tertiary: #f1f3f4;      /* Light grey for buttons, hovers, inputs */
-  
-  --accent-primary: #111111;     /* Black: GoEats black-and-white base */
-  --accent-secondary: #333333;   /* Dark grey */
-  --accent-gradient: linear-gradient(135deg, #111111 0%, #333333 100%);
-  --accent-glow: rgba(17, 17, 17, 0.08);
+  /* Colores: todos salen de styles/brand.css (manual de marca) */
+  --bg-primary: var(--brand-cream-soft);   /* Fondo calido de pantalla */
+  --bg-secondary: var(--brand-white);      /* Tarjetas y cabeceras */
+  --bg-tertiary: var(--brand-cream-mid);   /* Botones secundarios, entradas */
 
-  --success: #2ed573;
-  --success-glow: rgba(46, 213, 115, 0.1);
-  --warning: #ffa502;
-  --warning-glow: rgba(255, 165, 2, 0.1);
-  --danger: #ff4757;
+  --accent-primary: var(--brand-red);      /* Acciones principales */
+  --accent-secondary: var(--brand-orange);
+  --accent-gradient: linear-gradient(135deg, var(--brand-red) 0%, var(--brand-orange) 100%);
+  --accent-glow: var(--brand-red-tint);
+  --highlight: var(--brand-yellow);
+
+  --success: #1e8f4e;
+  --success-glow: rgba(30, 143, 78, 0.1);
+  --warning: var(--brand-orange);
+  --warning-glow: var(--brand-orange-tint);
+  --danger: var(--brand-red-dark);
+
+  --text-primary: var(--brand-black);
+  --text-secondary: var(--brand-black-55);
+  --text-muted: var(--brand-black-35);
   
-  --text-primary: #202124;     /* Carbon dark grey for maximum legibility */
-  --text-secondary: #5f6368;   /* Medium grey for labels and details */
-  --text-muted: #80868b;       /* Cool grey for placeholders and borders */
-  
-  --border-light: #e0e0e0;     /* Thin clean borders */
-  --border-hover: #bdc1c6;     /* Border color on hover */
+  --border-light: var(--brand-cream);     /* Thin clean borders */
+  --border-hover: color-mix(in srgb, var(--brand-cream) 70%, var(--brand-black));     /* Border color on hover */
   --glass-bg: #ffffff;
   --glass-blur: none;
 
-  --font-title: 'Anton', sans-serif;
-  --font-body: 'DM Sans', sans-serif;
+  /* Fuentes del manual (styles/brand.css) */
+  --font-title: var(--brand-font-logo);
+  --font-body: var(--brand-font-text);
+  --font-accent: var(--brand-font-accent);
 
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
+  /* Sombras suaves por capas, estilo iOS */
+  --shadow-sm: 0 1px 2px rgba(60, 40, 10, 0.06);
+  --shadow-md: 0 4px 16px rgba(60, 40, 10, 0.08), 0 1px 3px rgba(60, 40, 10, 0.05);
+  --shadow-lg: 0 18px 40px rgba(60, 40, 10, 0.14), 0 2px 6px rgba(60, 40, 10, 0.06);
+  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
 
   --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -327,6 +335,7 @@ button, input, select, textarea {
     left: 0 !important;
     width: 100vw !important;
     height: 100vh !important;
+    height: 100dvh !important;
     z-index: 9999 !important;
     background-color: var(--bg-primary) !important;
     overflow-y: auto !important;
@@ -696,6 +705,8 @@ button, input, select, textarea {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  /* En celular, alto real sin la barra del navegador */
+  height: 100dvh;
   padding: 25px 15px;
   flex-shrink: 0;
   transition: var(--transition-normal);
@@ -710,9 +721,9 @@ button, input, select, textarea {
 }
 
 .pos-sidebar-logo-icon {
-  width: 32px;
-  height: 32px;
-  background-color: var(--accent-primary);
+  width: 36px;
+  height: 36px;
+  background-color: var(--brand-black);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -1176,6 +1187,7 @@ button, input, select, textarea {
     z-index: 10000 !important;
     transform: translateX(-100%);
     box-shadow: 4px 0 16px rgba(0,0,0,0.1);
+    overflow-y: auto;
   }
   
   .pos-sidebar.open {
@@ -1257,6 +1269,7 @@ button, input, select, textarea {
   bottom: 0 !important;
   width: 100vw !important;
   height: 100vh !important;
+  height: 100dvh !important;
   background-color: rgba(15, 23, 42, 0.6) !important;
   display: flex !important;
   align-items: center !important;
@@ -1281,6 +1294,7 @@ button, input, select, textarea {
   position: relative !important;
   animation: modalScaleUp 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards !important;
   max-height: 90vh !important;
+  max-height: 90dvh !important;
   overflow-y: auto !important;
   margin: auto !important;
   box-sizing: border-box !important;
@@ -2468,7 +2482,7 @@ button, input, select, textarea {
   --ge-red: #111111;
   --ge-red-dark: #242424;
   --ge-red-deep: #080808;
-  --ge-red-light: #eeeeee;
+  --ge-red-light: #f7f0de;
   --ge-cream: #ffffff;
   --ge-rose: #f2f2f2;
   --ge-ink: #111111;
@@ -2617,7 +2631,7 @@ button, input, select, textarea {
   padding: 8px 13px;
   color: var(--ge-red-dark);
   border-radius: 999px;
-  background: #f1f1f1;
+  background: #f7f0de;
   font-size: 13px;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -2728,7 +2742,7 @@ button, input, select, textarea {
   place-items: center;
   color: var(--ge-red);
   border-radius: 50%;
-  background: #f1f1f1;
+  background: #f7f0de;
 }
 
 .ge-hero-proof p {
@@ -2764,7 +2778,7 @@ button, input, select, textarea {
   height: 525px;
   overflow: hidden;
   border-radius: 46% 46% 48% 18% / 38% 45% 34% 26%;
-  background: #eeeeee;
+  background: #f7f0de;
   transform: rotate(2deg);
 }
 
@@ -2839,7 +2853,7 @@ button, input, select, textarea {
   margin-left: 12px;
   border-radius: 50%;
   background: #111111;
-  box-shadow: 0 0 0 5px #eeeeee;
+  box-shadow: 0 0 0 5px #f7f0de;
 }
 
 .ge-mini-food {
@@ -2858,7 +2872,7 @@ button, input, select, textarea {
   padding: 6px 8px;
   color: var(--ge-red-dark);
   border-radius: 999px;
-  background: #f1f1f1;
+  background: #f7f0de;
   font-size: 13px;
   font-weight: 800;
 }
@@ -3083,7 +3097,7 @@ button, input, select, textarea {
 }
 
 .ge-coupon-3 {
-  background: #eeeeee;
+  background: #f7f0de;
 }
 
 .ge-coupon-code {
@@ -3288,7 +3302,7 @@ button, input, select, textarea {
 
 .ge-action-light > span {
   color: var(--ge-red);
-  background: #eeeeee;
+  background: #f7f0de;
 }
 
 .ge-rider-image img {
@@ -3838,7 +3852,7 @@ button, input, select, textarea {
 
 .ge-coupon-2 .ge-coupon-top {
   color: var(--ge-red-dark);
-  background: #f1f1f1;
+  background: #f7f0de;
 }
 
 .ge-coupon-code {
@@ -4641,7 +4655,7 @@ button, input, select, textarea {
 }
 
 .app-dialog-btn.secondary {
-  border: 1px solid #d1d5db;
+  border: 1px solid #f3e8cc;
   background-color: #ffffff;
   color: #111827;
 }
@@ -4672,6 +4686,15 @@ button, input, select, textarea {
 @media (max-width: 640px) {
   .delivery-page {
     padding: 16px !important;
+    overflow-wrap: anywhere;
+  }
+  /* Ninguna caja se ensancha mas que la pantalla; el texto baja de linea */
+  .delivery-page :where(div, section, article, header, footer, form, label, p, a, button) {
+    min-width: 0;
+  }
+  /* Tarjetas de pedido con menos relleno para ganar ancho */
+  .delivery-page .delivery-order-card {
+    padding: 14px !important;
   }
 }
 
@@ -4679,5 +4702,768 @@ button, input, select, textarea {
 @media (max-width: 768px) {
   .menu-layout > * {
     min-width: 0;
+  }
+}
+
+/* Contenedor principal: alto real de la pantalla en celular */
+.app-shell {
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* Tablas que en celular se ven como tarjetas: cada dato con su titulo */
+@media (max-width: 640px) {
+  .stack-table thead {
+    display: none;
+  }
+  .stack-table,
+  .stack-table tbody,
+  .stack-table tr,
+  .stack-table td {
+    display: block;
+    width: 100%;
+  }
+  .stack-table tr {
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    padding: 8px 4px;
+    margin-bottom: 10px;
+    background: var(--bg-secondary);
+  }
+  .stack-table td {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 4px 8px !important;
+    white-space: normal !important;
+    text-align: right;
+    border: none !important;
+  }
+  .stack-table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-align: left;
+    flex-shrink: 0;
+  }
+}
+
+/* ===== Base estilo Apple con colores GoEats ===== */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  -webkit-tap-highlight-color: transparent;
+}
+
+h1, h2, h3 {
+  letter-spacing: -0.02em;
+}
+
+/* Tarjetas: blancas, sin borde duro, sombra suave */
+.glass-card {
+  border-color: transparent;
+  box-shadow: var(--shadow-md);
+}
+.glass-card:hover {
+  border-color: transparent;
+  box-shadow: var(--shadow-lg);
+}
+
+/* Botones: alto minimo de 44px (dedo), forma de pastilla y respuesta al toque */
+.glow-btn,
+.secondary-btn {
+  min-height: 44px;
+  border-radius: 999px;
+  transition: transform 0.25s var(--ease-spring), filter 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+.glow-btn {
+  box-shadow: 0 6px 18px rgba(212, 37, 24, 0.25);
+}
+.secondary-btn {
+  border-color: transparent;
+  background: var(--bg-tertiary);
+}
+.glow-btn:active,
+.secondary-btn:active {
+  transform: scale(0.96);
+}
+
+/* Campos de texto: fondo relleno como en iOS */
+.input-field {
+  min-height: 44px;
+  background: var(--bg-tertiary);
+  border-color: transparent;
+  font-size: 16px; /* 16px evita que el iPhone haga zoom al escribir */
+}
+.input-field:focus {
+  background: #ffffff;
+  border-color: var(--accent-primary);
+}
+
+/* Barra lateral y ventanas con vidrio translucido */
+.global-modal-overlay {
+  background-color: rgba(30, 20, 5, 0.35) !important;
+  backdrop-filter: blur(10px) saturate(140%) !important;
+}
+.global-modal-card {
+  border: none !important;
+  box-shadow: var(--shadow-lg) !important;
+}
+
+/* Enlace activo del menu: pastilla negra con texto amarillo de marca */
+.pos-sidebar-link.active {
+  background: var(--brand-black);
+  color: var(--brand-yellow);
+}
+
+/* Contador de pedidos con el amarillo de marca */
+.pos-sidebar-badge {
+  background: var(--brand-yellow) !important;
+  color: var(--brand-black) !important;
+}
+
+/* Movimiento reducido: respetar la preferencia del usuario */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Hoja deslizable desde abajo (carrito en celular), estilo iOS */
+.sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(30, 20, 5, 0.35);
+  backdrop-filter: blur(6px);
+}
+.sheet-content {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10001;
+  display: flex;
+  flex-direction: column;
+  max-height: 92vh;
+  max-height: 92dvh;
+  background: var(--bg-primary);
+  border-radius: 22px 22px 0 0;
+  box-shadow: 0 -10px 40px rgba(60, 40, 10, 0.18);
+  outline: none;
+}
+.sheet-handle {
+  width: 40px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--border-hover);
+  margin: 10px auto 4px;
+  flex-shrink: 0;
+}
+.sheet-body {
+  overflow-y: auto;
+  padding: 6px 12px calc(16px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* =====================================================================
+   Capa de color de marca: la paleta del manual en superficies,
+   no solo en letras y logos. Negro + amarillo para la estructura,
+   rojo para la accion principal, bloques de color para los resumenes.
+   ===================================================================== */
+
+/* ---- Menu lateral claro: blanco, activo en amarillo suave ---- */
+.pos-sidebar {
+  background-color: var(--brand-white);
+  border-right: 1px solid var(--border-light);
+}
+.pos-sidebar-logo-icon {
+  background-color: var(--brand-yellow);
+}
+.pos-sidebar-link.active {
+  background: var(--brand-yellow-soft);
+  color: var(--brand-black);
+  font-weight: 700;
+}
+.pos-sidebar-link.active svg {
+  color: var(--brand-red);
+}
+.pos-sidebar-badge {
+  background: var(--brand-red) !important;
+  color: var(--brand-white) !important;
+}
+.pos-sidebar-sublink.active {
+  color: var(--brand-red) !important;
+  background: transparent !important;
+}
+.pos-sidebar-sublink.active .pos-sidebar-sublink-dot {
+  background: var(--brand-red) !important;
+  box-shadow: none !important;
+}
+.pos-sidebar-profile {
+  background-color: var(--brand-cream-soft);
+}
+.pos-sidebar-avatar {
+  background-color: var(--brand-orange);
+  color: var(--brand-white);
+}
+.pos-sidebar-logout-btn:hover {
+  background-color: var(--brand-red-tint);
+  color: var(--brand-red);
+}
+
+/* ---- Titulos de pantalla: letra del logo con marcador amarillo ---- */
+.app-content h1 {
+  font-family: var(--brand-font-logo) !important;
+  text-decoration-line: underline;
+  text-decoration-color: var(--brand-yellow);
+  text-decoration-thickness: 0.32em;
+  text-underline-offset: -0.12em;
+  text-decoration-skip-ink: none;
+}
+
+/* ---- Botones ---- */
+/* Accion principal: rojo solido de marca */
+.glow-btn {
+  background: var(--brand-red);
+  color: var(--brand-white);
+}
+.glow-btn:hover {
+  background: var(--brand-red-dark);
+  filter: none;
+}
+/* Boton amarillo para acciones destacadas que no son "confirmar" */
+.yellow-btn {
+  background: var(--brand-yellow);
+  color: var(--brand-black);
+  font-weight: 700;
+  padding: 12px 24px;
+  min-height: 44px;
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: transform 0.25s var(--ease-spring), filter 0.2s ease;
+}
+.yellow-btn:hover {
+  filter: brightness(0.96);
+}
+.yellow-btn:active {
+  transform: scale(0.96);
+}
+
+/* ---- Tarjetas de resumen en bloques de color ---- */
+.stat-tile {
+  position: relative;
+  overflow: hidden;
+  padding: 20px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  min-width: 0;
+}
+/* Boca del logo de fondo, muy suave, como sello de marca */
+.stat-tile::after {
+  content: "";
+  position: absolute;
+  right: -18px;
+  bottom: -22px;
+  width: 110px;
+  height: 92px;
+  background: var(--brand-logo-black) no-repeat center / contain;
+  opacity: 0.08;
+  pointer-events: none;
+}
+.stat-tile-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.stat-tile-label {
+  font-size: 14px;
+  font-weight: 600;
+}
+.stat-tile-icon {
+  display: inline-flex;
+  padding: 8px;
+  border-radius: 12px;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+}
+.stat-tile-value {
+  font-family: var(--brand-font-logo);
+  font-size: 32px;
+  line-height: 1.1;
+  margin-top: 14px;
+  overflow-wrap: anywhere;
+}
+.stat-tile-hint {
+  font-size: 13px;
+  margin-top: 6px;
+  opacity: 0.75;
+}
+.stat-tile { background: var(--brand-white); color: var(--brand-black); }
+.stat-tile.tone-yellow { background: var(--brand-yellow-soft); }
+.stat-tile.tone-yellow .stat-tile-icon { background: var(--brand-yellow); color: var(--brand-black); }
+.stat-tile.tone-red { background: var(--brand-red-soft); }
+.stat-tile.tone-red .stat-tile-icon { background: var(--brand-red); color: var(--brand-white); }
+.stat-tile.tone-red .stat-tile-value { color: var(--brand-red); }
+.stat-tile.tone-orange { background: var(--brand-orange-soft); }
+.stat-tile.tone-orange .stat-tile-icon { background: var(--brand-orange); color: var(--brand-white); }
+.stat-tile.tone-orange .stat-tile-value { color: var(--brand-orange); }
+.stat-tile.tone-cream,
+.stat-tile.tone-black { background: var(--brand-cream-soft); }
+.stat-tile.tone-cream .stat-tile-icon,
+.stat-tile.tone-black .stat-tile-icon { background: var(--brand-black); color: var(--brand-yellow); }
+
+/* ---- Marcador amarillo para titulos de seccion (usar className="brand-marker") ---- */
+.brand-marker {
+  text-decoration-line: underline;
+  text-decoration-color: var(--brand-yellow);
+  text-decoration-thickness: 0.32em;
+  text-underline-offset: -0.12em;
+  text-decoration-skip-ink: none;
+}
+
+/* ---- Banda de bienvenida amarilla con la boca del logo ---- */
+.brand-hero-band {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 18px 0 6px;
+  padding: 22px 26px;
+  border-radius: var(--radius-xl);
+  background: var(--brand-cream-mid);
+  color: var(--brand-black);
+}
+.brand-hero-band::before {
+  /* Toque naranja en la esquina, sin degradados genericos */
+  content: "";
+  position: absolute;
+  right: -40px;
+  top: -40px;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: var(--brand-yellow);
+  opacity: 1;
+}
+.brand-hero-eyebrow {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brand-red);
+}
+.brand-hero-title {
+  margin: 4px 0 0;
+  font-size: clamp(22px, 4.5vw, 32px);
+  font-weight: 700;
+  line-height: 1.15;
+}
+.brand-hero-text {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: var(--brand-black-80);
+}
+.brand-hero-mouth {
+  position: relative;
+  width: clamp(64px, 14vw, 110px);
+  height: auto;
+  flex-shrink: 0;
+  transform: rotate(-8deg);
+}
+@media (max-width: 640px) {
+  .brand-hero-band {
+    padding: 18px;
+    border-radius: var(--radius-lg);
+  }
+  .brand-hero-band::before {
+    width: 120px;
+    height: 120px;
+    right: -36px;
+    top: -36px;
+  }
+}
+
+/* ---- Pagina de inicio con la paleta del manual (antes en grises) ---- */
+.ge-landing {
+  --ge-red: var(--brand-red);
+  --ge-red-dark: var(--brand-black);
+  --ge-red-deep: var(--brand-black);
+  --ge-red-light: var(--brand-cream-mid);
+  --ge-cream: var(--brand-white);
+  --ge-rose: var(--brand-cream);
+  --ge-ink: var(--brand-black);
+  --ge-muted: var(--brand-black-55);
+}
+.ge-hero {
+  background:
+    radial-gradient(ellipse at 0% 100%, color-mix(in srgb, var(--brand-cream) 70%, transparent), transparent 45%),
+    var(--brand-white);
+}
+.ge-hero::before {
+  border-color: color-mix(in srgb, var(--brand-orange) 35%, transparent);
+}
+/* "a un clic!" en rojo con marcador amarillo */
+.ge-hero h1 em::after {
+  z-index: -1;
+  bottom: 4px;
+  height: 0.28em;
+  border-radius: 6px;
+  background: var(--brand-yellow);
+  opacity: 1;
+}
+/* Mancha amarilla detras de la foto */
+.ge-hero-visual::after {
+  position: absolute;
+  z-index: -1;
+  inset: 6% -4% -4% 8%;
+  border-radius: 46% 46% 48% 18% / 38% 45% 34% 26%;
+  background: var(--brand-yellow);
+  transform: rotate(-5deg);
+  content: "";
+}
+.ge-hero-visual {
+  z-index: 0;
+}
+.ge-hero-visual::before {
+  background-image: radial-gradient(var(--brand-red) 2px, transparent 2px);
+}
+.ge-action-link:hover {
+  background: var(--brand-red-dark);
+}
+.ge-action-link > span {
+  color: var(--brand-red);
+}
+.ge-order-icon {
+  background: var(--brand-red) !important;
+  color: var(--brand-white) !important;
+}
+.ge-live-dot {
+  background: var(--brand-orange) !important;
+}
+.ge-step-number {
+  color: var(--brand-cream);
+}
+/* Paso destacado en rojo con icono amarillo */
+.ge-step-featured {
+  border-color: var(--brand-red);
+  background: var(--brand-red);
+}
+.ge-step-featured .ge-step-icon {
+  color: var(--brand-black);
+  background: var(--brand-yellow);
+}
+.ge-step-featured p {
+  color: color-mix(in srgb, var(--brand-white) 85%, transparent);
+}
+.ge-step-card {
+  border-color: var(--brand-cream);
+}
+.ge-promo-heading-icon {
+  color: var(--brand-black);
+  background: var(--brand-yellow);
+}
+.ge-eyebrow {
+  color: var(--brand-red) !important;
+}
+.ge-nav-cta {
+  background: var(--brand-black) !important;
+  color: var(--brand-yellow) !important;
+}
+
+/* ---- Pantalla de ubicacion del cliente (usa clases de la landing anterior) ---- */
+.landing-eyebrow-dark {
+  color: var(--brand-red);
+}
+.landing-primary-button {
+  color: var(--brand-white);
+  background: var(--brand-red);
+  border-radius: 999px;
+}
+.landing-primary-button:hover {
+  background: var(--brand-red-dark);
+}
+.landing-primary-button:disabled {
+  opacity: 0.55;
+}
+
+/* ---- Barra inferior del cliente en el celular (estilo app de delivery) ---- */
+.tabbar {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  z-index: 1200;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  padding: 6px;
+  border-radius: 26px;
+  background: var(--brand-white);
+  box-shadow: 0 2px 6px rgba(40, 25, 5, 0.08), 0 14px 34px rgba(40, 25, 5, 0.16);
+  animation: tabbar-in 0.4s var(--ease-spring) both;
+}
+.tabbar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 54px;
+  border-radius: 20px;
+  color: var(--brand-black-55);
+  font-size: 11px;
+  font-weight: 700;
+  transition: background 0.25s var(--ease-spring), color 0.2s ease, transform 0.2s var(--ease-spring);
+}
+.tabbar-item:active {
+  transform: scale(0.94);
+}
+.tabbar-item.is-active {
+  background: var(--brand-yellow-soft);
+  color: var(--brand-black);
+}
+.tabbar-item.is-active svg {
+  color: var(--brand-red);
+}
+.tabbar-item:focus-visible {
+  outline: 3px solid var(--brand-red);
+  outline-offset: 2px;
+}
+/* Espacio para que la barra no tape lo ultimo de la pagina */
+body.has-tabbar {
+  padding-bottom: calc(88px + env(safe-area-inset-bottom));
+}
+body.has-tabbar .app-content {
+  padding-bottom: calc(88px + env(safe-area-inset-bottom));
+}
+@keyframes tabbar-in {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+/* ---- Categorias del cliente en celular: compactas, como chips de app ---- */
+@media (max-width: 768px) {
+  .agg-cat {
+    width: 84px !important;
+    gap: 6px !important;
+  }
+  .agg-cat > div {
+    width: 56px !important;
+    height: 56px !important;
+  }
+  .agg-cat > span {
+    font-size: 12px !important;
+    line-height: 1.25 !important;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+/* =====================================================================
+   Catalogo del restaurante (cliente)
+   ===================================================================== */
+
+/* Atajos a las categorias de la carta: fila que se desliza y queda arriba */
+.cat-chips {
+  position: sticky;
+  top: 64px;
+  z-index: 20;
+  display: flex;
+  gap: 8px;
+  margin: -8px -4px 0;
+  padding: 10px 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: color-mix(in srgb, var(--bg-primary) 92%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.cat-chips::-webkit-scrollbar {
+  display: none;
+}
+.cat-chips button {
+  flex-shrink: 0;
+  min-height: 40px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: var(--brand-white);
+  border: 1px solid var(--border-light);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--brand-black-80);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.cat-chips button:hover {
+  background: var(--brand-yellow-soft);
+  border-color: var(--brand-yellow);
+}
+.cat-section {
+  scroll-margin-top: 130px;
+}
+
+/* Boton de precio: crema con un "+" rojo (el amarillo queda para resaltar) */
+.price-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 6px 14px 6px 6px;
+  border-radius: 999px;
+  background: var(--brand-cream-mid);
+  color: var(--brand-black);
+  font-size: 0.88rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s var(--ease-spring);
+}
+.price-pill:hover {
+  background: var(--brand-yellow-soft);
+}
+.price-pill:active {
+  transform: scale(0.96);
+}
+.price-pill-plus {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--brand-red);
+  flex-shrink: 0;
+}
+
+/* Contador del carrito en la barra flotante */
+.cart-count {
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--brand-white);
+  color: var(--brand-red);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+@media (max-width: 768px) {
+  /* Cabecera: foto arriba y los datos del local en una tarjeta blanca */
+  .cat-hero {
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 120px 12px 0 !important;
+    background-size: 100% 170px !important;
+    background-repeat: no-repeat !important;
+    background-position: top center !important;
+    color: var(--brand-black) !important;
+  }
+  .cat-hero-inner {
+    gap: 12px !important;
+    align-items: flex-start !important;
+    padding: 14px;
+    border-radius: 22px;
+    background: var(--brand-white);
+    box-shadow: var(--shadow-md);
+  }
+  .cat-hero-logo,
+  .cat-hero-inner > div:first-child {
+    width: 60px !important;
+    height: 60px !important;
+    border-width: 2px !important;
+    border-radius: 16px !important;
+    flex-shrink: 0;
+  }
+  .cat-hero-info {
+    text-shadow: none !important;
+  }
+  .cat-hero-info h1 {
+    font-size: 1.35rem !important;
+    color: var(--brand-black) !important;
+    line-height: 1.15;
+  }
+  .cat-hero-info p {
+    font-size: 0.9rem !important;
+    font-style: normal !important;
+    color: var(--text-secondary);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .cat-hero-info > div:last-child {
+    gap: 6px 12px !important;
+    font-size: 0.82rem !important;
+    color: var(--text-secondary);
+  }
+  .cat-hero-info button {
+    background: var(--brand-cream-mid) !important;
+  }
+
+  .cat-chips {
+    top: 56px;
+    margin: -12px -16px 0;
+    padding: 10px 16px;
+  }
+
+  /* Plato: texto a la izquierda, foto cuadrada a la derecha */
+  .dish-card {
+    grid-template-columns: minmax(0, 1fr) 96px !important;
+    gap: 14px !important;
+    padding: 14px !important;
+    align-items: start !important;
+    border-radius: 22px !important;
+  }
+  .dish-card h3 {
+    font-size: 1.02rem !important;
+    margin-bottom: 4px !important;
+  }
+  .dish-card p {
+    font-size: 0.85rem !important;
+    margin-bottom: 10px !important;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .dish-img {
+    width: 96px !important;
+    height: 96px !important;
+    border-radius: 18px !important;
+  }
+  .price-pill {
+    font-size: 0.82rem;
+  }
+}
+@media (max-width: 768px) {
+  .cat-section > h2 {
+    font-size: 1.3rem !important;
+    margin-bottom: 12px !important;
   }
 }
