@@ -16,6 +16,8 @@ import { hideDeliveryPin, MAX_TIP } from "../../utils/orderRules";
 import { resolveOrderTable } from "../../utils/tables";
 import { canEncryptSecrets, encryptSecret } from "../../utils/secrets";
 import { buildMapIframe, getMapEmbedUrl, isGoogleMapsLink } from "../../utils/maps";
+import { getOpenStatus, normalizeOpeningHours, parseWeeklyHours } from "../../utils/openingHours";
+import { notifyDeliveryBoard } from "../../config/realtime";
 
 const MAX_MAP_REDIRECTS = 5;
 const MAP_LOOKUP_TIMEOUT_MS = 8000;
@@ -206,6 +208,14 @@ export async function updateRestaurant(req: Request, res: Response, next: NextFu
       });
     }
 
+    // Horario: JSON semanal validado o texto corto
+    let normalizedOpeningHours: string | null | undefined;
+    try {
+      normalizedOpeningHours = normalizeOpeningHours(openingHours);
+    } catch {
+      return res.status(400).json({ success: false, message: "El horario de atención no es válido." });
+    }
+
     const restaurant = await prisma.restaurant.update({
       where: { id },
       data: {
@@ -225,7 +235,7 @@ export async function updateRestaurant(req: Request, res: Response, next: NextFu
         mapLongitude: mapLongitude === undefined ? undefined : parsedLng,
         mapIframe: finalMapIframe,
         reference,
-        openingHours,
+        openingHours: normalizedOpeningHours,
         faqsJson,
         samePriceAsLocal: typeof samePriceAsLocal === "boolean" ? samePriceAsLocal : undefined,
         promoText: typeof promoText === "string" ? (promoText.trim() || null) : undefined,
@@ -424,6 +434,7 @@ export async function getPublicRestaurantList(req: Request, res: Response, next:
         createdAt: true,
         samePriceAsLocal: true,
         promoText: true,
+        openingHours: true,
         categories: {
           select: { id: true, name: true }
         },
@@ -516,6 +527,12 @@ export async function createPublicOrder(req: Request, res: Response, next: NextF
 
     if (type !== "DINE_IN" && type !== "TAKEOUT" && type !== "DELIVERY") {
       return res.status(400).json({ success: false, message: "Invalid order type" });
+    }
+
+    // Pedidos en linea solo dentro del horario configurado (en la mesa el personal ya esta atendiendo)
+    const week = parseWeeklyHours(restaurant.openingHours);
+    if (week && type !== "DINE_IN" && !getOpenStatus(week).isOpen) {
+      return res.status(409).json({ success: false, message: `El restaurante está cerrado. ${getOpenStatus(week).label}.` });
     }
 
     const typeEnum = type === "DINE_IN" ? OrderType.DINE_IN : (type === "TAKEOUT" ? OrderType.TAKEOUT : OrderType.DELIVERY);
@@ -731,6 +748,7 @@ export async function createPublicOrder(req: Request, res: Response, next: NextF
     // Send real-time Socket notification to kitchen and cashiers
     const io = req.app.get("io");
     if (io) {
+      notifyDeliveryBoard(io);
       io.to(`restaurant-${restaurant.id}`).emit("new-order", hideDeliveryPin(order));
       console.log(`[Socket] Emitted public new-order for restaurant-${restaurant.id}`);
     }
