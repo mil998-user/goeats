@@ -56,9 +56,9 @@ const baseButton: React.CSSProperties = {
   flex: "1 1 180px",
 };
 
-const primaryButton: React.CSSProperties = { ...baseButton, background: "#1e293b", color: "#ffffff", border: "none" };
-const outlineButton: React.CSSProperties = { ...baseButton, background: "#ffffff", color: "#1e293b", border: "1px solid #cbd5e1" };
-const dangerButton: React.CSSProperties = { ...baseButton, background: "#ffffff", color: "#b91c1c", border: "1px solid #fecaca" };
+const primaryButton: React.CSSProperties = { ...baseButton, background: "var(--brand-black)", color: "#ffffff", border: "none" };
+const outlineButton: React.CSSProperties = { ...baseButton, background: "#ffffff", color: "var(--brand-black)", border: "1px solid #f3e8cc" };
+const dangerButton: React.CSSProperties = { ...baseButton, background: "#ffffff", color: "#d42518", border: "1px solid #f4c9c5" };
 
 // Buttons for an order the driver already took: before pickup (start, pass, cancel)
 // and after pickup (deliver with code, customer without code, customer didn't come out)
@@ -103,10 +103,10 @@ export const DriverOrderActions: React.FC<Props> = ({ orderId, pickedUpAt, requi
     const copy = actionText[openAction];
     const fieldId = `reason-${openAction}-${orderId}`;
     return (
-      <div data-testid="driver-reason-form" style={{ border: "1px solid #cbd5e1", borderRadius: "12px", padding: "16px", background: "#f8fafc" }}>
-        <h4 style={{ margin: "0 0 6px", fontSize: "17px", color: "#1e293b" }}>{copy.title}</h4>
-        <p style={{ margin: "0 0 12px", fontSize: "14px", color: "#475569" }}>{copy.help}</p>
-        <label htmlFor={fieldId} style={{ display: "block", fontSize: "14px", fontWeight: 700, color: "#1e293b", marginBottom: "6px" }}>
+      <div data-testid="driver-reason-form" style={{ border: "1px solid #f3e8cc", borderRadius: "12px", padding: "16px", background: "#fdf8ee" }}>
+        <h4 style={{ margin: "0 0 6px", fontSize: "17px", color: "var(--brand-black)" }}>{copy.title}</h4>
+        <p style={{ margin: "0 0 12px", fontSize: "14px", color: "#595959" }}>{copy.help}</p>
+        <label htmlFor={fieldId} style={{ display: "block", fontSize: "14px", fontWeight: 700, color: "var(--brand-black)", marginBottom: "6px" }}>
           Motivo
         </label>
         <textarea
@@ -116,14 +116,14 @@ export const DriverOrderActions: React.FC<Props> = ({ orderId, pickedUpAt, requi
           rows={3}
           placeholder={copy.placeholder}
           onChange={(e) => setReason(e.target.value)}
-          style={{ width: "100%", boxSizing: "border-box", padding: "12px", fontSize: "15px", borderRadius: "8px", border: "1px solid #cbd5e1", resize: "vertical" }}
+          style={{ width: "100%", boxSizing: "border-box", padding: "12px", fontSize: "15px", borderRadius: "8px", border: "1px solid #f3e8cc", resize: "vertical" }}
         />
-        {error && <p role="alert" style={{ color: "#b91c1c", fontSize: "14px", margin: "8px 0 0" }}>{error}</p>}
+        {error && <p role="alert" style={{ color: "#d42518", fontSize: "14px", margin: "8px 0 0" }}>{error}</p>}
         <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "12px" }}>
           <button type="button" style={outlineButton} disabled={disabled} onClick={() => { setOpenAction(null); setError(null); }}>
             Volver
           </button>
-          <button type="button" style={openAction === "pass" || openAction === "no-code" ? primaryButton : { ...primaryButton, background: "#b91c1c" }} disabled={disabled} onClick={confirmReason}>
+          <button type="button" style={openAction === "pass" || openAction === "no-code" ? primaryButton : { ...primaryButton, background: "#d42518" }} disabled={disabled} onClick={confirmReason}>
             {sending ? "Enviando..." : copy.confirm}
           </button>
         </div>
@@ -140,10 +140,10 @@ export const DriverOrderActions: React.FC<Props> = ({ orderId, pickedUpAt, requi
   if (!pickedUpAt) {
     return (
       <div data-testid="driver-actions-before" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-        <p style={{ margin: 0, fontSize: "14px", color: "#475569" }}>
+        <p style={{ margin: 0, fontSize: "14px", color: "#595959" }}>
           Cuando retires la comida del local, presiona <strong>Empezar traslado</strong>.
         </p>
-        {error && <p role="alert" style={{ color: "#b91c1c", fontSize: "14px", margin: 0 }}>{error}</p>}
+        {error && <p role="alert" style={{ color: "#d42518", fontSize: "14px", margin: 0 }}>{error}</p>}
         <button type="button" style={{ ...primaryButton, flex: "none" }} disabled={disabled} onClick={() => send(`/delivery/start/${orderId}`)}>
           <Play size={18} /> {sending ? "Guardando..." : "Empezar traslado"}
         </button>
@@ -161,7 +161,7 @@ export const DriverOrderActions: React.FC<Props> = ({ orderId, pickedUpAt, requi
 
   return (
     <div data-testid="driver-actions-after" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-      <button type="button" style={{ ...primaryButton, background: "#15803d", flex: "none" }} disabled={disabled} onClick={onComplete}>
+      <button type="button" style={{ ...primaryButton, background: "#1e8f4e", flex: "none" }} disabled={disabled} onClick={onComplete}>
         <CheckCircle size={18} /> {requiresPin ? "Entregar con código del cliente" : "Confirmar entrega"}
       </button>
       <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>

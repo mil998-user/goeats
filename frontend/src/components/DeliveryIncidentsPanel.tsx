@@ -93,7 +93,7 @@ export const DeliveryIncidentsPanel: React.FC = () => {
         </label>
       </div>
 
-      {error && <p role="alert" style={{ color: "#b91c1c", fontSize: "14px" }}>{error}</p>}
+      {error && <p role="alert" style={{ color: "#d42518", fontSize: "14px" }}>{error}</p>}
 
       {loading ? (
         <p style={{ color: "var(--text-secondary)" }}>Cargando...</p>

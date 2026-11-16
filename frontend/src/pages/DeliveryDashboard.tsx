@@ -1,5 +1,7 @@
 import { appConfirm, appPrompt } from "../components/AppDialogs";
+import { EmptyState } from "../components/EmptyState";
 import React, { useEffect, useState } from "react";
+import { useSocket } from "../context/SocketContext";
 import { PlatformBankInfo } from "../components/PlatformBankInfo";
 import { apiRequest } from "../utils/api";
 import { useAuth } from "../context/AuthContext";
@@ -95,7 +97,11 @@ export const DeliveryDashboard: React.FC = () => {
   const [activeOrders, setActiveOrders] = useState<Order[]>([]);
   
   // Wallet states
+  const { socket } = useSocket();
   const [walletBalance, setWalletBalance] = useState<number>(0);
+  // Solicitudes de recarga del motorizado y sus entregas terminadas
+  const [rechargeRequests, setRechargeRequests] = useState<any[]>([]);
+  const [deliveryHistory, setDeliveryHistory] = useState<any[]>([]);
   const [maxDebtLimit, setMaxDebtLimit] = useState<number>(50);
   const [isDebtLocked, setIsDebtLocked] = useState<boolean>(false);
   // Comes from the server, which applies the balance rule set by the administrator
@@ -192,8 +198,8 @@ export const DeliveryDashboard: React.FC = () => {
     }
   };
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (quiet = false) => {
+    if (!quiet) setLoading(true);
     try {
       // 1. Load active rate & available orders
       const availRes = await apiRequest("/delivery/available");
@@ -222,7 +228,16 @@ export const DeliveryDashboard: React.FC = () => {
         setTransactions(walletRes.transactions || []);
       }
 
-      // 4. Load SaaS plans
+      // 4. Solicitudes de recarga e historial de entregas
+      try {
+        const [mine, history] = await Promise.all([apiRequest("/saas/my"), apiRequest("/delivery/history")]);
+        if (mine.success) setRechargeRequests(mine.orders || []);
+        if (history.success) setDeliveryHistory(history.orders || []);
+      } catch (histErr) {
+        console.error("Error loading driver history:", histErr);
+      }
+
+      // 5. Load SaaS plans
       try {
         const plansRes = await apiRequest("/saas/plans");
         if (plansRes.success) {
@@ -234,13 +249,33 @@ export const DeliveryDashboard: React.FC = () => {
     } catch (err) {
       console.error("Error loading driver data:", err);
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   };
 
   useEffect(() => {
     loadData();
   }, []);
+
+  // Tiempo real: pedidos, saldo y recargas se actualizan solos cuando el servidor avisa
+  useEffect(() => {
+    let timer: number | undefined;
+    const refresh = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => loadData(true), 400);
+    };
+    const onVisible = () => {
+      if (!document.hidden) refresh();
+    };
+    const events = ["delivery-board-changed", "wallet-changed", "saas-order-changed", "connect"];
+    events.forEach((name) => socket?.on(name, refresh));
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearTimeout(timer);
+      events.forEach((name) => socket?.off(name, refresh));
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [socket]);
 
   // Los pedidos disponibles se revisan solos, sin tener que pulsar actualizar
   useEffect(() => {
@@ -380,15 +415,15 @@ export const DeliveryDashboard: React.FC = () => {
             display: "flex",
             alignItems: "center",
             gap: "10px",
-            backgroundColor: walletBalance > 0 ? "rgba(46, 213, 115, 0.08)" : "rgba(255, 71, 87, 0.08)",
-            border: `1px solid ${walletBalance > 0 ? "rgba(46, 213, 115, 0.2)" : "rgba(255, 71, 87, 0.2)"}`,
+            backgroundColor: "var(--brand-cream-soft)",
+            border: "1px solid var(--border-light)",
             padding: "8px 16px",
             borderRadius: "var(--radius-md)"
           }}>
-            <Wallet size={18} color={walletBalance > 0 ? "var(--success)" : "var(--accent-primary)"} />
+            <Wallet size={18} color="#d42518" />
             <div>
-              <div style={{ fontSize: "13px", color: "var(--text-muted)", textTransform: "uppercase" }}>Saldo Wallet</div>
-              <div style={{ fontSize: "16px", fontWeight: "bold", color: walletBalance > 0 ? "var(--success)" : "var(--accent-primary)" }}>
+              <div style={{ fontSize: "12px", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Saldo Wallet</div>
+              <div style={{ fontSize: "18px", fontWeight: "bold", color: walletBalance >= 0 ? "var(--brand-black)" : "var(--brand-red)" }}>
                 ${walletBalance.toFixed(2)}
               </div>
             </div>
@@ -402,9 +437,9 @@ export const DeliveryDashboard: React.FC = () => {
             style={{
               padding: "8px 16px",
               borderRadius: "var(--radius-md)",
-              backgroundColor: "rgba(239, 68, 68, 0.1)",
-              border: "1px solid rgba(239, 68, 68, 0.3)",
-              color: "#dc2626",
+              backgroundColor: "var(--brand-red)",
+              border: "none",
+              color: "var(--brand-white)",
               fontWeight: "700",
               fontSize: "13px",
               cursor: "pointer",
@@ -419,7 +454,7 @@ export const DeliveryDashboard: React.FC = () => {
           </button>
 
           <button
-            onClick={loadData}
+            onClick={() => loadData()}
             style={{
               padding: "10px",
               borderRadius: "var(--radius-md)",
@@ -460,9 +495,9 @@ export const DeliveryDashboard: React.FC = () => {
                 flex: 1,
                 padding: "12px",
                 borderRadius: "var(--radius-sm)",
-                backgroundColor: activeTab === t.id ? "var(--bg-primary)" : "transparent",
-                color: activeTab === t.id ? "var(--text-primary)" : "var(--text-secondary)",
-                fontWeight: 600,
+                backgroundColor: activeTab === t.id ? "var(--brand-yellow-soft)" : "transparent",
+                color: activeTab === t.id ? "var(--brand-black)" : "var(--text-secondary)",
+                fontWeight: activeTab === t.id ? 700 : 600,
                 fontSize: "14px",
                 cursor: "pointer",
                 transition: "all var(--transition-fast)",
@@ -496,15 +531,14 @@ export const DeliveryDashboard: React.FC = () => {
                 </p>
               )}
               {availableOrders.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-secondary)" }}>
-                  <Clock size={48} style={{ color: "var(--text-muted)", marginBottom: "15px" }} />
-                  <h3>No hay pedidos disponibles por el momento</h3>
-                  <p style={{ fontSize: "14px" }}>Los nuevos pedidos listos de los restaurantes aparecerán aquí en tiempo real.</p>
-                </div>
+                <EmptyState
+                  title="Todo tranquilo por ahora"
+                  message="No hay pedidos disponibles. Los nuevos pedidos listos aparecerán aquí al instante."
+                />
               ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "20px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: "20px" }}>
                   {availableOrders.map((order) => (
-                    <div key={order.id} style={{
+                    <div key={order.id} className="delivery-order-card" style={{
                       backgroundColor: "var(--bg-secondary)",
                       borderRadius: "var(--radius-lg)",
                       border: "1px solid var(--border-light)",
@@ -553,8 +587,8 @@ export const DeliveryDashboard: React.FC = () => {
                             display: "inline-flex",
                             alignItems: "center",
                             gap: "8px",
-                            backgroundColor: showMapForOrder[order.id] ? "rgba(46, 213, 115, 0.15)" : "var(--bg-tertiary)",
-                            color: showMapForOrder[order.id] ? "#2ed573" : "var(--text-secondary)",
+                            backgroundColor: showMapForOrder[order.id] ? "rgba(30, 143, 78, 0.15)" : "var(--bg-tertiary)",
+                            color: showMapForOrder[order.id] ? "#1e8f4e" : "var(--text-secondary)",
                             border: "1px solid var(--border-light)",
                             padding: "7px 16px",
                             borderRadius: "20px",
@@ -658,12 +692,12 @@ export const DeliveryDashboard: React.FC = () => {
                           {order.comments && <span><strong>Obs:</strong> {order.comments}</span>}
                         </div>
                         {!canTakeOrders && (
-                          <div style={{ flexBasis: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", flexWrap: "wrap", padding: "12px 14px", borderRadius: "var(--radius-md)", border: "1px solid #111827", backgroundColor: "#f3f4f6", color: "#111827", fontSize: "14px" }}>
+                          <div style={{ flexBasis: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", flexWrap: "wrap", padding: "12px 14px", borderRadius: "var(--radius-md)", border: "1px solid var(--brand-black)", backgroundColor: "#f7f0de", color: "var(--brand-black)", fontSize: "14px" }}>
                             <span>{takeBlockedMessage || "Necesitas saldo para tomar pedidos."}</span>
                             <button
                               type="button"
                               onClick={() => setActiveTab("saas_plans")}
-                              style={{ padding: "10px 20px", minHeight: "44px", borderRadius: "var(--radius-md)", backgroundColor: "#111827", color: "#ffffff", border: "none", fontWeight: "bold", cursor: "pointer" }}
+                              style={{ padding: "10px 20px", minHeight: "44px", borderRadius: "var(--radius-md)", backgroundColor: "var(--brand-black)", color: "#ffffff", border: "none", fontWeight: "bold", cursor: "pointer" }}
                             >
                               Recargar saldo
                             </button>
@@ -698,15 +732,14 @@ export const DeliveryDashboard: React.FC = () => {
           {activeTab === "active" && (
             <div>
               {activeOrders.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "60px 20px", color: "var(--text-secondary)" }}>
-                  <Truck size={48} style={{ color: "var(--text-muted)", marginBottom: "15px" }} />
-                  <h3>No tienes pedidos activos en entrega</h3>
-                  <p style={{ fontSize: "14px" }}>Acepta pedidos desde la pestaña "Pedidos Disponibles" para iniciar.</p>
-                </div>
+                <EmptyState
+                  title="Sin entregas en curso"
+                  message='Toma un pedido desde la pestaña "Pedidos Disponibles" para empezar.'
+                />
               ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "20px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: "20px" }}>
                   {activeOrders.map((order) => (
-                    <div key={order.id} style={{
+                    <div key={order.id} className="delivery-order-card" style={{
                       backgroundColor: "var(--bg-secondary)",
                       borderRadius: "var(--radius-lg)",
                       border: "1px solid var(--border-light)",
@@ -719,8 +752,8 @@ export const DeliveryDashboard: React.FC = () => {
                         <div>
                           <span style={{
                             fontSize: "13px",
-                            backgroundColor: "rgba(52, 152, 219, 0.1)",
-                            color: "#3498db",
+                            backgroundColor: "rgba(243, 232, 204, 0.6)",
+                            color: "#000000",
                             padding: "3px 8px",
                             borderRadius: "12px",
                             fontWeight: "bold",
@@ -814,24 +847,24 @@ export const DeliveryDashboard: React.FC = () => {
                               <div style={{
                                 marginTop: "14px",
                                 padding: "14px",
-                                backgroundColor: "#f9fafb",
-                                border: "1px solid #d1d5db",
+                                backgroundColor: "#fdf8ee",
+                                border: "1px solid #f3e8cc",
                                 borderRadius: "var(--radius-md)",
                                 display: "flex",
                                 flexDirection: "column",
                                 gap: "8px",
                               }}>
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                  <span style={{ fontSize: "15px", fontWeight: "bold", color: "#111827" }}>{systemIconForEmoji("💵")} Pagas en el local:</span>
-                                  <span style={{ fontSize: "20px", fontWeight: "bold", color: "#111827" }}>
+                                  <span style={{ fontSize: "15px", fontWeight: "bold", color: "var(--brand-black)" }}>{systemIconForEmoji("💵")} Pagas en el local:</span>
+                                  <span style={{ fontSize: "20px", fontWeight: "bold", color: "var(--brand-black)" }}>
                                     ${order.financialBreakdown.providerPayAmount.toFixed(2)}
                                   </span>
                                 </div>
-                                <p style={{ fontSize: "13px", color: "#4b5563", margin: 0, lineHeight: 1.4 }}>
+                                <p style={{ fontSize: "13px", color: "#595959", margin: 0, lineHeight: 1.4 }}>
                                   La comida cuesta ${order.financialBreakdown.foodSubtotal.toFixed(2)}. El local te cobra ${order.financialBreakdown.appCommissionFromProvider.toFixed(2)} menos ({order.financialBreakdown.commissionPct}%), que es la comisión de GoEats.
                                 </p>
 
-                                <div style={{ fontSize: "13px", color: "#374151", marginTop: "4px" }}>
+                                <div style={{ fontSize: "13px", color: "#333333", marginTop: "4px" }}>
                                   {systemIconForEmoji("🎁")} GoEats te paga <strong>${order.financialBreakdown.driverBonus.toFixed(2)} extra</strong> por este pedido. Cobra al cliente exactamente lo que marca abajo.
                                 </div>
 
@@ -846,17 +879,17 @@ export const DeliveryDashboard: React.FC = () => {
                                   color: "var(--text-primary)"
                                 }}>
                                   <span>Ganas por esta entrega:</span>
-                                  <span style={{ color: "#111827", fontSize: "15px" }}>${order.financialBreakdown.driverEarnings.toFixed(2)}</span>
+                                  <span style={{ color: "var(--brand-black)", fontSize: "15px" }}>${order.financialBreakdown.driverEarnings.toFixed(2)}</span>
                                 </div>
                                 {(order.financialBreakdown.tip || 0) > 0 && (
                                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", color: "var(--text-primary)" }}>
                                     <span>Propina del cliente (es toda tuya):</span>
-                                    <span style={{ color: "#111827" }}>+${order.financialBreakdown.tip!.toFixed(2)}</span>
+                                    <span style={{ color: "var(--brand-black)" }}>+${order.financialBreakdown.tip!.toFixed(2)}</span>
                                   </div>
                                 )}
 
                                 <div style={{
-                                  backgroundColor: "#111827",
+                                  backgroundColor: "var(--brand-black)",
                                   padding: "12px 14px",
                                   borderRadius: "6px",
                                   display: "flex",
@@ -949,11 +982,11 @@ export const DeliveryDashboard: React.FC = () => {
                                   setIsSupportOpen(true);
                                 }}
                                 style={{
-                                  background: "rgba(239, 68, 68, 0.08)",
-                                  border: "1px solid rgba(239, 68, 68, 0.25)",
+                                  background: "color-mix(in srgb, var(--brand-red) 8%, transparent)",
+                                  border: "1px solid color-mix(in srgb, var(--brand-red) 25%, transparent)",
                                   borderRadius: "6px",
                                   padding: "6px 12px",
-                                  color: "#dc2626",
+                                  color: "var(--brand-red)",
                                   cursor: "pointer",
                                   fontSize: "13px",
                                   fontWeight: "600",
@@ -1009,7 +1042,7 @@ export const DeliveryDashboard: React.FC = () => {
                   fontSize: "36px",
                   fontWeight: "bold",
                   margin: "10px 0",
-                  color: walletBalance >= 0 ? "var(--success)" : "#ff4757"
+                  color: walletBalance >= 0 ? "var(--success)" : "var(--brand-red)"
                 }}>
                   {walletBalance < 0 ? `-$${Math.abs(walletBalance).toFixed(2)}` : `$${walletBalance.toFixed(2)}`}
                 </div>
@@ -1021,7 +1054,7 @@ export const DeliveryDashboard: React.FC = () => {
                   fontSize: "13px",
                   fontWeight: "bold",
                   backgroundColor: isDebtLocked ? "rgba(231, 76, 60, 0.15)" : "rgba(46, 204, 113, 0.15)",
-                  color: isDebtLocked ? "#e74c3c" : "#2ecc71",
+                  color: isDebtLocked ? "var(--brand-red)" : "#2ecc71",
                   marginBottom: "15px"
                 }}>
                   {isDebtLocked ? systemTextWithIcons("⚠️ CUENTA PAUSADA POR DEUDA") : "✓ ESTADO ACTIVO"}
@@ -1029,8 +1062,8 @@ export const DeliveryDashboard: React.FC = () => {
 
                 <div style={{
                   padding: "15px",
-                  backgroundColor: isDebtLocked ? "rgba(255, 71, 87, 0.08)" : "rgba(52, 152, 219, 0.06)",
-                  border: isDebtLocked ? "1px solid rgba(255, 71, 87, 0.3)" : "1px solid rgba(52, 152, 219, 0.2)",
+                  backgroundColor: isDebtLocked ? "color-mix(in srgb, var(--brand-red) 8%, transparent)" : "rgba(243, 232, 204, 0.36)",
+                  border: isDebtLocked ? "1px solid color-mix(in srgb, var(--brand-red) 30%, transparent)" : "1px solid rgba(243, 232, 204, 1.0)",
                   borderRadius: "var(--radius-md)",
                   fontSize: "13px",
                   color: "var(--text-secondary)",
@@ -1038,7 +1071,7 @@ export const DeliveryDashboard: React.FC = () => {
                   gap: "10px",
                   textAlign: "left"
                 }}>
-                  <AlertTriangle size={20} color={isDebtLocked ? "#ff4757" : "#3498db"} style={{ flexShrink: 0 }} />
+                  <AlertTriangle size={20} color={isDebtLocked ? "var(--brand-red)" : "#000000"} style={{ flexShrink: 0 }} />
                   <div>
                     {balanceRule === "DEBT_LIMIT" ? (
                       <>
@@ -1050,7 +1083,7 @@ export const DeliveryDashboard: React.FC = () => {
                       </>
                     )}
                     {isDebtLocked && (
-                      <div style={{ color: "#ff4757", marginTop: "6px", fontWeight: "bold" }}>
+                      <div style={{ color: "var(--brand-red)", marginTop: "6px", fontWeight: "bold" }}>
                         Has alcanzado el límite. No podrás aceptar pedidos en efectivo hasta realizar un abono a GoEats.
                       </div>
                     )}
@@ -1100,6 +1133,53 @@ export const DeliveryDashboard: React.FC = () => {
                         }}>
                           {tx.amount > 0 ? `+$${tx.amount.toFixed(2)}` : `-$${Math.abs(tx.amount).toFixed(2)}`}
                         </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Historial de entregas */}
+              <div style={{
+                backgroundColor: "var(--bg-secondary)",
+                borderRadius: "var(--radius-lg)",
+                padding: "24px",
+                boxShadow: "var(--shadow-md)",
+                marginTop: "20px"
+              }}>
+                <h3 style={{ fontSize: "18px", marginBottom: "6px", color: "var(--text-primary)" }}>Mis entregas</h3>
+                <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: "0 0 16px" }}>
+                  {deliveryHistory.filter((o) => o.status === "DELIVERED").length} entregadas · ganaste $
+                  {deliveryHistory
+                    .filter((o) => o.status === "DELIVERED")
+                    .reduce((sum, o) => sum + Number(o.shippingCost || 0) + Number(o.tipAmount || 0), 0)
+                    .toFixed(2)}{" "}
+                  en envíos y propinas (últimas 50)
+                </p>
+                {deliveryHistory.length === 0 ? (
+                  <EmptyState size={48} title="Aún no hay entregas" message="Aquí verás cada pedido que entregues." />
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px", maxHeight: "400px", overflowY: "auto" }}>
+                    {deliveryHistory.map((o) => (
+                      <div key={o.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", padding: "12px 14px", backgroundColor: "var(--bg-primary)", borderRadius: "var(--radius-sm)" }}>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ fontSize: "14px", fontWeight: 700 }}>#{o.id} · {o.restaurant?.name}</div>
+                          <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+                            {new Date(o.updatedAt).toLocaleString("es-EC")} · {o.paymentMethodString || "—"}
+                          </div>
+                        </div>
+                        {o.status === "DELIVERED" ? (
+                          <div style={{ textAlign: "right", flexShrink: 0 }}>
+                            <div style={{ fontSize: "15px", fontWeight: 700, color: "#1e8f4e" }}>
+                              +${(Number(o.shippingCost || 0) + Number(o.tipAmount || 0)).toFixed(2)}
+                            </div>
+                            {Number(o.tipAmount) > 0 && (
+                              <div style={{ fontSize: "11px", color: "var(--text-muted)" }}>incluye propina ${Number(o.tipAmount).toFixed(2)}</div>
+                            )}
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: "12px", fontWeight: 700, color: "#737373", flexShrink: 0 }}>Cancelado</span>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -1194,7 +1274,7 @@ export const DeliveryDashboard: React.FC = () => {
                             display: "flex",
                             alignItems: "center",
                             gap: "8px",
-                            backgroundColor: "rgba(46, 213, 115, 0.05)",
+                            backgroundColor: "rgba(30, 143, 78, 0.05)",
                             border: "1px solid var(--success)",
                             padding: "10px",
                             borderRadius: "var(--radius-sm)",
@@ -1212,7 +1292,7 @@ export const DeliveryDashboard: React.FC = () => {
                             type="button"
                             className="glow-btn"
                             onClick={() => setShowPayphoneSimulator(true)}
-                            style={{ width: "100%", padding: "10px", backgroundColor: "#ff5a00", borderColor: "#ff5a00" }}
+                            style={{ width: "100%", padding: "10px", backgroundColor: "var(--brand-orange)", borderColor: "var(--brand-orange)" }}
                           >
                             Pagar con Tarjeta (Payphone)
                           </button>
@@ -1263,6 +1343,38 @@ export const DeliveryDashboard: React.FC = () => {
                   </p>
                 )}
               </div>
+
+              {/* Estado de mis solicitudes de recarga */}
+              <div style={{ gridColumn: "1 / -1", backgroundColor: "var(--bg-secondary)", borderRadius: "var(--radius-lg)", padding: "24px", boxShadow: "var(--shadow-md)" }}>
+                <h3 style={{ fontSize: "18px", margin: "0 0 14px", color: "var(--text-primary)" }}>Mis solicitudes de recarga</h3>
+                {rechargeRequests.length === 0 ? (
+                  <p style={{ margin: 0, fontSize: "13px", color: "var(--text-secondary)" }}>Todavía no has pedido recargas.</p>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    {rechargeRequests.slice(0, 20).map((r) => {
+                      const st =
+                        r.status === "APPROVED"
+                          ? { text: "Aprobada", bg: "rgba(30, 143, 78, 0.12)", color: "#1e8f4e" }
+                          : r.status === "REJECTED"
+                          ? { text: "Rechazada", bg: "rgba(212, 37, 24, 0.1)", color: "#d42518" }
+                          : { text: "En revisión", bg: "rgba(255, 202, 38, 0.3)", color: "#000000" };
+                      return (
+                        <div key={r.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", padding: "12px 14px", backgroundColor: "var(--bg-primary)", borderRadius: "var(--radius-sm)" }}>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: "14px", fontWeight: 700 }}>{r.planName || "Recarga"} · ${Number(r.amount || 0).toFixed(2)}</div>
+                            <div style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+                              {new Date(r.createdAt).toLocaleString("es-EC")} · {r.paymentMethod === "TRANSFER" ? "Transferencia" : "Tarjeta"}
+                            </div>
+                          </div>
+                          <span style={{ flexShrink: 0, padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 700, backgroundColor: st.bg, color: st.color }}>
+                            {st.text}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -1274,8 +1386,8 @@ export const DeliveryDashboard: React.FC = () => {
           <div className="global-modal-card" style={{ maxWidth: "380px", padding: "25px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px", borderBottom: "1px solid var(--border-light)", paddingBottom: "10px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "#ff5a00", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", fontWeight: "bold" }}>P</div>
-                <h3 style={{ fontSize: "1.1rem", fontWeight: "bold", margin: 0, color: "#ff5a00" }}>Payphone: demostración, sin cobro real</h3>
+                <div style={{ width: "24px", height: "24px", borderRadius: "50%", backgroundColor: "var(--brand-orange)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", fontWeight: "bold" }}>P</div>
+                <h3 style={{ fontSize: "1.1rem", fontWeight: "bold", margin: 0, color: "var(--brand-orange)" }}>Payphone: demostración, sin cobro real</h3>
               </div>
               <button
                 type="button"
@@ -1315,7 +1427,7 @@ export const DeliveryDashboard: React.FC = () => {
                   setPayphoneTransactionId(simulatedId);
                   setShowPayphoneSimulator(false);
                 }}
-                style={{ width: "100%", padding: "12px", backgroundColor: "#ff5a00", borderColor: "#ff5a00", marginTop: "10px" }}
+                style={{ width: "100%", padding: "12px", backgroundColor: "var(--brand-orange)", borderColor: "var(--brand-orange)", marginTop: "10px" }}
               >
                 Confirmar Pago de Recarga
               </button>

@@ -86,13 +86,13 @@ export const RouteMap: React.FC<RouteMapProps> = ({
     const label = isSelf ? "Tú (Repartidor)" : (name || "Repartidor");
     return `
       <div style="position: relative; display: flex; flex-direction: column; align-items: center; transform: translate(-50%, -100%);">
-        <div style="background: rgba(18, 24, 38, 0.95); color: #2ed573; padding: 4px 10px; border-radius: 12px; font-weight: 800; font-size: 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.5); white-space: nowrap; margin-bottom: 4px; border: 1.5px solid #2ed573; display: flex; align-items: center; gap: 5px;">
-          <span style="display: inline-block; width: 7px; height: 7px; background: #2ed573; border-radius: 50%; box-shadow: 0 0 6px #2ed573;"></span>
+        <div style="background: rgba(18, 24, 38, 0.95); color: #1e8f4e; padding: 4px 10px; border-radius: 12px; font-weight: 800; font-size: 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.5); white-space: nowrap; margin-bottom: 4px; border: 1.5px solid #1e8f4e; display: flex; align-items: center; gap: 5px;">
+          <span style="display: inline-block; width: 7px; height: 7px; background: #1e8f4e; border-radius: 50%; box-shadow: 0 0 6px #1e8f4e;"></span>
           <span>${escapeHtml(label)}</span>
         </div>
-        <div style="position: relative; width: 34px; height: 34px; background: #2ed573; border: 2.5px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(46,213,115,0.7);">
+        <div style="position: relative; width: 34px; height: 34px; background: #1e8f4e; border: 2.5px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(46,213,115,0.7);">
           <svg aria-hidden="true" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="6" r="1"/><path d="M12 17.5 14 8l-3-3-2 3h4"/><path d="M6 17.5 10 12l2 2h3"/><path d="m18.5 17.5-3.5-6h-3"/></svg>
-          <div style="position: absolute; inset: -6px; border-radius: 50%; border: 2px solid #2ed573; opacity: 0.7; animation: leaflet-radar-pulse 1.8s ease-out infinite;"></div>
+          <div style="position: absolute; inset: -6px; border-radius: 50%; border: 2px solid #1e8f4e; opacity: 0.7; animation: leaflet-radar-pulse 1.8s ease-out infinite;"></div>
         </div>
       </div>
     `;
@@ -363,7 +363,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
 
       // 2. Main street route polyline
       const mainRoute = L.polyline([], {
-        color: "#2ed573",
+        color: "#1e8f4e",
         weight: 5,
         opacity: 0.95,
         lineCap: "round",
@@ -392,10 +392,10 @@ export const RouteMap: React.FC<RouteMapProps> = ({
       // 3. Restaurant Origin Marker (Gold Badge)
       const restIconHtml = `
         <div style="position: relative; display: flex; flex-direction: column; align-items: center; transform: translate(-50%, -100%);">
-          <div style="background: rgba(20, 24, 33, 0.94); color: #ffd700; padding: 4px 10px; border-radius: 12px; font-weight: 800; font-size: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); white-space: nowrap; margin-bottom: 3px; border: 1px solid rgba(255,215,0,0.4); backdrop-filter: blur(4px);">
+          <div style="background: rgba(20, 24, 33, 0.94); color: #ffca26; padding: 4px 10px; border-radius: 12px; font-weight: 800; font-size: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); white-space: nowrap; margin-bottom: 3px; border: 1px solid rgba(255,215,0,0.4); backdrop-filter: blur(4px);">
             ${escapeHtml(restaurantName)}
           </div>
-          <div style="width: 26px; height: 26px; background: #ff9f43; border: 2.5px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(255,159,67,0.6);">
+          <div style="width: 26px; height: 26px; background: #f86015; border: 2.5px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(248, 96, 21, 0.6);">
             <div style="width: 8px; height: 8px; background: #ffffff; border-radius: 50%;"></div>
           </div>
         </div>
@@ -412,10 +412,10 @@ export const RouteMap: React.FC<RouteMapProps> = ({
       // 4. Customer Destination Marker (Coral Red Badge)
       const delivIconHtml = `
         <div style="position: relative; display: flex; flex-direction: column; align-items: center; transform: translate(-50%, -100%);">
-          <div style="background: rgba(255, 71, 87, 0.95); color: #ffffff; padding: 4px 10px; border-radius: 12px; font-weight: 800; font-size: 12px; box-shadow: 0 4px 12px rgba(255,71,87,0.5); white-space: nowrap; margin-bottom: 3px; border: 1px solid rgba(255,255,255,0.4);">
+          <div style="background: rgba(212, 37, 24, 0.95); color: #ffffff; padding: 4px 10px; border-radius: 12px; font-weight: 800; font-size: 12px; box-shadow: 0 4px 12px rgba(212, 37, 24, 0.5); white-space: nowrap; margin-bottom: 3px; border: 1px solid rgba(255,255,255,0.4);">
             ${escapeHtml(customerName || "Cliente")}
           </div>
-          <div style="width: 26px; height: 26px; background: #ff4757; border: 2.5px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(255,71,87,0.6);">
+          <div style="width: 26px; height: 26px; background: #d42518; border: 2.5px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(212, 37, 24, 0.6);">
             <div style="width: 8px; height: 8px; background: #ffffff; border-radius: 50%;"></div>
           </div>
         </div>
@@ -463,7 +463,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
       display: "flex",
       flexDirection: "column",
       width: "100%",
-      backgroundColor: "var(--bg-secondary, #1a1e29)",
+      backgroundColor: "var(--bg-secondary, #000000)",
       borderRadius: "16px",
       overflow: "hidden",
       border: "1px solid var(--border-light, rgba(255,255,255,0.08))",
@@ -503,7 +503,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
           pointerEvents: "none"
         }}>
           <span>{systemIconForEmoji("🛵")}</span>
-          <span style={{ color: "#2ed573" }}>
+          <span style={{ color: "#1e8f4e" }}>
             {distanceKm > 0 ? `${distanceKm} km` : "En ruta"}
           </span>
           <span style={{ opacity: 0.4 }}>•</span>
@@ -515,11 +515,11 @@ export const RouteMap: React.FC<RouteMapProps> = ({
               alignItems: "center",
               gap: "4px",
               fontSize: "13px",
-              color: "#2ed573",
-              background: "rgba(46, 213, 115, 0.15)",
+              color: "#1e8f4e",
+              background: "rgba(30, 143, 78, 0.15)",
               padding: "2px 6px",
               borderRadius: "10px",
-              border: "1px solid rgba(46, 213, 115, 0.3)"
+              border: "1px solid rgba(30, 143, 78, 0.3)"
             }}>
               <Radio size={10} className="animate-pulse" /> GPS en vivo
             </span>
@@ -541,9 +541,9 @@ export const RouteMap: React.FC<RouteMapProps> = ({
                 width: "36px",
                 height: "36px",
                 borderRadius: "50%",
-                backgroundColor: gpsStatus === "ACTIVE" ? "rgba(46, 213, 115, 0.2)" : "rgba(18, 22, 31, 0.9)",
+                backgroundColor: gpsStatus === "ACTIVE" ? "rgba(30, 143, 78, 0.2)" : "rgba(18, 22, 31, 0.9)",
                 backdropFilter: "blur(8px)",
-                color: gpsStatus === "ACTIVE" ? "#2ed573" : "#ffffff",
+                color: gpsStatus === "ACTIVE" ? "#1e8f4e" : "#ffffff",
                 border: "1px solid rgba(255,255,255,0.15)",
                 display: "flex",
                 alignItems: "center",
@@ -577,7 +577,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
               transition: "transform 0.2s ease",
             }}
           >
-            <Compass size={18} color="#2ed573" />
+            <Compass size={18} color="#1e8f4e" />
           </button>
         </div>
       </div>
@@ -586,8 +586,8 @@ export const RouteMap: React.FC<RouteMapProps> = ({
       {isDriverView && (
         <div style={{
           padding: "6px 14px",
-          backgroundColor: "rgba(46, 213, 115, 0.08)",
-          borderTop: "1px solid rgba(46, 213, 115, 0.2)",
+          backgroundColor: "rgba(30, 143, 78, 0.08)",
+          borderTop: "1px solid rgba(30, 143, 78, 0.2)",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
@@ -599,7 +599,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
               width: "8px",
               height: "8px",
               borderRadius: "50%",
-              backgroundColor: gpsStatus === "ACTIVE" ? "#2ed573" : gpsStatus === "ERROR" ? "#ff4757" : "#ffa502"
+              backgroundColor: gpsStatus === "ACTIVE" ? "#1e8f4e" : gpsStatus === "ERROR" ? "#d42518" : "#f86015"
             }}></span>
             <span>
               {gpsStatus === "ACTIVE"
@@ -635,7 +635,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
       {/* Clean Bottom Action Strip with Google Maps & Waze Navigation */}
       <div style={{
         padding: "12px 16px",
-        backgroundColor: "var(--bg-tertiary, #141722)",
+        backgroundColor: "var(--bg-tertiary, #000000)",
         borderTop: "1px solid var(--border-light, rgba(255,255,255,0.06))",
         display: "flex",
         alignItems: "center",
@@ -667,9 +667,9 @@ export const RouteMap: React.FC<RouteMapProps> = ({
                 display: "inline-flex",
                 alignItems: "center",
                 gap: "5px",
-                backgroundColor: "rgba(255, 159, 67, 0.15)",
-                color: "#ff9f43",
-                border: "1px solid rgba(255, 159, 67, 0.4)",
+                backgroundColor: "rgba(248, 96, 21, 0.15)",
+                color: "#f86015",
+                border: "1px solid rgba(248, 96, 21, 0.4)",
                 padding: "7px 12px",
                 borderRadius: "8px",
                 fontSize: "13px",
