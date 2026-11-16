@@ -1,453 +1,590 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { apiRequest } from "../utils/api";
 import {
-  ArrowDown,
   ArrowRight,
-  ArrowUpRight,
+  ArrowUp,
   Bike,
   Check,
-  Clock3,
-  MapPin,
+  ChefHat,
   Menu,
-  MessageSquareQuote,
+  MapPin,
+  Printer,
+  QrCode,
+  Receipt,
+  RotateCcw,
   Search,
   ShoppingBag,
-  Star,
   Store,
-  Ticket,
+  Wallet,
   X,
 } from "lucide-react";
-
+import { BrandLogo } from "./BrandLogo";
+import { ChefIllustration, RiderIllustration } from "./LandingIllustrations";
+import { OpenBadge } from "./OpenBadge";
+import { apiRequest } from "../utils/api";
+import "../styles/landing.css";
 
 const sections = [
   { id: "como-funciona", label: "Cómo funciona" },
-  { id: "descuentos", label: "Descuentos" },
+  { id: "beneficios", label: "Beneficios" },
   { id: "restaurantes", label: "Restaurantes" },
   { id: "repartidores", label: "Repartidores" },
 ];
-
-interface Offer {
-  key: string;
-  label: string;
-  value: string;
-  detail: string;
-  place: string;
-  cta: string;
-  to: string;
-}
-
-// Real benefit that always exists: Plus customers pay no delivery fee
-const plusOffer: Offer = {
-  key: "plus",
-  label: "GoEats Plus",
-  value: "ENVÍO $0",
-  detail: "Con el plan Plus no pagas envío en tus pedidos a domicilio.",
-  place: "Plan opcional",
-  cta: "Ver Plus",
-  to: "/plus",
-};
 
 interface PublicRestaurant {
   id: number;
   name: string;
   slug: string;
+  logo?: string | null;
+  coverImage?: string | null;
   promoText?: string | null;
+  openingHours?: string | null;
+  categories?: { id: number; name: string }[];
 }
+
+// Solo imagenes propias o por https
+const safeImage = (value?: string | null) =>
+  typeof value === "string" && /^(https:\/\/|\/[\w./-]+$|data:image\/)/.test(value) ? value : null;
+
+// La boca del logo ocupa el lugar de la "o"
+const MouthO: React.FC = () => <img className="gl-mouth-o" src="/brand/boca-roja.png" alt="o" />;
+
+// Tarjeta de un restaurante (foto, abierto/cerrado, logo, nombre, categoria y promocion)
+const RestaurantCard: React.FC<{ r: PublicRestaurant; hidden?: boolean }> = ({ r, hidden }) => (
+  <Link
+    to={`/r/${encodeURIComponent(r.slug)}`}
+    className="gl-rcard"
+    aria-hidden={hidden || undefined}
+    tabIndex={hidden ? -1 : undefined}
+  >
+    <span className="gl-rcard-photo">
+      <img src={safeImage(r.coverImage || r.logo) || ""} alt="" loading="lazy" />
+      <span className="gl-rcard-badge">
+        <OpenBadge hours={r.openingHours} />
+      </span>
+    </span>
+    <span className="gl-rcard-body">
+      {safeImage(r.logo) && <img className="gl-rcard-logo" src={safeImage(r.logo) || ""} alt="" loading="lazy" />}
+      <span className="gl-rcard-text">
+        <strong>{r.name}</strong>
+        <small>{r.categories?.[0]?.name || "Restaurante"}</small>
+      </span>
+    </span>
+    {r.promoText && <span className="gl-rcard-promo">{r.promoText}</span>}
+  </Link>
+);
+
+// Columnas de restaurantes al lado del titular: cada columna se mueve despacio
+// (la del medio al reves) y se detiene al pasar el mouse para poder tocar una tarjeta.
+// En el celular las mismas columnas se ven como filas debajo del texto.
+const COLS = 3;
+const PER_COL = 6;
+const RestaurantColumns: React.FC<{ restaurants: PublicRestaurant[] }> = ({ restaurants }) => {
+  const cols = Array.from({ length: COLS }, (_, col) =>
+    Array.from({ length: PER_COL }, (_, i) => restaurants[(col * 4 + i) % restaurants.length])
+  );
+  return (
+    <div className="gl-cols" aria-label="Restaurantes en GoEats">
+      {cols.map((items, col) => (
+        <div key={col} className={`gl-col${col % 2 ? " is-reverse" : ""}`}>
+          <div className="gl-col-track" style={{ animationDuration: `${46 + col * 8}s` }}>
+            {/* La lista va dos veces para que el movimiento no tenga corte; la copia no se lee ni se tabula */}
+            {items.map((r, i) => (
+              <RestaurantCard key={`a-${col}-${i}`} r={r} hidden={col > 0 || i >= restaurants.length} />
+            ))}
+            {items.map((r, i) => (
+              <RestaurantCard key={`b-${col}-${i}`} r={r} hidden />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
 
 export const LandingExperience: React.FC = () => {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [restaurantOffers, setRestaurantOffers] = useState<Offer[]>([]);
-  const [promoVisible, setPromoVisible] = useState(false);
-  const [promoIndex, setPromoIndex] = useState(0);
+  const [restaurants, setRestaurants] = useState<PublicRestaurant[]>([]);
 
-  // Only promotions that exist in the system: restaurants with a promo text or a dish on promotion
   useEffect(() => {
     let active = true;
     apiRequest("/restaurants/public/list")
       .then((res) => {
-        if (!active) return;
-        const list: PublicRestaurant[] = res.restaurants || [];
-        setRestaurantOffers(
-          list
-            .filter((restaurant) => restaurant.promoText && restaurant.slug)
-            .slice(0, 2)
-            .map((restaurant) => ({
-              key: `r-${restaurant.id}`,
-              label: "Promoción",
-              // A long text goes in the detail so the big title stays short
-              value: String(restaurant.promoText).length <= 24 ? String(restaurant.promoText) : "PROMO",
-              detail: String(restaurant.promoText).length <= 24 ? "Por tiempo limitado." : String(restaurant.promoText),
-              place: restaurant.name,
-              cta: "Ver menú",
-              to: `/r/${encodeURIComponent(restaurant.slug)}`,
-            }))
-        );
+        if (active) setRestaurants(res.restaurants || []);
       })
       .catch(() => {
-        if (active) setRestaurantOffers([]);
+        if (active) setRestaurants([]);
       });
     return () => {
       active = false;
     };
   }, []);
 
-  const promos: Offer[] = [...restaurantOffers, plusOffer];
-  const currentPromo = promos[promoIndex % promos.length];
-
-  useEffect(() => {
-    let hasOpened = false;
-    const showPromo = () => {
-      if (hasOpened || window.scrollY <= 420) return;
-      hasOpened = true;
-      setPromoVisible(true);
-      window.removeEventListener("scroll", showPromo);
-    };
-    const fallbackTimer = window.setTimeout(() => {
-      if (hasOpened) return;
-      hasOpened = true;
-      setPromoVisible(true);
-      window.removeEventListener("scroll", showPromo);
-    }, 6000);
-    window.addEventListener("scroll", showPromo, { passive: true });
-
-    return () => {
-      window.clearTimeout(fallbackTimer);
-      window.removeEventListener("scroll", showPromo);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!promoVisible) return;
-    const rotationTimer = window.setInterval(() => {
-      setPromoIndex((current) => (current + 1) % promos.length);
-    }, 9000);
-    return () => window.clearInterval(rotationTimer);
-  }, [promoVisible, promos.length]);
+  // Tarjetas del inicio: restaurantes reales con foto
+  const featured = restaurants.filter((r) => r.slug && safeImage(r.coverImage || r.logo)).slice(0, 12);
+  // Promociones reales que cargaron los restaurantes
+  const promos = restaurants.filter((r) => r.promoText && r.slug).slice(0, 2);
+  // Foto de un plato real para la seccion "Como funciona"
+  const howPhoto = safeImage(featured.find((r) => r.coverImage)?.coverImage);
+  // Otra foto real para la tarjeta de la cuenta (distinta a la de "Como funciona")
+  const withCover = featured.filter((r) => r.coverImage);
+  const accountPhoto = safeImage(withCover[3]?.coverImage || withCover[1]?.coverImage);
 
   const openRestaurants = () => navigate("/restaurants");
-  const openRegistration = (role: "customer" | "restaurant" | "driver") => {
-    navigate(`/login?role=${role}&mode=register`);
-  };
-
+  const openRegistration = (role: "customer" | "restaurant" | "driver") => navigate(`/login?role=${role}&mode=register`);
   const closeMenu = () => setMenuOpen(false);
 
   return (
-    <div className="ge-landing">
-      <header className="ge-header">
-        <div className="ge-nav">
-          <Link className="ge-brand" to="/" aria-label="GoEats, ir al inicio">
-            <span>Go<span>Eats</span></span>
+    <div className="gl">
+      <header className="gl-header">
+        <div className="gl-nav">
+          <Link to="/" aria-label="GoEats, ir al inicio" className="gl-brand">
+            <BrandLogo size={30} />
           </Link>
-          <nav className={`ge-nav-links${menuOpen ? " is-open" : ""}`} aria-label="Navegación principal">
-            {sections.map((section) => (
-              <a key={section.id} href={`#${section.id}`} onClick={closeMenu}>{section.label}</a>
+          <nav className={`gl-links${menuOpen ? " is-open" : ""}`} aria-label="Navegación principal">
+            {sections.map((s) => (
+              <a key={s.id} href={`#${s.id}`} onClick={closeMenu}>
+                {s.label}
+              </a>
             ))}
-            {/* One entry for everyone who already has an account: customer, restaurant, driver or staff */}
-            <Link className="ge-login-link" to="/login" onClick={closeMenu}>Iniciar sesión</Link>
-            <a className="ge-mobile-cta" href="#descargar" onClick={closeMenu}>Pedir ahora</a>
+            <Link to="/login" onClick={closeMenu} className="gl-login">
+              Iniciar sesión
+            </Link>
           </nav>
-          <button className="ge-nav-cta" onClick={openRestaurants}>
-            Explorar restaurantes <ArrowRight size={16} />
+          <button className="gl-pill gl-pill-yellow gl-nav-cta" onClick={openRestaurants}>
+            Pedir ahora
           </button>
           <button
-            className="ge-menu-button"
-            onClick={() => setMenuOpen((open) => !open)}
+            className="gl-menu-btn"
+            onClick={() => setMenuOpen((o) => !o)}
             aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}
             aria-expanded={menuOpen}
           >
-            {menuOpen ? <X size={25} /> : <Menu size={25} />}
+            {menuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
       </header>
 
       <main>
-        <section className="ge-hero" id="inicio">
-          <div className="ge-hero-content">
-            <div className="ge-hero-copy">
-              <h1>Tu comida favorita, <em>a un clic!</em></h1>
-              <p className="ge-hero-subtitle">
-                Tus sabores favoritos, desde la cocina hasta tu puerta. Rápido, local y sin complicaciones.
+        {/* Inicio: titular a la izquierda y restaurantes reales en columnas a la derecha */}
+        <section className="gl-hero" id="inicio">
+          <div className="gl-hero-center">
+            <p className="gl-chip">
+              <MapPin size={14} /> Loja, Ecuador · a domicilio o para retirar
+            </p>
+            <h1 className="gl-hero-title">
+              La c<MouthO />mida
+              <br />
+              de Loja,
+              <br />
+              <span>a tu puerta.</span>
+            </h1>
+            <p className="gl-hero-sub">
+              Pide a los restaurantes de tu ciudad, sigue tu pedido en vivo y recíbelo en casa o retíralo en el local.
+            </p>
+            {/* Boton y enlace en un mismo bloque para que el enlace quede centrado bajo el boton */}
+            <div className="gl-hero-actions">
+              <button className="gl-pill gl-pill-yellow gl-pill-lg" onClick={openRestaurants}>
+                Ver restaurantes <ArrowRight size={18} />
+              </button>
+              <button className="gl-text-link" onClick={() => openRegistration("customer")}>
+                Crear mi cuenta gratis
+              </button>
+            </div>
+          </div>
+
+          {featured.length > 0 && <RestaurantColumns restaurants={featured} />}
+        </section>
+
+        {/* Como funciona: texto y pasos a la izquierda; a la derecha la pantalla de seguimiento
+            con los estados reales del pedido sobre un bloque rojo con un plato real */}
+        <section className="gl-section gl-tone-peach" id="como-funciona">
+          <div className="gl-how">
+            <div className="gl-how-text">
+              <p className="gl-eyebrow">Cómo funciona</p>
+              <h2>Pide en tres pasos y mira cada uno en vivo.</h2>
+              <p className="gl-how-lead">
+                Eliges el plato, pagas en efectivo o con transferencia y GoEats te avisa cuando el restaurante lo cocina
+                y cuando sale el motorizado.
               </p>
-              <div className="ge-hero-actions">
-                <button className="ge-action-link" onClick={openRestaurants}>
-                  Pedir ahora <span><ArrowUpRight size={19} /></span>
-                </button>
-                <a className="ge-text-link" href="#restaurantes">
-                  Tengo un restaurante <ArrowRight size={16} />
-                </a>
-              </div>
-              <div className="ge-hero-proof">
-                <span className="ge-proof-icon"><Store size={17} /></span>
-                <p><strong>Sabores locales, en un solo lugar.</strong><br />Encuentra tu próximo favorito en Loja.</p>
-              </div>
-            </div>
-            <div className="ge-hero-visual" aria-label="Comida preparada para compartir">
-              <div className="ge-hero-image">
-                <img
-                  src="https://images.unsplash.com/photo-1722239318187-fcd98589c3f7?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&q=85&w=1400"
-                  alt="Mesa servida con platos para compartir"
-                  fetchPriority="high"
-                />
-              </div>
-              <div className="ge-floating-card ge-order-card">
-                <span className="ge-order-icon"><ShoppingBag size={20} /></span>
-                <span><strong>Tu pedido, más cerca</strong></span>
-                <span className="ge-live-dot" aria-hidden="true" />
-              </div>
-              <div className="ge-floating-card ge-restaurant-card">
-                <span className="ge-mini-food" aria-hidden="true" />
-                <span><small>Descubre algo nuevo</small><strong>Sabores locales</strong></span>
-                <span className="ge-card-rating"><MapPin size={12} /> Loja</span>
-              </div>
-            </div>
-          </div>
-          <a className="ge-scroll-note" href="#como-funciona" aria-label="Descubre cómo funciona">
-            <span><ArrowDown size={14} /></span> Descubre más
-          </a>
-        </section>
 
-        <section className="ge-how-section" id="como-funciona">
-          <div className="ge-section-container">
-            <div className="ge-section-heading ge-centered">
-              <p className="ge-eyebrow">Así de fácil</p>
-              <h2>Tu antojo, a unos toques de distancia.</h2>
-              <p className="ge-section-copy">Descubre lo mejor de Loja y recíbelo donde estés.</p>
-            </div>
-            <div className="ge-steps-grid">
-              <article className="ge-step-card">
-                <span className="ge-step-number">01</span>
-                <span className="ge-step-icon"><MapPin /></span>
-                <h3>Encuentra algo cerca</h3>
-                <p>Explora restaurantes locales y opciones disponibles para tu zona.</p>
-              </article>
-              <article className="ge-step-card ge-step-featured">
-                <span className="ge-step-number">02</span>
-                <span className="ge-step-icon"><Search /></span>
-                <h3>Elige lo que te provoca</h3>
-                <p>Revisa menús, encuentra tus favoritos y arma tu pedido.</p>
-              </article>
-              <article className="ge-step-card">
-                <span className="ge-step-number">03</span>
-                <span className="ge-step-icon"><Bike /></span>
-                <h3>Recíbelo y disfruta</h3>
-                <p>Completa tu pedido y coordina la entrega hasta tu puerta.</p>
-              </article>
-            </div>
-            <button className="ge-secondary-link" onClick={openRestaurants}>
-              Ver restaurantes disponibles <ArrowRight size={17} />
-            </button>
-          </div>
-        </section>
+              {/* Es una secuencia real: elegir, pedir, recibir */}
+              <ol className="gl-how-steps">
+                <li className="tone-yellow">
+                  <span className="gl-how-num">1</span>
+                  <span className="gl-how-copy">
+                    <strong>Elige</strong>
+                    <span>Busca por antojo o por restaurante.</span>
+                  </span>
+                  <Search size={20} className="gl-how-ico" />
+                </li>
+                <li className="tone-orange">
+                  <span className="gl-how-num">2</span>
+                  <span className="gl-how-copy">
+                    <strong>Pide</strong>
+                    <span>A domicilio o para retirar en el local.</span>
+                  </span>
+                  <ShoppingBag size={20} className="gl-how-ico" />
+                </li>
+                <li className="tone-red">
+                  <span className="gl-how-num">3</span>
+                  <span className="gl-how-copy">
+                    <strong>Recibe</strong>
+                    <span>Sigue el estado hasta que llegue.</span>
+                  </span>
+                  <Bike size={20} className="gl-how-ico" />
+                </li>
+              </ol>
 
-        <section className="ge-promo-section" id="descuentos">
-          <div className="ge-section-container ge-promo-shell">
-            <div className="ge-promo-heading">
-              <span className="ge-promo-heading-icon"><Ticket /></span>
-              <div>
-                <p className="ge-eyebrow">Beneficios GoEats</p>
-                <h2>Un buen pedido empieza ahorrando.</h2>
-              </div>
-              <p>Promociones vigentes de los restaurantes de Loja y beneficios para tus pedidos.</p>
-            </div>
-            <div className="ge-coupon-grid">
-              {promos.slice(0, 2).map((offer, index) => (
-                <article key={offer.key} className={`ge-coupon-card ge-coupon-${index + 1}`}>
-                  <div className="ge-coupon-top">
-                    <span>{offer.label}</span>
-                    <strong>{offer.value}</strong>
-                    <p>{offer.detail}</p>
-                  </div>
-                  <div className="ge-coupon-code">
-                    <span><small>{offer.key === "plus" ? "Beneficio" : "En"}</small><strong>{offer.place}</strong></span>
-                    <button onClick={() => navigate(offer.to)} aria-label={`${offer.cta}: ${offer.place}`}>
-                      {offer.cta}
-                    </button>
-                  </div>
-                </article>
-              ))}
-              <article className="ge-signup-card">
-                <span className="ge-signup-badge">Crea tu cuenta</span>
-                <h3>Pide en minutos.</h3>
-                <p>Crea tu cuenta en GoEats para pedir, seguir tu pedido y activar Plus si lo quieres.</p>
-                <button className="ge-action-link ge-action-light" onClick={() => openRegistration("customer")}>
-                  Crear mi cuenta gratis <span><ArrowUpRight size={19} /></span>
-                </button>
-              </article>
-            </div>
-          </div>
-        </section>
-
-        <section className="ge-reviews-section" id="resenas">
-          <div className="ge-section-container">
-            <div className="ge-reviews-heading">
-              <div className="ge-section-heading">
-                <p className="ge-eyebrow">Opiniones de usuarios</p>
-                <h2>Lo que comparte la comunidad GoEats.</h2>
-                <p className="ge-section-copy">Experiencias de quienes descubren y disfrutan GoEats.</p>
-              </div>
-              <div className="ge-reviews-score">
-                <strong>Reseñas</strong>
-                <span>Opiniones de usuarios</span>
-              </div>
-            </div>
-            <div className="ge-reviews-grid">
-              <article className="ge-review-card ge-review-featured">
-                <MessageSquareQuote />
-                <div className="ge-review-stars" aria-label="Calificación de ejemplo: 5 de 5">
-                  {Array.from({ length: 5 }, (_, index) => <Star key={index} size={15} fill="currentColor" />)}
-                </div>
-                <p>Encontré varias opciones de comida local en un solo lugar. ¡Así da gusto elegir qué pedir!</p>
-                <div className="ge-review-author">
-                  <span className="ge-review-avatar">U</span>
-                  <span><strong>Usuario de ejemplo</strong><small>Reseña ilustrativa</small></span>
-                </div>
-              </article>
-              <article className="ge-review-card">
-                <MessageSquareQuote />
-                <div className="ge-review-stars" aria-label="Calificación de ejemplo: 5 de 5">
-                  {Array.from({ length: 5 }, (_, index) => <Star key={index} size={15} fill="currentColor" />)}
-                </div>
-                <p>El menú me ayudó a descubrir un nuevo favorito. Hacer el pedido fue muy sencillo.</p>
-                <div className="ge-review-author">
-                  <span className="ge-review-avatar">U</span>
-                  <span><strong>Usuario de ejemplo</strong><small>Reseña ilustrativa</small></span>
-                </div>
-              </article>
-              <article className="ge-review-card">
-                <MessageSquareQuote />
-                <div className="ge-review-stars" aria-label="Calificación de ejemplo: 5 de 5">
-                  {Array.from({ length: 5 }, (_, index) => <Star key={index} size={15} fill="currentColor" />)}
-                </div>
-                <p>Me gusta tener opciones de mi ciudad y recibir mi comida sin complicaciones.</p>
-                <div className="ge-review-author">
-                  <span className="ge-review-avatar">U</span>
-                  <span><strong>Usuario de ejemplo</strong><small>Reseña ilustrativa</small></span>
-                </div>
-              </article>
-            </div>
-            <p className="ge-reviews-note">Reseñas de ejemplo. Se mostrarán opiniones reales cuando estén disponibles.</p>
-          </div>
-        </section>
-
-        <section className="ge-partner-section" id="restaurantes">
-          <div className="ge-section-container ge-partner-grid">
-            <div className="ge-partner-image">
-              <img
-                src="https://images.unsplash.com/photo-1781585809212-471d67b9f479?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&q=85&w=1200"
-                alt="Propietario atendiendo su restaurante"
-                loading="lazy"
-              />
-              <span className="ge-metric-card"><Store size={20} /><span>Negocios locales<br /><strong>crecen en comunidad</strong></span></span>
-            </div>
-            <div className="ge-partner-copy">
-              <div className="ge-section-heading">
-                <p className="ge-eyebrow">Para restaurantes</p>
-                <h2>Tu cocina merece llegar más lejos.</h2>
-                <p className="ge-section-copy">Con GoEats, tu negocio se conecta con personas en Loja que buscan su próxima comida favorita.</p>
-              </div>
-              <ul className="ge-benefit-list">
-                <li><Check /><span><strong>Más visibilidad local</strong><small>Presenta tu menú a nuevos clientes.</small></span></li>
-                <li><Check /><span><strong>Tú cocinas, nosotros conectamos</strong><small>Gestiona tus pedidos desde un solo lugar.</small></span></li>
-                <li><Check /><span><strong>Crece acompañado</strong><small>Recibe apoyo de un equipo que conoce Loja.</small></span></li>
-              </ul>
-              <button className="ge-action-link" onClick={() => openRegistration("restaurant")}>
-                Registrar mi restaurante <span><ArrowUpRight size={19} /></span>
+              <button className="gl-pill gl-pill-red gl-pill-lg" onClick={openRestaurants}>
+                Empezar a pedir <ArrowRight size={18} />
               </button>
             </div>
-          </div>
-        </section>
 
-        <section className="ge-rider-section" id="repartidores">
-          <div className="ge-section-container ge-rider-grid">
-            <div className="ge-rider-copy">
-              <div className="ge-section-heading">
-                <p className="ge-eyebrow">Para repartidores</p>
-                <h2>Muévete por Loja. Gana a tu ritmo.</h2>
-                <p className="ge-section-copy">Convierte tu tiempo libre en ingresos. Tú eliges cuándo conectarte y cuánto quieres avanzar.</p>
+            <div className="gl-how-stage" aria-hidden="true">
+              <img className="gl-how-boca" src="/brand/boca-crema.png" alt="" />
+              {howPhoto && <img className="gl-how-photo" src={howPhoto} alt="" loading="lazy" />}
+              <div className="gl-mock gl-mock-track">
+                <div className="gl-mock-top">
+                  <span className="gl-mock-logo">
+                    <ShoppingBag size={18} />
+                  </span>
+                  <div>
+                    <strong>Tu pedido</strong>
+                    <small>2 platos · Domicilio</small>
+                  </div>
+                </div>
+                <ol className="gl-steps">
+                  <li className="done">
+                    <Check size={14} /> Recibido por el restaurante
+                  </li>
+                  <li className="done">
+                    <Check size={14} /> En cocina
+                  </li>
+                  <li className="now">
+                    <Bike size={14} /> En camino
+                  </li>
+                  <li>
+                    <MapPin size={14} /> Entregado
+                  </li>
+                </ol>
+                <div className="gl-mock-bar">
+                  <span>Pago</span>
+                  <strong>Efectivo al recibir</strong>
+                </div>
               </div>
-              <div className="ge-rider-benefits">
-                <div><Clock3 /><strong>Tu propio horario</strong><span>Conéctate cuando quieras.</span></div>
-                <div><Bike /><strong>Tu ruta, tus metas</strong><span>Gana por cada entrega.</span></div>
-                <div><Store /><strong>Comunidad local</strong><span>Conecta con negocios.</span></div>
-              </div>
-              <button className="ge-action-link ge-action-light" onClick={() => openRegistration("driver")}>
-                Quiero repartir con GoEats <span><ArrowUpRight size={19} /></span>
-              </button>
-            </div>
-            <div className="ge-rider-image">
-              <img
-                src="https://images.unsplash.com/photo-1612006567758-1846b36dd130?crop=entropy&cs=tinysrgb&fit=crop&fm=jpg&q=85&w=1200"
-                alt="Repartidor recorriendo la ciudad en motocicleta"
-                loading="lazy"
-              />
-              <span className="ge-earnings-card">
-                <small>Tu ruta, tus metas</small>
-                <strong>Reparte en Loja</strong>
-                <span className="ge-earnings-line"><i /><i /><i /><i /><i /><i /><i /></span>
+              <span className="gl-bubble gl-how-bubble-a">
+                <ChefHat size={16} /> El restaurante aceptó tu pedido
+              </span>
+              <span className="gl-bubble gl-how-bubble-b">
+                <Bike size={16} /> Tu motorizado ya salió
+              </span>
+              <span className="gl-bubble gl-how-bubble-c">
+                <Wallet size={16} /> Efectivo o transferencia
               </span>
             </div>
           </div>
         </section>
 
-        <section className="ge-explore-section" id="descargar">
-          <div className="ge-explore-inner">
-            <p className="ge-eyebrow">Lo mejor de Loja, en tu mano</p>
-            <h2>¿Qué se te antoja hoy?</h2>
-            <p>Explora GoEats y encuentra tus sabores favoritos en Loja.</p>
-            <div className="ge-explore-actions">
-              <button className="ge-action-link ge-action-light" onClick={openRestaurants}>
-                Explorar restaurantes <span><ArrowUpRight size={19} /></span>
+        {/* Beneficios: mosaico con el plan Plus (beneficios reales del plan), las promociones
+            que publican los locales y lo que ofrece la cuenta */}
+        <section className="gl-section gl-band-yellow" id="beneficios">
+          <div className="gl-head">
+            <p className="gl-eyebrow gl-eyebrow-dark">Beneficios</p>
+            <h2>Ahorra en cada pedido.</h2>
+            <p>Promociones que publican los restaurantes y un plan para no pagar envío.</p>
+          </div>
+
+          <div className="gl-bento">
+            <article className="gl-bento-plus">
+              <img className="gl-bento-boca" src="/brand/boca-negra.png" alt="" aria-hidden="true" />
+              <span className="gl-tag">GoEats Plus</span>
+              <strong className="gl-bento-big">Envío $0</strong>
+              <p>En todos tus pedidos a domicilio, las veces que quieras.</p>
+              <ul className="gl-bento-list">
+                <li>
+                  <Check size={14} /> Envíos gratis ilimitados
+                </li>
+                <li>
+                  <Check size={14} /> Tu pedido sale primero en cocina
+                </li>
+                <li>
+                  <Check size={14} /> El repartidor recibe un bono de $0.50
+                </li>
+                <li>
+                  <Check size={14} /> Soporte preferencial
+                </li>
+              </ul>
+              <div className="gl-bento-ticket" aria-hidden="true">
+                <span>Envío a domicilio</span>
+                <strong>$0.00</strong>
+                <em>Plus</em>
+              </div>
+              <button className="gl-pill gl-pill-black" onClick={() => navigate("/plus")}>
+                Ver el plan Plus <ArrowRight size={16} />
               </button>
-              <button className="ge-explore-signup" onClick={() => openRegistration("customer")}>
-                Crear mi cuenta gratis
+            </article>
+
+            <article className="gl-bento-promo">
+              <span className="gl-tag gl-tag-light">Promociones</span>
+              <strong className="gl-bento-mid">Ofertas de los locales de Loja</strong>
+              {promos.length > 0 ? (
+                <ul className="gl-bento-promos">
+                  {promos.map((r) => (
+                    <li key={r.id}>
+                      <Link to={`/r/${encodeURIComponent(r.slug)}`}>
+                        {safeImage(r.logo) ? (
+                          <img src={safeImage(r.logo) || ""} alt="" loading="lazy" />
+                        ) : (
+                          <Store size={18} />
+                        )}
+                        <span>
+                          <strong>{r.promoText}</strong>
+                          <small>{r.name}</small>
+                        </span>
+                        <ArrowRight size={16} />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p>Cada restaurante publica sus promociones en su menú.</p>
+              )}
+              <div className="gl-bento-faces" aria-hidden="true">
+                {featured.slice(0, 4).map((r) => (
+                  <img key={r.id} src={safeImage(r.coverImage || r.logo) || ""} alt="" loading="lazy" />
+                ))}
+              </div>
+              <button className="gl-pill gl-pill-white" onClick={openRestaurants}>
+                Ver restaurantes
+              </button>
+            </article>
+
+            <article className="gl-bento-account">
+              <div className="gl-bento-account-text">
+                <span className="gl-tag">Tu cuenta</span>
+                <strong className="gl-bento-mid">Pide en minutos</strong>
+                <ul className="gl-bento-feats">
+                  <li>
+                    <span>
+                      <MapPin size={16} />
+                    </span>
+                    Guarda tus direcciones
+                  </li>
+                  <li>
+                    <span>
+                      <RotateCcw size={16} />
+                    </span>
+                    Repite un pedido con un toque
+                  </li>
+                  <li>
+                    <span>
+                      <Bike size={16} />
+                    </span>
+                    Sigue cada entrega en vivo
+                  </li>
+                </ul>
+                <button className="gl-pill gl-pill-black" onClick={() => openRegistration("customer")}>
+                  Crear mi cuenta
+                </button>
+              </div>
+              {accountPhoto && <img className="gl-bento-photo" src={accountPhoto} alt="" loading="lazy" />}
+            </article>
+          </div>
+        </section>
+
+        {/* Restaurantes: foto de cocina a la izquierda con el panel real del local encima;
+            texto y funciones a la derecha */}
+        <section className="gl-section gl-tone-green" id="restaurantes">
+          <div className="gl-split">
+            <div className="gl-photo-stage">
+              <div className="gl-photo">
+                <ChefIllustration />
+              </div>
+              <div className="gl-mock gl-mock-orders gl-photo-mock" aria-hidden="true">
+                <div className="gl-mock-top">
+                  <span className="gl-mock-logo gl-mock-logo-black">
+                    <Store size={18} />
+                  </span>
+                  <div>
+                    <strong>Pedidos de hoy</strong>
+                    <small>Tu restaurante</small>
+                  </div>
+                </div>
+                <ul className="gl-rows">
+                  <li>
+                    <span>Domicilio · 3 platos</span>
+                    <em className="st-new">Nuevo</em>
+                  </li>
+                  <li>
+                    <span>Mesa 4 · 2 platos</span>
+                    <em className="st-cook">En cocina</em>
+                  </li>
+                  <li>
+                    <span>Para retirar · 1 plato</span>
+                    <em className="st-ready">Listo</em>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="gl-split-text">
+              <p className="gl-eyebrow">Para restaurantes</p>
+              <h2>Recibe pedidos sin cambiar tu cocina.</h2>
+              <p className="gl-split-lead">
+                Los pedidos de la web, de las mesas y para retirar llegan a una sola pantalla. La cocina los ve, la caja
+                los cobra y tú ves el día en reportes.
+              </p>
+              <ul className="gl-feats">
+                <li>
+                  <span>
+                    <Printer size={18} />
+                  </span>
+                  Comanda impresa con tu logo
+                </li>
+                <li>
+                  <span>
+                    <QrCode size={18} />
+                  </span>
+                  Carta con QR en cada mesa
+                </li>
+                <li>
+                  <span>
+                    <Receipt size={18} />
+                  </span>
+                  Caja y reportes del día
+                </li>
+              </ul>
+              <button className="gl-pill gl-pill-black gl-pill-lg" onClick={() => openRegistration("restaurant")}>
+                Registrar mi restaurante <ArrowRight size={18} />
               </button>
             </div>
           </div>
         </section>
+
+        {/* Repartidores: texto a la izquierda; foto de un repartidor en ruta con el pedido disponible encima */}
+        <section className="gl-section gl-band-black" id="repartidores">
+          <div className="gl-split is-reverse">
+            <div className="gl-photo-stage">
+              <div className="gl-photo">
+                <RiderIllustration />
+              </div>
+              <div className="gl-mock gl-mock-driver gl-photo-mock" aria-hidden="true">
+                <div className="gl-mock-top">
+                  <span className="gl-mock-logo gl-mock-logo-yellow">
+                    <Bike size={18} />
+                  </span>
+                  <div>
+                    <strong>Pedido disponible</strong>
+                    <small>Listo para recoger</small>
+                  </div>
+                </div>
+                <div className="gl-route">
+                  <span>
+                    <Store size={14} /> Restaurante
+                  </span>
+                  <i />
+                  <span>
+                    <MapPin size={14} /> Cliente
+                  </span>
+                </div>
+                <span className="gl-mock-cta">Tomar pedido</span>
+              </div>
+            </div>
+
+            <div className="gl-split-text">
+              <p className="gl-eyebrow gl-eyebrow-yellow">Para repartidores</p>
+              <h2>Reparte en Loja cuando tú quieras.</h2>
+              <p className="gl-split-lead">
+                Te conectas, ves los pedidos listos cerca de ti y tomas los que te sirven. Tu billetera y tus entregas
+                quedan en la app.
+              </p>
+              <ul className="gl-feats gl-feats-red">
+                <li>
+                  <span>
+                    <Bike size={18} />
+                  </span>
+                  Toma los pedidos que te sirven
+                </li>
+                <li>
+                  <span>
+                    <Wallet size={18} />
+                  </span>
+                  Billetera con recargas
+                </li>
+                <li>
+                  <span>
+                    <Check size={18} />
+                  </span>
+                  Historial de tus entregas
+                </li>
+              </ul>
+              <button className="gl-pill gl-pill-yellow gl-pill-lg" onClick={() => openRegistration("driver")}>
+                Quiero repartir <ArrowRight size={18} />
+              </button>
+            </div>
+          </div>
+        </section>
+
       </main>
 
-      <footer className="ge-footer">
-        <div className="ge-footer-inner">
-          <div className="ge-footer-brand">
-            <Link className="ge-brand" to="/" aria-label="GoEats, ir al inicio">
-              <span className="ge-brand-mark"><MapPin size={19} /></span>
-              <span>Go<span>Eats</span></span>
-            </Link>
-            <p>Conectando los sabores de Loja.</p>
+      {/* Pie: la invitacion final y los enlaces reales del sitio en un solo bloque */}
+      <footer className="gl-footer">
+        <div className="gl-footer-cta">
+          <h2>¿Qué se te antoja hoy?</h2>
+          <button className="gl-pill gl-pill-red gl-pill-lg" onClick={openRestaurants}>
+            Ver restaurantes <ArrowRight size={18} />
+          </button>
+        </div>
+
+        <div className="gl-footer-top">
+          <div className="gl-footer-brand">
+            <BrandLogo size={30} />
+            <p>Comida de los restaurantes de Loja, a domicilio o para retirar en el local.</p>
+            <span className="gl-footer-chip">
+              <MapPin size={14} /> Loja, Ecuador
+            </span>
           </div>
-          <nav className="ge-footer-links" aria-label="Enlaces del sitio">
-            <a href="#como-funciona">Cómo funciona</a>
-            <a href="#descuentos">Descuentos</a>
-            <a href="#restaurantes">Restaurantes</a>
-            <a href="#repartidores">Repartidores</a>
-            <Link to="/support">Ayuda y soporte</Link>
+
+          <nav className="gl-footer-cols" aria-label="Enlaces del sitio">
+            <div>
+              <h3>Para clientes</h3>
+              <Link to="/restaurants">Ver restaurantes</Link>
+              <Link to="/plus">GoEats Plus</Link>
+              <button onClick={() => openRegistration("customer")}>Crear mi cuenta</button>
+              <Link to="/login">Iniciar sesión</Link>
+            </div>
+            <div>
+              <h3>Para negocios</h3>
+              <button onClick={() => openRegistration("restaurant")}>Registrar mi restaurante</button>
+              <button onClick={() => openRegistration("driver")}>Quiero repartir</button>
+              <a href="#restaurantes">Qué recibe tu local</a>
+            </div>
+            <div>
+              <h3>GoEats</h3>
+              <a href="#como-funciona">Cómo funciona</a>
+              <a href="#beneficios">Beneficios</a>
+              <Link to="/support">Ayuda y soporte</Link>
+            </div>
           </nav>
-          <p className="ge-copyright">© {new Date().getFullYear()} GoEats. Hecho en Loja.</p>
+        </div>
+
+        {/* Firma grande de la marca */}
+        <p className="gl-footer-word" aria-hidden="true">
+          G<img src="/brand/boca-roja.png" alt="" />EATS
+        </p>
+
+        <div className="gl-footer-bottom">
+          <p>
+            © {new Date().getFullYear()} GoEats · Hecho en Loja con
+            <img src="/brand/boca-roja.png" alt="cariño" />
+          </p>
+          <button className="gl-footer-top-btn" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
+            Volver arriba <ArrowUp size={16} />
+          </button>
         </div>
       </footer>
-      {promoVisible && (
-        <aside className="ge-promo-popup" aria-live="polite" aria-label="Promoción de GoEats">
-          <button className="ge-promo-close" onClick={() => setPromoVisible(false)} aria-label="Cerrar promoción">
-            <X size={15} />
-          </button>
-          <div className="ge-promo-art">
-            <Ticket size={42} />
-            <span>GO</span>
-          </div>
-          <div className="ge-promo-popup-content">
-            <span className="ge-promo-label">{currentPromo.label}</span>
-            <strong>{currentPromo.value}</strong>
-            <p>{currentPromo.detail}</p>
-            <button className="ge-promo-copy" onClick={() => navigate(currentPromo.to)}>
-              <span><small>{currentPromo.key === "plus" ? "Beneficio" : "En"}</small>{currentPromo.place}</span>
-              <b>{currentPromo.cta}</b>
-            </button>
-          </div>
-          <span className="ge-promo-progress" key={currentPromo.key} />
-        </aside>
-      )}
     </div>
   );
 };
