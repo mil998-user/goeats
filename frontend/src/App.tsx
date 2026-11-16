@@ -27,6 +27,7 @@ import { SupportPage } from "./pages/SupportPage";
 import { CustomerLocationSetup } from "./pages/CustomerLocationSetup";
 import { LandingExperience } from "./components/LandingExperience";
 import { MobileTableLabels } from "./components/MobileTableLabels";
+import { CustomerTabBar } from "./components/CustomerTabBar";
 import { ShoppingBag, ChefHat, Wallet, Settings, TrendingUp, LogOut, Shield, Truck, BookOpen, Menu as MenuIcon, Utensils, ClipboardList, User, HelpCircle, CalendarDays } from "lucide-react";
 
 // Protected Route Guard
@@ -62,6 +63,24 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles 
     return <Navigate to="/restaurants" replace />;
   }
 
+  return <>{children}</>;
+};
+
+const homeForRole = (role?: string) => {
+  if (role === "SUPER_ADMIN") return "/admin/restaurants";
+  if (role === "PRODUCCION") return "/kitchen";
+  if (role === "MOTORIZADO") return "/delivery";
+  if (role === "RESTAURANT_OWNER") return "/reports";
+  if (role === "CAJERO" || role === "MOZO") return "/pos";
+  return "/restaurants";
+};
+
+// Con la sesion abierta, el login no se muestra (por ejemplo al tocar "atras")
+const GuestOnly: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated, user } = useAuth();
+  // Solo se decide al entrar, para no cortar la redireccion propia del login
+  const [alreadyIn] = React.useState(isAuthenticated);
+  if (alreadyIn) return <Navigate to={homeForRole(user?.role)} replace />;
   return <>{children}</>;
 };
 
@@ -252,7 +271,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         {/* Logo / Restaurant Name */}
         <div className="pos-sidebar-logo">
           <div className="pos-sidebar-logo-icon">
-            <Utensils size={16} />
+            <img src="/brand/boca-negra.png" alt="GoEats" width={22} height={22} />
           </div>
           <span className="pos-sidebar-logo-text" title={user.restaurantName || "GoEats"}>
             {user.restaurantName ? (user.restaurantName.length > 12 ? `${user.restaurantName.slice(0, 12)}...` : user.restaurantName) : "GoEats"}
@@ -326,7 +345,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   };
 
   return (
-    <div style={{ display: "flex", height: "100vh", width: "100%", overflow: "hidden", backgroundColor: "var(--bg-primary)" }}>
+    <div className="app-shell" style={{ display: "flex", width: "100%", overflow: "hidden", backgroundColor: "var(--bg-primary)" }}>
       <KitchenNotificationManager />
 
       {/* Left Sidebar navigation (Desktop) */}
@@ -343,10 +362,11 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         
         {/* Mobile Header (Hidden on Desktop) */}
         <div
-          className="mobile-show-flex"
+          className="mobile-show-flex app-mobile-header"
           style={{
             height: "56px",
-            backgroundColor: "var(--bg-secondary)",
+            backgroundColor: "var(--brand-white)",
+            color: "var(--brand-black)",
             borderBottom: "1px solid var(--border-light)",
             alignItems: "center",
             justifyContent: "space-between",
@@ -359,7 +379,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             onClick={() => setMenuOpen(!menuOpen)}
             style={{
               cursor: "pointer",
-              color: "var(--text-primary)",
+              color: "var(--brand-black)",
               padding: "8px",
               display: "flex",
               alignItems: "center",
@@ -372,7 +392,8 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             <MenuIcon size={22} />
           </button>
           
-          <div style={{ display: "flex", alignItems: "center", gap: "6px", maxWidth: "calc(100vw - 120px)", overflow: "hidden" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", maxWidth: "calc(100vw - 120px)", overflow: "hidden" }}>
+            <img src="/brand/boca-roja.png" alt="" width={24} height={21} style={{ objectFit: "contain", flexShrink: 0 }} />
             <span style={{
               fontSize: "15px",
               fontFamily: "var(--font-body)",
@@ -391,8 +412,8 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               width: "34px",
               height: "34px",
               borderRadius: "50%",
-              backgroundColor: "var(--accent-glow)",
-              color: "var(--accent-primary)",
+              backgroundColor: "var(--brand-yellow)",
+              color: "var(--brand-black)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -411,7 +432,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         <MobileTableLabels />
 
         {/* Page Content Viewport */}
-        <div style={{ flex: 1, overflowY: "auto", position: "relative" }}>
+        <div className="app-content" style={{ flex: 1, overflowY: "auto", position: "relative" }}>
           {children}
         </div>
       </div>
@@ -425,6 +446,7 @@ function App() {
       <AuthProvider>
         <SocketProvider>
           <AppDialogHost />
+          <CustomerTabBar />
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<LandingExperience />} />
@@ -433,7 +455,7 @@ function App() {
             <Route path="/r/:slug/mesa/:tableId" element={<PublicCatalog />} />
             <Route path="/qr/:slug/:tableId" element={<PublicCatalog />} />
             <Route path="/qr/:slug" element={<PublicCatalog />} />
-            <Route path="/login" element={<Auth />} />
+            <Route path="/login" element={<GuestOnly><Auth /></GuestOnly>} />
             <Route path="/plus" element={<PlusPromo />} />
             <Route path="/support" element={<SupportPage />} />
 

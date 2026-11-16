@@ -1,0 +1,612 @@
+/* Iniciar sesion y registro.
+   Web: panel amarillo de marca a la izquierda y formulario a la derecha.
+   Celular: solo el formulario, a pantalla completa. */
+
+.au {
+  --au-ink: var(--brand-black);
+  --au-muted: var(--brand-black-55);
+  --au-line: color-mix(in srgb, var(--brand-black) 10%, transparent);
+  --au-field: var(--brand-cream-soft);
+  --au-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--brand-cream-soft);
+  color: var(--au-ink);
+}
+.au h1,
+.au h2 {
+  font-family: var(--brand-font-logo);
+  font-weight: 800 !important;
+  color: inherit;
+  letter-spacing: -0.03em;
+}
+
+/* ---------- Panel de marca ---------- */
+.au-side {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  height: 100vh;
+  height: 100dvh;
+  padding: 40px clamp(32px, 4vw, 64px);
+  background: var(--brand-yellow);
+  overflow: hidden;
+}
+.au-side::after {
+  content: "";
+  position: absolute;
+  right: -90px;
+  bottom: -80px;
+  width: 360px;
+  height: 320px;
+  background: var(--brand-logo-black) no-repeat center / contain;
+  opacity: 0.07;
+  pointer-events: none;
+}
+.au-side-copy h2 {
+  margin: 0;
+  font-size: clamp(34px, 3.6vw, 52px);
+  line-height: 1.02;
+}
+.au-side-copy p {
+  margin: 14px 0 0;
+  max-width: 420px;
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--brand-black-80);
+}
+.au-side-art {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  border-radius: 32px;
+  background: var(--brand-white);
+  box-shadow: 0 20px 50px rgba(40, 25, 5, 0.14);
+}
+.au-side-art .gl-ill-svg {
+  width: 100%;
+  height: 100%;
+  max-height: 420px;
+}
+
+/* ---------- Columna del formulario ---------- */
+.au-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 28px 24px 48px;
+}
+.au-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 460px;
+  margin-bottom: 28px;
+}
+.au-top-logo {
+  display: none;
+}
+.au-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px 0 10px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--brand-black-80);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.au-back:hover {
+  background: var(--brand-white);
+}
+
+.au-card {
+  width: 100%;
+  max-width: 460px;
+  margin: auto 0;
+  padding: 40px;
+  border-radius: 32px;
+  background: var(--brand-white);
+  box-shadow: 0 1px 2px rgba(40, 25, 5, 0.05), 0 24px 60px rgba(40, 25, 5, 0.1);
+}
+
+.au-head {
+  margin-bottom: 24px;
+}
+.au-head h1 {
+  margin: 0;
+  font-size: clamp(28px, 3vw, 34px);
+  line-height: 1.08;
+}
+.au-head p {
+  margin: 8px 0 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--au-muted);
+}
+
+/* Progreso del registro */
+.au-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.au-progress-text {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--brand-red);
+}
+.au-progress-bar {
+  display: flex;
+  gap: 6px;
+}
+.au-progress-bar i {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--brand-cream);
+  transition: background 0.3s ease;
+}
+.au-progress-bar i.is-done {
+  background: var(--brand-red);
+}
+
+/* Cada paso entra con un pequeno movimiento */
+.au-step {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: au-in 0.35s var(--au-ease) both;
+}
+@keyframes au-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Campos */
+.au-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.au-label {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--brand-black-80);
+}
+.au-input-wrap {
+  position: relative;
+  display: block;
+}
+.au-input-icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--brand-black-55);
+  pointer-events: none;
+}
+.au-input {
+  width: 100%;
+  height: 52px;
+  padding: 0 16px 0 46px;
+  border-radius: 16px;
+  border: 1.5px solid transparent;
+  background: var(--au-field);
+  font-size: 16px; /* 16px evita que el iPhone haga zoom al escribir */
+  color: var(--au-ink);
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+.au-input::placeholder {
+  color: var(--brand-black-35);
+}
+.au-input:hover {
+  border-color: var(--brand-cream);
+}
+.au-input:focus {
+  border-color: var(--brand-black);
+  background: var(--brand-white);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-yellow) 45%, transparent);
+}
+.au-input-pass {
+  padding-right: 52px;
+}
+.au-eye {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  color: var(--brand-black-55);
+  cursor: pointer;
+}
+.au-eye:hover {
+  color: var(--brand-black);
+}
+.au-hint {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--au-muted);
+}
+
+/* Botones */
+.au-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 0 24px;
+  border-radius: 999px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s var(--au-ease), box-shadow 0.2s ease, background 0.2s ease;
+}
+.au-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+.au-btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.au-btn-primary {
+  width: 100%;
+  margin-top: 4px;
+  background: var(--brand-red);
+  color: var(--brand-white);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--brand-red) 28%, transparent);
+}
+.au-btn-primary:hover:not(:disabled) {
+  box-shadow: 0 14px 30px color-mix(in srgb, var(--brand-red) 36%, transparent);
+}
+.au-btn-ghost {
+  background: var(--brand-cream-soft);
+  color: var(--au-ink);
+}
+.au-btn-ghost:hover:not(:disabled) {
+  background: var(--brand-cream);
+}
+.au-btn:focus-visible,
+.au-back:focus-visible,
+.au-eye:focus-visible,
+.au-switch button:focus-visible,
+.au-choice:focus-visible,
+.au-chip:focus-visible,
+.au-social-btn:focus-visible {
+  outline: 3px solid var(--brand-black);
+  outline-offset: 2px;
+}
+
+/* Mensaje de error */
+.au-error {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--brand-red-soft);
+  color: var(--brand-red);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+/* Elegir el tipo de cuenta */
+.au-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.au-choice {
+  --au-tone: var(--brand-red);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 20px;
+  border: 1.5px solid var(--brand-cream);
+  background: var(--brand-white);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s var(--au-ease);
+}
+.au-choice.tone-driver { --au-tone: var(--brand-orange); }
+.au-choice.tone-restaurant { --au-tone: #1e8f4e; }
+.au-choice:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--au-tone) 45%, var(--brand-cream));
+}
+.au-choice.is-selected {
+  border-color: var(--au-tone);
+  background: color-mix(in srgb, var(--au-tone) 7%, var(--brand-white));
+}
+.au-choice-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--au-tone) 12%, var(--brand-white));
+  color: var(--au-tone);
+  flex-shrink: 0;
+}
+.au-choice-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.au-choice-text strong {
+  font-size: 16px;
+}
+.au-choice-text small {
+  font-size: 14px;
+  color: var(--au-muted);
+}
+.au-choice-check {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1.5px solid var(--brand-cream);
+  color: transparent;
+  flex-shrink: 0;
+}
+.au-choice.is-selected .au-choice-check {
+  border-color: var(--au-tone);
+  background: var(--au-tone);
+  color: var(--brand-white);
+}
+
+/* Vehiculo */
+.au-chips {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: -8px;
+}
+.au-chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 8px;
+  border-radius: 16px;
+  border: 1.5px solid var(--brand-cream);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+.au-chip.is-selected {
+  border-color: var(--brand-orange);
+  background: var(--brand-orange-soft);
+  color: var(--brand-orange);
+}
+
+/* Confirmar datos */
+.au-confirm dl {
+  margin: 0;
+  padding: 6px 18px;
+  border-radius: 20px;
+  background: var(--brand-cream-soft);
+}
+.au-confirm dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--au-line);
+}
+.au-confirm dl > div:last-child {
+  border-bottom: none;
+}
+.au-confirm dt {
+  font-size: 14px;
+  color: var(--au-muted);
+  flex-shrink: 0;
+}
+.au-confirm dd {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  text-align: right;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.au-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: 10px;
+}
+.au-actions .au-btn-primary {
+  margin-top: 0;
+}
+
+/* Google y Facebook */
+.au-social {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 24px;
+}
+.au-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+  font-size: 13px;
+  color: var(--au-muted);
+}
+.au-divider::before,
+.au-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--au-line);
+}
+.au-google-slot {
+  display: flex;
+  justify-content: center;
+}
+.au-social-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  border-radius: 999px;
+  border: 1.5px solid var(--au-line);
+  background: var(--brand-white);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.au-social-btn:hover {
+  background: var(--brand-cream-soft);
+}
+.au-social-note {
+  margin: 2px 0 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--au-muted);
+}
+
+/* Cambiar entre ingresar y registrarse */
+.au-switch {
+  margin: 24px 0 0;
+  text-align: center;
+  font-size: 15px;
+  color: var(--au-muted);
+}
+.au-switch button {
+  font-weight: 800;
+  color: var(--brand-red);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+/* Registro terminado */
+.au-done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+  animation: au-in 0.35s var(--au-ease) both;
+}
+.au-done-icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #1e8f4e;
+  color: var(--brand-white);
+}
+.au-done h1 {
+  margin: 4px 0 0;
+  font-size: 30px;
+}
+.au-done p {
+  margin: 0 0 8px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--brand-black-80);
+}
+
+/* Accesos de prueba (solo en desarrollo) */
+.au-sandbox {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--au-line);
+  font-size: 13px;
+}
+.au-sandbox summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--au-muted);
+  text-align: center;
+}
+.au-sandbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(90px, 100%), 1fr));
+  gap: 6px;
+  margin-top: 12px;
+}
+.au-sandbox-grid button {
+  padding: 8px 6px;
+  border-radius: 10px;
+  background: var(--brand-cream-soft);
+  font-weight: 600;
+  cursor: pointer;
+}
+.au-sandbox-grid button:hover {
+  background: var(--brand-cream);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .au-step,
+  .au-done {
+    animation: none;
+  }
+}
+
+/* ---------- Tablet y celular ---------- */
+@media (max-width: 960px) {
+  .au {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .au-side {
+    display: none;
+  }
+  .au-top-logo {
+    display: inline-flex;
+  }
+}
+@media (max-width: 560px) {
+  .au {
+    background: var(--brand-white);
+  }
+  .au-main {
+    padding: 12px 20px 32px;
+  }
+  .au-top {
+    margin-bottom: 20px;
+  }
+  .au-card {
+    margin: 0;
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .au-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .au-actions .au-btn-primary {
+    order: -1;
+  }
+}
