@@ -15,6 +15,7 @@ import {
   completeProfile,
   savePreferences,
   deleteMyAccount,
+  logout,
 } from "./auth.controller";
 import { authMiddleware } from "../../middlewares/auth";
 import { tenantMiddleware } from "../../middlewares/tenant";
@@ -29,6 +30,7 @@ const limitRegistrations = limitRequests(20, HOUR_MS, "Demasiados registros desd
 const limitSocialLogin = limitRequests(30, HOUR_MS / 4, "Demasiados intentos. Espera unos minutos.");
 
 router.post("/login", login);
+router.post("/logout", authMiddleware, logout);
 router.post("/social-login", limitSocialLogin, socialLogin);
 router.post("/complete-profile", completeProfile);
 router.post("/preferences", authMiddleware, savePreferences);

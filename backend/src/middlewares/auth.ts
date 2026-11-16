@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { env } from "../config/env";
 import { prisma } from "../config/database";
 import { Role } from "@prisma/client";
+import { isTokenRevoked } from "../config/session";
 
 export interface TokenPayload {
   userId: number;
@@ -24,6 +25,7 @@ declare global {
 // A valid signature isn't enough: the account must still exist and be active.
 // Role and restaurant come from the database, so changes apply right away.
 export async function getSessionUser(token: string): Promise<TokenPayload | null> {
+  if (isTokenRevoked(token)) return null;
   let decoded: TokenPayload;
   try {
     decoded = jwt.verify(token, env.JWT_SECRET) as TokenPayload;

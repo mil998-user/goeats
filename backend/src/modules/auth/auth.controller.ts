@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
-import jwt from "jsonwebtoken";
 import { prisma } from "../../config/database";
 import { env } from "../../config/env";
 import { isLocalDatabase } from "../../config/databaseUrl";
@@ -33,6 +32,7 @@ async function isIdentificationTaken(identification: string, exceptUserId?: numb
   return !!taken;
 }
 import { hideRestaurantSecrets } from "../../utils/safeRestaurant";
+import { signSessionToken, revokeToken } from "../../config/session";
 
 
 const SALT_ROUNDS = 10;
@@ -123,16 +123,12 @@ export async function login(req: Request, res: Response, next: NextFunction) {
     }
 
     // Generate JWT token
-    const token = jwt.sign(
-      {
+    const token = signSessionToken({
         userId: user.id,
         username: user.username,
         role: user.role,
         restaurantId: user.restaurantId,
-      },
-      env.JWT_SECRET,
-      { expiresIn: "24h" }
-    );
+      });
 
     const rawPreferences = (user as any).preferencesJson;
     let preferences: string[] = [];
@@ -607,16 +603,12 @@ export async function registerCustomer(req: Request, res: Response, next: NextFu
       },
     });
 
-    const token = jwt.sign(
-      {
+    const token = signSessionToken({
         userId: user.id,
         username: user.username,
         role: user.role,
         restaurantId: user.restaurantId,
-      },
-      env.JWT_SECRET,
-      { expiresIn: "24h" }
-    );
+      });
 
     if (user.email) {
       NotificationService.notifyCustomerWelcome({ id: user.id, name: user.name, email: user.email })
@@ -1007,16 +999,12 @@ export async function socialLogin(req: Request, res: Response, next: NextFunctio
       NotificationService.notifyCustomerWelcome({ id: user.id, name: user.name, email: user.email }).catch(() => {});
     }
 
-    const token = jwt.sign(
-      {
+    const token = signSessionToken({
         userId: user.id,
         username: user.username,
         role: user.role,
         restaurantId: user.restaurantId,
-      },
-      env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+      });
 
     const rawPreferences = (user as any).preferencesJson;
     let preferences: string[] = [];
@@ -1162,4 +1150,11 @@ export async function deleteMyAccount(req: Request, res: Response, next: NextFun
   } catch (error) {
     next(error);
   }
+}
+
+// Cerrar sesion: el token deja de servir aunque alguien lo haya copiado
+export async function logout(req: Request, res: Response) {
+  const token = req.headers.authorization?.split(" ")[1];
+  if (token) revokeToken(token);
+  res.json({ success: true });
 }
