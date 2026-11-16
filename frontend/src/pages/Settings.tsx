@@ -1,4 +1,5 @@
 import { WifiQR } from "../components/WifiQR";
+import { OpeningHoursEditor } from "../components/OpeningHoursEditor";
 import { appConfirm } from "../components/AppDialogs";
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -1196,7 +1197,7 @@ export const Settings: React.FC = () => {
           top: "28px",
           right: "28px",
           zIndex: 999999,
-          backgroundColor: "#10b981",
+          backgroundColor: "#1e8f4e",
           color: "#ffffff",
           padding: "16px 26px",
           borderRadius: "14px",
@@ -1227,7 +1228,7 @@ export const Settings: React.FC = () => {
 
       {successMsg && (
         <div style={{
-          backgroundColor: "rgba(46, 213, 115, 0.1)",
+          backgroundColor: "rgba(30, 143, 78, 0.1)",
           border: "1px solid var(--success)",
           color: "var(--success)",
           padding: "12px",
@@ -1242,7 +1243,7 @@ export const Settings: React.FC = () => {
 
       {error && (
         <div style={{
-          backgroundColor: "rgba(255, 71, 87, 0.1)",
+          backgroundColor: "color-mix(in srgb, var(--brand-red) 10%, transparent)",
           border: "1px solid var(--accent-primary)",
           color: "var(--accent-primary)",
           padding: "12px",
@@ -1634,9 +1635,9 @@ export const Settings: React.FC = () => {
                   display: "inline-flex",
                   alignItems: "center",
                   gap: "6px",
-                  backgroundColor: "rgba(46, 213, 115, 0.15)",
-                  color: "#2ed573",
-                  border: "1px solid rgba(46, 213, 115, 0.3)",
+                  backgroundColor: "rgba(30, 143, 78, 0.15)",
+                  color: "#1e8f4e",
+                  border: "1px solid rgba(30, 143, 78, 0.3)",
                   padding: "6px 14px",
                   borderRadius: "20px",
                   fontSize: "13px",
@@ -1700,7 +1701,7 @@ export const Settings: React.FC = () => {
             {/* Smart Google Maps Link Parser */}
             <div className="input-group" style={{ marginBottom: "15px" }}>
               <label style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <Sparkles size={14} color="#ffd700" />
+                <Sparkles size={14} color="#ffca26" />
                 <span>Auto-detectar desde Enlace de Google Maps o Iframe</span>
               </label>
 
@@ -1769,9 +1770,9 @@ export const Settings: React.FC = () => {
                     borderRadius: "8px",
                     fontSize: "13px",
                     fontWeight: "600",
-                    backgroundColor: mapsDetectMsg.type === "success" ? "#ecfdf5" : "#fef2f2",
-                    color: mapsDetectMsg.type === "success" ? "#065f46" : "#991b1b",
-                    border: `1px solid ${mapsDetectMsg.type === "success" ? "#a7f3d0" : "#fecaca"}`,
+                    backgroundColor: mapsDetectMsg.type === "success" ? "#ecfdf5" : "#fbe9e8",
+                    color: mapsDetectMsg.type === "success" ? "#1e8f4e" : "#b42014",
+                    border: `1px solid ${mapsDetectMsg.type === "success" ? "#a7f3d0" : "#f4c9c5"}`,
                     display: "flex",
                     alignItems: "center",
                     gap: "6px",
@@ -1820,15 +1821,9 @@ export const Settings: React.FC = () => {
                 />
               </div>
 
-              <div className="input-group">
-                <label>Horarios de Atención (Texto)</label>
-                <input
-                  type="text"
-                  placeholder="Ej. Lunes a Domingo: 8:00 a.m. - 11:00 p.m."
-                  value={openingHours}
-                  onChange={(e) => setOpeningHours(e.target.value)}
-                  className="input-field"
-                />
+              <div className="input-group" style={{ gridColumn: "1 / -1" }}>
+                <label>Horario de atención</label>
+                <OpeningHoursEditor value={openingHours} onChange={setOpeningHours} />
               </div>
             </div>
 
@@ -1866,8 +1861,8 @@ export const Settings: React.FC = () => {
                 onClick={() => handleSaveSettings()}
                 disabled={saving}
                 style={{
-                  backgroundColor: "#ff9f43",
-                  color: "#000000",
+                  backgroundColor: "var(--brand-orange)",
+                  color: "var(--brand-black)",
                   border: "none",
                   borderRadius: "12px",
                   padding: "11px 22px",
@@ -1877,7 +1872,7 @@ export const Settings: React.FC = () => {
                   display: "inline-flex",
                   alignItems: "center",
                   gap: "8px",
-                  boxShadow: "0 4px 14px rgba(255,159,67,0.35)",
+                  boxShadow: "0 4px 14px color-mix(in srgb, var(--brand-orange) 35%, transparent)",
                   transition: "all 0.2s ease"
                 }}
               >
@@ -2166,8 +2161,8 @@ export const Settings: React.FC = () => {
                           style={{
                             padding: "6px",
                             borderRadius: "4px",
-                            backgroundColor: "rgba(255, 71, 87, 0.1)",
-                            border: "1px solid rgba(255, 71, 87, 0.2)",
+                            backgroundColor: "color-mix(in srgb, var(--brand-red) 10%, transparent)",
+                            border: "1px solid color-mix(in srgb, var(--brand-red) 20%, transparent)",
                             color: "var(--accent-primary)",
                             cursor: "pointer"
                           }}
@@ -2203,7 +2198,7 @@ export const Settings: React.FC = () => {
             boxShadow: "0 10px 30px rgba(0,0,0,0.6)"
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <CheckCircle size={16} color="#10b981" />
+              <CheckCircle size={16} color="#1e8f4e" />
               <span style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
                 Guarda los cambios para actualizar el menú público y mapa de clientes.
               </span>
@@ -2370,8 +2365,8 @@ export const Settings: React.FC = () => {
                             padding: "6px 12px",
                             fontSize: "13px",
                             borderRadius: "var(--radius-sm)",
-                            backgroundColor: "rgba(255, 71, 87, 0.08)",
-                            border: "1px solid rgba(255, 71, 87, 0.2)",
+                            backgroundColor: "color-mix(in srgb, var(--brand-red) 8%, transparent)",
+                            border: "1px solid color-mix(in srgb, var(--brand-red) 20%, transparent)",
                             color: "var(--accent-primary)",
                             cursor: "pointer",
                             display: "flex",
@@ -2395,9 +2390,9 @@ export const Settings: React.FC = () => {
                           display: "flex",
                           alignItems: "center",
                           gap: "4px",
-                          backgroundColor: "rgba(46, 213, 115, 0.1)",
+                          backgroundColor: "rgba(30, 143, 78, 0.1)",
                           color: "var(--success)",
-                          border: "1px solid rgba(46, 213, 115, 0.2)",
+                          border: "1px solid rgba(30, 143, 78, 0.2)",
                           boxShadow: "none"
                         }}
                       >
@@ -2430,8 +2425,8 @@ export const Settings: React.FC = () => {
                           padding: "6px 12px",
                           fontSize: "13px",
                           borderRadius: "var(--radius-sm)",
-                          backgroundColor: "rgba(255, 71, 87, 0.1)",
-                          border: "1px solid rgba(255, 71, 87, 0.2)",
+                          backgroundColor: "color-mix(in srgb, var(--brand-red) 10%, transparent)",
+                          border: "1px solid color-mix(in srgb, var(--brand-red) 20%, transparent)",
                           color: "var(--accent-primary)",
                           cursor: "pointer",
                           display: "flex",
@@ -2546,8 +2541,8 @@ export const Settings: React.FC = () => {
                                 fontSize: "13px",
                                 padding: "4px 8px",
                                 borderRadius: "4px",
-                                backgroundColor: "rgba(255, 71, 87, 0.08)",
-                                border: "1px solid rgba(255, 71, 87, 0.2)",
+                                backgroundColor: "color-mix(in srgb, var(--brand-red) 8%, transparent)",
+                                border: "1px solid color-mix(in srgb, var(--brand-red) 20%, transparent)",
                                 color: "var(--accent-primary)",
                                 cursor: "pointer",
                                 display: "flex",
@@ -2583,8 +2578,8 @@ export const Settings: React.FC = () => {
                                 style={{
                                   padding: "4px",
                                   borderRadius: "4px",
-                                  backgroundColor: "rgba(255, 71, 87, 0.05)",
-                                  border: "1px solid rgba(255, 71, 87, 0.15)",
+                                  backgroundColor: "color-mix(in srgb, var(--brand-red) 5%, transparent)",
+                                  border: "1px solid color-mix(in srgb, var(--brand-red) 15%, transparent)",
                                   color: "var(--accent-primary)",
                                   cursor: "pointer"
                                 }}
@@ -2900,8 +2895,8 @@ export const Settings: React.FC = () => {
                           fontWeight: 700,
                           padding: "3px 8px",
                           borderRadius: "10px",
-                          backgroundColor: member.role === "CAJERO" ? "rgba(46, 213, 115, 0.1)" : member.role === "PRODUCCION" ? "rgba(255, 175, 64, 0.1)" : "rgba(52, 152, 219, 0.1)",
-                          color: member.role === "CAJERO" ? "var(--success)" : member.role === "PRODUCCION" ? "var(--warning)" : "#3498db"
+                          backgroundColor: member.role === "CAJERO" ? "rgba(30, 143, 78, 0.1)" : member.role === "PRODUCCION" ? "rgba(255, 175, 64, 0.1)" : "rgba(243, 232, 204, 0.6)",
+                          color: member.role === "CAJERO" ? "var(--success)" : member.role === "PRODUCCION" ? "var(--warning)" : "#000000"
                         }}>
                           {member.role === "CAJERO" ? "Cajero" : member.role === "PRODUCCION" ? "Cocina" : "Mesero"}
                         </span>
@@ -2933,8 +2928,8 @@ export const Settings: React.FC = () => {
                             style={{
                               padding: "6px",
                               borderRadius: "4px",
-                              backgroundColor: "rgba(255, 71, 87, 0.1)",
-                              border: "1px solid rgba(255, 71, 87, 0.2)",
+                              backgroundColor: "color-mix(in srgb, var(--brand-red) 10%, transparent)",
+                              border: "1px solid color-mix(in srgb, var(--brand-red) 20%, transparent)",
                               color: "var(--accent-primary)",
                               cursor: "pointer"
                             }}
@@ -3024,7 +3019,7 @@ export const Settings: React.FC = () => {
                           <span style={{
                             padding: "4px 8px",
                             borderRadius: "12px",
-                            backgroundColor: "rgba(17, 17, 17, 0.1)",
+                            backgroundColor: "color-mix(in srgb, var(--brand-black) 10%, transparent)",
                             color: "var(--accent-primary)",
                             fontWeight: 600
                           }}>
@@ -3040,8 +3035,8 @@ export const Settings: React.FC = () => {
                           borderRadius: "10px",
                           fontSize: "13px",
                           fontWeight: 700,
-                          backgroundColor: reg.isActive ? "rgba(17, 17, 17, 0.1)" : "rgba(255, 71, 87, 0.1)",
-                          color: reg.isActive ? "var(--accent-primary)" : "#ff4757"
+                          backgroundColor: reg.isActive ? "color-mix(in srgb, var(--brand-black) 10%, transparent)" : "color-mix(in srgb, var(--brand-red) 10%, transparent)",
+                          color: reg.isActive ? "var(--accent-primary)" : "var(--brand-red)"
                         }}>
                           {reg.isActive ? "Activa" : "Inactiva"}
                         </span>
@@ -3074,8 +3069,8 @@ export const Settings: React.FC = () => {
                             style={{
                               padding: "6px",
                               borderRadius: "4px",
-                              backgroundColor: "rgba(255, 71, 87, 0.1)",
-                              border: "1px solid rgba(255, 71, 87, 0.2)",
+                              backgroundColor: "color-mix(in srgb, var(--brand-red) 10%, transparent)",
+                              border: "1px solid color-mix(in srgb, var(--brand-red) 20%, transparent)",
                               color: "var(--accent-primary)",
                               cursor: "pointer"
                             }}
@@ -3123,7 +3118,7 @@ export const Settings: React.FC = () => {
                         padding: "15px 20px",
                         borderBottom: "1px solid var(--border-light)",
                         cursor: "pointer",
-                        backgroundColor: selectedCustomer?.id === customer.id ? "rgba(255, 71, 87, 0.05)" : "transparent",
+                        backgroundColor: selectedCustomer?.id === customer.id ? "color-mix(in srgb, var(--brand-red) 5%, transparent)" : "transparent",
                         borderLeft: selectedCustomer?.id === customer.id ? "4px solid var(--accent-primary)" : "4px solid transparent",
                         transition: "all 0.2s"
                       }}
@@ -3142,7 +3137,7 @@ export const Settings: React.FC = () => {
                             fontWeight: 800,
                             padding: "2px 6px",
                             borderRadius: "10px",
-                            background: "linear-gradient(135deg, #fbbf24 0%, #d97706 100%)",
+                            background: "linear-gradient(135deg, var(--brand-yellow) 0%, #f86015 100%)",
                             color: "#ffffff"
                           }}>
                             PLUS
@@ -3175,7 +3170,7 @@ export const Settings: React.FC = () => {
                             fontWeight: 800,
                             padding: "2px 6px",
                             borderRadius: "10px",
-                            background: "linear-gradient(135deg, #fbbf24 0%, #d97706 100%)",
+                            background: "linear-gradient(135deg, var(--brand-yellow) 0%, #f86015 100%)",
                             color: "#ffffff"
                           }}>
                             CLUB PLUS
@@ -3210,7 +3205,7 @@ export const Settings: React.FC = () => {
                               fontWeight: 700,
                               padding: "2px 8px",
                               borderRadius: "10px",
-                              backgroundColor: order.status === "DELIVERED" ? "rgba(46, 213, 115, 0.1)" : "rgba(255, 71, 87, 0.1)",
+                              backgroundColor: order.status === "DELIVERED" ? "rgba(30, 143, 78, 0.1)" : "color-mix(in srgb, var(--brand-red) 10%, transparent)",
                               color: order.status === "DELIVERED" ? "var(--success)" : "var(--accent-primary)"
                             }}>
                               {order.status === "DELIVERED" ? "Entregado" : order.status}
@@ -3703,7 +3698,7 @@ export const Settings: React.FC = () => {
                                 fontWeight: "bold",
                                 padding: "2px 8px",
                                 borderRadius: "10px",
-                                backgroundColor: isEntry ? "rgba(46, 213, 115, 0.1)" : "rgba(255, 71, 87, 0.1)",
+                                backgroundColor: isEntry ? "rgba(30, 143, 78, 0.1)" : "color-mix(in srgb, var(--brand-red) 10%, transparent)",
                                 color: isEntry ? "var(--success)" : "var(--accent-primary)"
                               }}>
                                 {isEntry ? "ENTRADA" : "SALIDA"}
@@ -3783,7 +3778,7 @@ export const Settings: React.FC = () => {
                                 fontWeight: "bold",
                                 padding: "2px 8px",
                                 borderRadius: "10px",
-                                backgroundColor: cred.status === "PAID" ? "rgba(46, 213, 115, 0.1)" : "rgba(255, 165, 2, 0.1)",
+                                backgroundColor: cred.status === "PAID" ? "rgba(30, 143, 78, 0.1)" : "color-mix(in srgb, var(--brand-orange) 10%, transparent)",
                                 color: cred.status === "PAID" ? "var(--success)" : "var(--warning)"
                               }}>
                                 {cred.status === "PAID" ? "PAGADO" : "PENDIENTE"}
@@ -3893,7 +3888,7 @@ export const Settings: React.FC = () => {
                       transform: "translateY(-50%)",
                       background: "transparent",
                       border: "none",
-                      color: showStaffPassword ? "var(--accent-primary, #ff4757)" : "var(--text-muted, #718096)",
+                      color: showStaffPassword ? "var(--accent-primary, var(--brand-red))" : "var(--text-muted, #737373)",
                       cursor: "pointer",
                       padding: "4px",
                       display: "flex",

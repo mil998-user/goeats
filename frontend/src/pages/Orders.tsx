@@ -18,6 +18,7 @@ import {
   Printer
 } from "lucide-react";
 import { escapeHtml } from "../utils/html";
+import { buildComandaHeader, buildComandaFooter, COMANDA_HEADER_CSS } from "../utils/comandaHeader";
 
 export const Orders: React.FC = () => {
   const navigate = useNavigate();
@@ -57,11 +58,14 @@ export const Orders: React.FC = () => {
       socket.on("new-order", handleSocketUpdate);
       socket.on("order-status-updated", handleSocketUpdate);
       socket.on("order-cancelled", handleSocketUpdate);
+      // Al volver la conexion (senal, celular desbloqueado) se piden los datos de nuevo
+      socket.on("connect", handleSocketUpdate);
 
       return () => {
         socket.off("new-order", handleSocketUpdate);
         socket.off("order-status-updated", handleSocketUpdate);
         socket.off("order-cancelled", handleSocketUpdate);
+        socket.off("connect", handleSocketUpdate);
       };
     }
   }, [socket]);
@@ -133,7 +137,7 @@ export const Orders: React.FC = () => {
     }
   };
 
-  const handlePrintComanda = (order: any) => {
+  const handlePrintComanda = async (order: any) => {
     const printWindow = window.open("", "_blank");
     if (!printWindow) {
       alert("Por favor permite las ventanas emergentes para poder imprimir.");
@@ -175,6 +179,8 @@ export const Orders: React.FC = () => {
       ? row("Propina al motorizado", money(tip)) + `<div class="row strong"><span>Total a pagar</span><span>${money(orderTotal + tip)}</span></div>`
       : "";
 
+    // Encabezado con logo y datos del local (se pide antes de escribir la ventana)
+    const headerHtml = await buildComandaHeader();
     printWindow.document.write(`
       <html>
         <head>
@@ -195,13 +201,11 @@ export const Orders: React.FC = () => {
             .breakdown { border-top: 1px dashed #000; padding-top: 8px; margin-bottom: 8px; }
             .after-total { margin-top: 8px; }
             .footer { text-align: center; margin-top: 20px; font-size: 10px; border-top: 1px dashed #ccc; padding-top: 10px; }
+            ${COMANDA_HEADER_CSS}
           </style>
         </head>
         <body>
-          <div class="header">
-            <div class="title">GoEats Comanda</div>
-            <div style="font-size: 12px;">Comprobante de Pedido</div>
-          </div>
+          ${headerHtml}
           <div class="details">
             <div><strong>Fecha:</strong> ${dateStr}</div>
             <div><strong>Tipo:</strong> ${order.type === "DINE_IN" ? "SERVICIO EN MESA" : order.type === "TAKEOUT" ? "RECOGER EN LOCAL" : "DOMICILIO / DELIVERY"}</div>
@@ -223,6 +227,7 @@ export const Orders: React.FC = () => {
           <div class="footer">
             <p>*** No válido como factura ***</p>
             <p>¡Gracias por su preferencia!</p>
+            ${buildComandaFooter()}
           </div>
           <script>
             window.onload = function() {
@@ -255,17 +260,17 @@ export const Orders: React.FC = () => {
   const getStatusBadgeStyles = (status: string) => {
     switch (status) {
       case "PENDING":
-        return { backgroundColor: "rgba(255, 159, 67, 0.1)", color: "#ff9f43" };
+        return { backgroundColor: "rgba(255, 202, 38, 0.3)", color: "#000000" };
       case "PREPARING":
-        return { backgroundColor: "rgba(9, 132, 227, 0.1)", color: "#0984e3" };
+        return { backgroundColor: "rgba(248, 96, 21, 0.12)", color: "#f86015" };
       case "READY":
-        return { backgroundColor: "rgba(0, 184, 148, 0.1)", color: "#00b894" };
+        return { backgroundColor: "rgba(212, 37, 24, 0.1)", color: "#d42518" };
       case "DELIVERING":
-        return { backgroundColor: "rgba(108, 92, 231, 0.1)", color: "#6c5ce7" };
+        return { backgroundColor: "#000000", color: "#ffca26" };
       case "DELIVERED":
-        return { backgroundColor: "rgba(17, 17, 17, 0.1)", color: "var(--accent-primary)" };
+        return { backgroundColor: "rgba(30, 143, 78, 0.12)", color: "#1e8f4e" };
       case "CANCELLED":
-        return { backgroundColor: "rgba(255, 71, 87, 0.1)", color: "#ff4757" };
+        return { backgroundColor: "rgba(0, 0, 0, 0.06)", color: "#737373" };
       default:
         return { backgroundColor: "rgba(0,0,0,0.05)", color: "#666" };
     }
@@ -287,19 +292,19 @@ export const Orders: React.FC = () => {
     switch (type) {
       case "DINE_IN":
         return (
-          <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "13px", fontWeight: 700, color: "#0984e3", backgroundColor: "rgba(9, 132, 227, 0.08)", padding: "3px 8px", borderRadius: "12px" }}>
+          <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "13px", fontWeight: 700, color: "#000000", backgroundColor: "rgba(243, 232, 204, 0.8)", padding: "3px 8px", borderRadius: "12px" }}>
             <Utensils size={12} /> Mesa
           </span>
         );
       case "TAKEOUT":
         return (
-          <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "13px", fontWeight: 700, color: "#e67e22", backgroundColor: "rgba(230, 126, 34, 0.08)", padding: "3px 8px", borderRadius: "12px" }}>
+          <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "13px", fontWeight: 700, color: "#f86015", backgroundColor: "rgba(248, 96, 21, 0.1)", padding: "3px 8px", borderRadius: "12px" }}>
             <ShoppingBag size={12} /> Llevar
           </span>
         );
       case "DELIVERY":
         return (
-          <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "13px", fontWeight: 700, color: "#6c5ce7", backgroundColor: "rgba(108, 92, 231, 0.08)", padding: "3px 8px", borderRadius: "12px" }}>
+          <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "13px", fontWeight: 700, color: "#d42518", backgroundColor: "rgba(212, 37, 24, 0.08)", padding: "3px 8px", borderRadius: "12px" }}>
             <Truck size={12} /> Domicilio
           </span>
         );
@@ -525,9 +530,9 @@ export const Orders: React.FC = () => {
                           gap: "5px",
                           padding: "6px 12px",
                           borderRadius: "var(--radius-sm)",
-                          backgroundColor: "rgba(255, 159, 67, 0.1)",
-                          border: "1px solid rgba(255, 159, 67, 0.2)",
-                          color: "#ff9f43",
+                          backgroundColor: "rgba(248, 96, 21, 0.1)",
+                          border: "1px solid rgba(248, 96, 21, 0.2)",
+                          color: "#f86015",
                           fontSize: "13px",
                           fontWeight: 600,
                           cursor: "pointer"
@@ -649,7 +654,7 @@ export const Orders: React.FC = () => {
                 onClick={() => handleRejectPayment(selectedOrderForReceipt.id)}
                 className="secondary-btn"
                 disabled={verifying}
-                style={{ padding: "12px", fontSize: "13px", color: "#ff4757", borderColor: "rgba(255, 71, 87, 0.3)", fontWeight: 600 }}
+                style={{ padding: "12px", fontSize: "13px", color: "#d42518", borderColor: "rgba(212, 37, 24, 0.3)", fontWeight: 600 }}
               >
                 ✗ Rechazar y Cancelar Pedido
               </button>

@@ -63,6 +63,9 @@ export const Menu: React.FC = () => {
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [editingCategory, setEditingCategory] = useState<Partial<MenuCategory> | null>(null);
   const [editingItem, setEditingItem] = useState<Partial<MenuItem> & { categoryId: number } | null>(null);
+  // Precio y porcion del plato nuevo: se crea con su primera porcion para que aparezca en la carta
+  const [newItemPrice, setNewItemPrice] = useState("");
+  const [newItemPortion, setNewItemPortion] = useState("Normal");
   const [editingVariant, setEditingVariant] = useState<Partial<MenuItemVariant> & { menuItemId: number } | null>(null);
   
   // Recipe editing drawer state
@@ -144,10 +147,31 @@ export const Menu: React.FC = () => {
           body: JSON.stringify(editingItem),
         });
       } else {
-        await apiRequest("/menu/items", {
+        const price = parseFloat(newItemPrice.replace(",", "."));
+        if (!Number.isFinite(price) || price <= 0 || price > 10000) {
+          alert("Escribe un precio válido para el plato (por ejemplo 6.50).");
+          return;
+        }
+        const res = await apiRequest("/menu/items", {
           method: "POST",
           body: JSON.stringify(editingItem),
         });
+        const itemId = res?.menuItem?.id;
+        if (itemId) {
+          await apiRequest("/menu/variants", {
+            method: "POST",
+            body: JSON.stringify({
+              name: newItemPortion.trim() || "Normal",
+              price: Math.round(price * 100) / 100,
+              stockLimit: null,
+              menuItemId: itemId,
+              promoPrice: null,
+              promoEndsAt: null,
+            }),
+          });
+        }
+        setNewItemPrice("");
+        setNewItemPortion("Normal");
       }
       setEditingItem(null);
       await loadMenuData();
@@ -351,9 +375,9 @@ export const Menu: React.FC = () => {
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  backgroundColor: selectedCategoryId === cat.id ? "rgba(255, 71, 87, 0.1)" : "transparent",
+                  backgroundColor: selectedCategoryId === cat.id ? "color-mix(in srgb, var(--brand-red) 10%, transparent)" : "transparent",
                   color: selectedCategoryId === cat.id ? "var(--accent-primary)" : "var(--text-primary)",
-                  border: `1px solid ${selectedCategoryId === cat.id ? "rgba(255, 71, 87, 0.2)" : "transparent"}`,
+                  border: `1px solid ${selectedCategoryId === cat.id ? "color-mix(in srgb, var(--brand-red) 20%, transparent)" : "transparent"}`,
                   transition: "all var(--transition-fast)"
                 }}
               >
@@ -478,7 +502,7 @@ export const Menu: React.FC = () => {
                             >
                               <span>{variant.name}: <strong style={{ color: "var(--success)" }}>${variant.price.toFixed(2)}</strong></span>
                               {promoIsActive(variant) && (
-                                <span data-testid="menu-promo" style={{ background: "#b91c1c", color: "#ffffff", borderRadius: "6px", padding: "2px 8px", fontWeight: 700 }}>
+                                <span data-testid="menu-promo" style={{ background: "#d42518", color: "#ffffff", borderRadius: "6px", padding: "2px 8px", fontWeight: 700 }}>
                                   Promo ${variant.promoPrice!.toFixed(2)} hasta {new Date(variant.promoEndsAt!).toLocaleDateString("es-EC")}
                                 </span>
                               )}
@@ -579,6 +603,36 @@ export const Menu: React.FC = () => {
                   onChange={(e) => setEditingItem({ ...editingItem, description: e.target.value })}
                 />
               </div>
+              {!editingItem.id && (
+                <div className="mobile-column-stack" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                  <div className="input-group">
+                    <label>Precio ($)</label>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      min="0.01"
+                      max="10000"
+                      step="0.01"
+                      className="input-field"
+                      placeholder="Ej. 6.50"
+                      value={newItemPrice}
+                      onChange={(e) => setNewItemPrice(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="input-group">
+                    <label>Porción</label>
+                    <input
+                      type="text"
+                      className="input-field"
+                      maxLength={60}
+                      placeholder="Ej. Normal, Grande, 500 ml"
+                      value={newItemPortion}
+                      onChange={(e) => setNewItemPortion(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
               <div className="input-group" style={{ marginBottom: "25px" }}>
                 <label>Área de Producción (Ruta KDS / IVA)</label>
                 <select

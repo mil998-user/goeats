@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
+import { EmptyState } from "../components/EmptyState";
 import { useSocket } from "../context/SocketContext";
 import { apiRequest } from "../utils/api";
-import { Play, CheckCircle, Loader2, Sparkles, ChefHat, BellRing, CheckCircle2 } from "lucide-react";
+import { Play, CheckCircle, Loader2, ChefHat, BellRing, CheckCircle2 } from "lucide-react";
 import { systemIconForEmoji, systemTextWithIcons } from "../utils/systemIcons";
 import { KitchenHistory } from "../components/KitchenHistory";
 
@@ -148,10 +149,13 @@ export const Kitchen: React.FC = () => {
 
     socket.on("new-order", handleNewOrder);
     socket.on("kitchen-item-status-updated", handleItemStatusUpdated);
+    // Al volver la conexion (senal, celular desbloqueado) se piden los datos de nuevo
+    socket.on("connect", handleItemStatusUpdated);
 
     return () => {
       socket.off("new-order", handleNewOrder);
       socket.off("kitchen-item-status-updated", handleItemStatusUpdated);
+      socket.off("connect", handleItemStatusUpdated);
     };
   }, [socket, selectedArea]);
 
@@ -277,11 +281,7 @@ export const Kitchen: React.FC = () => {
           margin: "40px auto",
           borderRadius: "var(--radius-lg)"
         }}>
-          <Sparkles size={48} style={{ color: "var(--accent-primary)", marginBottom: "15px" }} />
-          <h3>¡Todo listo en producción!</h3>
-          <p style={{ color: "var(--text-secondary)", marginTop: "10px" }}>
-            No hay platos pendientes por preparar en este momento.
-          </p>
+          <EmptyState title="¡Todo listo en cocina!" message="No hay platos pendientes por preparar en este momento." />
         </div>
       ) : (
         <div style={{
@@ -318,7 +318,7 @@ export const Kitchen: React.FC = () => {
                   flexDirection: "column",
                   borderRadius: "var(--radius-md)",
                   borderTop: `6px solid ${orderColor}`,
-                  boxShadow: isAllReady ? "0 0 16px rgba(46, 213, 115, 0.25)" : "none",
+                  boxShadow: isAllReady ? "0 0 16px rgba(30, 143, 78, 0.25)" : "none",
                   overflow: "hidden"
                 }}
               >
@@ -362,9 +362,9 @@ export const Kitchen: React.FC = () => {
                         padding: "3px 8px",
                         borderRadius: "10px",
                         backgroundColor: isAllReady
-                          ? "rgba(46, 213, 115, 0.15)"
+                          ? "rgba(30, 143, 78, 0.15)"
                           : isAlmostReady
-                          ? "rgba(255, 165, 2, 0.15)"
+                          ? "color-mix(in srgb, var(--brand-orange) 15%, transparent)"
                           : "var(--bg-secondary)",
                         color: isAllReady
                           ? "var(--success)"
@@ -393,7 +393,7 @@ export const Kitchen: React.FC = () => {
                     <div style={{
                       marginTop: "10px",
                       fontSize: "13px",
-                      backgroundColor: "rgba(255, 165, 2, 0.08)",
+                      backgroundColor: "color-mix(in srgb, var(--brand-orange) 8%, transparent)",
                       borderLeft: "3px solid var(--warning)",
                       padding: "6px 10px",
                       color: "var(--warning)"
@@ -466,8 +466,8 @@ export const Kitchen: React.FC = () => {
                               flex: 1,
                               padding: "6px 12px",
                               fontSize: "13px",
-                              backgroundColor: "rgba(255, 165, 2, 0.15)",
-                              borderColor: "rgba(255, 165, 2, 0.3)",
+                              backgroundColor: "color-mix(in srgb, var(--brand-orange) 15%, transparent)",
+                              borderColor: "color-mix(in srgb, var(--brand-orange) 30%, transparent)",
                               color: "var(--warning)"
                             }}
                           >
@@ -502,8 +502,8 @@ export const Kitchen: React.FC = () => {
                               flex: 1,
                               padding: "6px 12px",
                               fontSize: "13px",
-                              backgroundColor: "rgba(46, 213, 115, 0.1)",
-                              borderColor: "rgba(46, 213, 115, 0.3)",
+                              backgroundColor: "rgba(30, 143, 78, 0.1)",
+                              borderColor: "rgba(30, 143, 78, 0.3)",
                               color: "var(--success)"
                             }}
                           >
@@ -541,14 +541,14 @@ export const Kitchen: React.FC = () => {
                         : isAllReady
                         ? "var(--success)"
                         : isAlmostReady
-                        ? "rgba(255, 165, 2, 0.2)"
+                        ? "color-mix(in srgb, var(--brand-orange) 20%, transparent)"
                         : "var(--bg-secondary)",
                       color: isCalled || isAllReady
                         ? "#ffffff"
                         : isAlmostReady
                         ? "var(--warning)"
                         : "var(--text-primary)",
-                      boxShadow: isAllReady ? "0 0 14px rgba(46, 213, 115, 0.4)" : "none",
+                      boxShadow: isAllReady ? "0 0 14px rgba(30, 143, 78, 0.4)" : "none",
                       transition: "all var(--transition-fast)"
                     }}
                   >

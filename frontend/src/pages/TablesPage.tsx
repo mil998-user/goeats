@@ -17,6 +17,7 @@ import {
   QrCode
 } from "lucide-react";
 import { escapeHtml } from "../utils/html";
+import { buildComandaHeader, buildComandaFooter, COMANDA_HEADER_CSS } from "../utils/comandaHeader";
 import { TableGroupActions } from "../components/TableGroupActions";
 
 export const TablesPage: React.FC = () => {
@@ -87,12 +88,15 @@ export const TablesPage: React.FC = () => {
       socket.on("order-status-updated", handleSocketUpdate);
       socket.on("order-cancelled", handleSocketUpdate);
       socket.on("tables-updated", handleSocketUpdate);
+      // Al volver la conexion (senal, celular desbloqueado) se piden los datos de nuevo
+      socket.on("connect", handleSocketUpdate);
 
       return () => {
         socket.off("new-order", handleSocketUpdate);
         socket.off("order-status-updated", handleSocketUpdate);
         socket.off("order-cancelled", handleSocketUpdate);
         socket.off("tables-updated", handleSocketUpdate);
+        socket.off("connect", handleSocketUpdate);
       };
     }
   }, [socket, selectedAreaId]);
@@ -145,7 +149,7 @@ export const TablesPage: React.FC = () => {
     }
   };
 
-  const handlePrintComanda = (order: any) => {
+  const handlePrintComanda = async (order: any) => {
     if (!order) return;
 
     const printWindow = window.open("", "_blank");
@@ -170,6 +174,8 @@ export const TablesPage: React.FC = () => {
 
     const dateStr = new Date(order.createdAt).toLocaleString();
 
+    // Encabezado con logo y datos del local (se pide antes de escribir la ventana)
+    const headerHtml = await buildComandaHeader();
     printWindow.document.write(`
       <html>
         <head>
@@ -185,13 +191,11 @@ export const TablesPage: React.FC = () => {
             .table-items { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
             .total { font-size: 16px; font-weight: bold; border-top: 1px dashed #000; padding-top: 10px; display: flex; justify-content: space-between; }
             .footer { text-align: center; margin-top: 20px; font-size: 10px; border-top: 1px dashed #ccc; padding-top: 10px; }
+            ${COMANDA_HEADER_CSS}
           </style>
         </head>
         <body>
-          <div class="header">
-            <div class="title">GoEats Comanda</div>
-            <div style="font-size: 12px;">Comprobante de Pre-cuenta / Mesa</div>
-          </div>
+          ${headerHtml}
           <div class="details">
             <div><strong>Fecha:</strong> ${dateStr}</div>
             <div><strong>Mesa:</strong> Mesa ${selectedTable?.number || ""}</div>
@@ -210,6 +214,7 @@ export const TablesPage: React.FC = () => {
           <div class="footer">
             <p>*** Pre-cuenta sugerida - No válido como boleta/factura ***</p>
             <p>¡Gracias por su visita!</p>
+            ${buildComandaFooter()}
           </div>
           <script>
             window.onload = function() {
@@ -368,13 +373,13 @@ export const TablesPage: React.FC = () => {
                     borderColor: isSelected 
                       ? "var(--accent-primary)" 
                       : isOccupied 
-                        ? "rgba(255, 71, 87, 0.3)" 
+                        ? "rgba(212, 37, 24, 0.3)" 
                         : "var(--border-light)",
                     backgroundColor: isOccupied 
-                      ? "rgba(255, 71, 87, 0.02)" 
+                      ? "rgba(212, 37, 24, 0.02)" 
                       : "var(--bg-secondary)",
                     transform: isSelected ? "translateY(-2px)" : "none",
-                    boxShadow: isSelected ? "0 4px 12px rgba(17, 17, 17, 0.15)" : "none"
+                    boxShadow: isSelected ? "0 4px 12px rgba(0, 0, 0, 0.15)" : "none"
                   }}
                 >
                   {/* Top: Table Number & Capacity */}
@@ -434,7 +439,7 @@ export const TablesPage: React.FC = () => {
                         padding: "2px 8px",
                         borderRadius: "20px",
                         textTransform: "uppercase",
-                        backgroundColor: isOccupied ? "rgba(255, 71, 87, 0.1)" : "rgba(46, 213, 115, 0.1)",
+                        backgroundColor: isOccupied ? "rgba(212, 37, 24, 0.1)" : "rgba(30, 143, 78, 0.1)",
                         color: isOccupied ? "var(--danger)" : "var(--success)"
                       }}>
                         {isOccupied ? "Ocupada" : "Libre"}
@@ -628,7 +633,7 @@ export const TablesPage: React.FC = () => {
                 )}
 
                 {(user?.role === "RESTAURANT_OWNER" || user?.role === "PRODUCCION") && (
-                  <div style={{ backgroundColor: "rgba(17, 17, 17, 0.05)", borderRadius: "var(--radius-md)", padding: "10px", border: "1px solid var(--accent-glow)", marginBottom: "8px" }}>
+                  <div style={{ backgroundColor: "rgba(0, 0, 0, 0.05)", borderRadius: "var(--radius-md)", padding: "10px", border: "1px solid var(--accent-glow)", marginBottom: "8px" }}>
                     <p style={{ fontSize: "13px", color: "var(--text-secondary)", textAlign: "center" }}>
                       Acceso de lectura. Las modificaciones y el cobro deben realizarse desde la cuenta del personal autorizado.
                     </p>
@@ -659,8 +664,8 @@ export const TablesPage: React.FC = () => {
                     alignItems: "center",
                     justifyContent: "center",
                     gap: "8px",
-                    backgroundColor: "rgba(255, 71, 87, 0.05)",
-                    borderColor: "rgba(255, 71, 87, 0.2)",
+                    backgroundColor: "rgba(212, 37, 24, 0.05)",
+                    borderColor: "rgba(212, 37, 24, 0.2)",
                     color: "var(--accent-primary)"
                   }}
                 >

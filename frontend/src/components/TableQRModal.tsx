@@ -113,7 +113,7 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({
       width: 380,
       margin: 2,
       color: {
-        dark: "#1e293b",
+        dark: "#000000",
         light: "#ffffff"
       },
       errorCorrectionLevel: "H"
@@ -135,7 +135,7 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({
         return QRCode.toDataURL(url, {
           width: 260,
           margin: 1,
-          color: { dark: "#1e293b", light: "#ffffff" },
+          color: { dark: "#000000", light: "#ffffff" },
           errorCorrectionLevel: "M"
         }).then((uri) => ({ id: t.id, uri }));
       });
@@ -184,24 +184,24 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({
 
     // 2. Decorative Top Accent Bar
     const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
-    gradient.addColorStop(0, "#ff4757");
-    gradient.addColorStop(1, "#ffa502");
+    gradient.addColorStop(0, "#d42518");
+    gradient.addColorStop(1, "#f86015");
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, 24);
 
     // 3. Restaurant Brand Name
-    ctx.fillStyle = "#1e293b";
+    ctx.fillStyle = "#000000";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.font = "bold 44px 'Segoe UI', Roboto, sans-serif";
     ctx.fillText(restaurantName.toUpperCase(), canvas.width / 2, 85);
 
     ctx.font = "500 24px 'Segoe UI', Roboto, sans-serif";
-    ctx.fillStyle = "#64748b";
+    ctx.fillStyle = "#737373";
     ctx.fillText("PEDIDOS EN MESA & AUTOSERVICIO", canvas.width / 2, 130);
 
     // 4. Table Number Badge
-    ctx.fillStyle = "#ff4757";
+    ctx.fillStyle = "#d42518";
     ctx.beginPath();
     ctx.roundRect(canvas.width / 2 - 190, 170, 380, 75, 20);
     ctx.fill();
@@ -210,7 +210,7 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({
     ctx.font = "bold 38px 'Segoe UI', Roboto, sans-serif";
     ctx.fillText(`MESA ${currentTable.number}`, canvas.width / 2, 208);
 
-    ctx.fillStyle = "#64748b";
+    ctx.fillStyle = "#737373";
     ctx.font = "bold 22px 'Segoe UI', Roboto, sans-serif";
     ctx.fillText(currentTable.areaName.toUpperCase(), canvas.width / 2, 275);
 
@@ -222,33 +222,33 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({
       const qrY = 315;
 
       // Subtle shadow/border around QR
-      ctx.fillStyle = "#f8fafc";
+      ctx.fillStyle = "#fdf8ee";
       ctx.beginPath();
       ctx.roundRect(qrX - 15, qrY - 15, qrSize + 30, qrSize + 30, 24);
       ctx.fill();
-      ctx.strokeStyle = "#e2e8f0";
+      ctx.strokeStyle = "#f3e8cc";
       ctx.lineWidth = 3;
       ctx.stroke();
 
       ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
 
       // 6. Action Callout
-      ctx.fillStyle = "#0f172a";
+      ctx.fillStyle = "#000000";
       ctx.font = "bold 32px 'Segoe UI', Roboto, sans-serif";
       ctx.fillText("¡Escanea con tu cámara y ordena!", canvas.width / 2, 925);
 
-      ctx.fillStyle = "#475569";
+      ctx.fillStyle = "#595959";
       ctx.font = "500 22px 'Segoe UI', Roboto, sans-serif";
       ctx.fillText("Tu pedido va directo a la pantalla de cocina", canvas.width / 2, 965);
 
       // 7. WiFi & Call Waiter Footer
       if (wifiSsid) {
-        ctx.fillStyle = "#f1f5f9";
+        ctx.fillStyle = "#f7f0de";
         ctx.beginPath();
         ctx.roundRect(80, 1010, canvas.width - 160, 60, 14);
         ctx.fill();
 
-        ctx.fillStyle = "#334155";
+        ctx.fillStyle = "#333333";
         ctx.font = "bold 20px 'Segoe UI', Roboto, sans-serif";
         ctx.fillText(
           `Wi-Fi de cortesía: ${wifiSsid}${wifiPassword ? ` • Clave: ${wifiPassword}` : ""}`,
@@ -258,7 +258,7 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({
       }
 
       // Bottom Branding
-      ctx.fillStyle = "#94a3b8";
+      ctx.fillStyle = "#a6a6a6";
       ctx.font = "600 18px 'Segoe UI', Roboto, sans-serif";
       ctx.fillText("POTENCIADO POR GOEATS", canvas.width / 2, 1140);
 
@@ -325,7 +325,7 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({
           .qr-print-card {
             page-break-inside: avoid !important;
             break-inside: avoid !important;
-            border: 2px dashed #cbd5e1 !important;
+            border: 2px dashed #f3e8cc !important;
             box-shadow: none !important;
           }
         }
@@ -337,7 +337,7 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({
         style={{
           width: "100%",
           maxWidth: viewMode === "BATCH" ? "980px" : "860px",
-          maxHeight: "92vh",
+          maxHeight: "92dvh",
           display: "flex",
           flexDirection: "column",
           borderRadius: "20px",
@@ -355,16 +355,18 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
+            flexWrap: "wrap",
+            gap: "12px",
             backgroundColor: "var(--bg-secondary)"
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: "1 1 220px", minWidth: 0 }}>
             <div
               style={{
                 width: "40px",
                 height: "40px",
                 borderRadius: "10px",
-                backgroundColor: "rgba(255, 71, 87, 0.12)",
+                backgroundColor: "rgba(212, 37, 24, 0.12)",
                 color: "var(--accent-primary)",
                 display: "flex",
                 alignItems: "center",
@@ -383,7 +385,7 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({
             </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
             {/* View Mode Toggle */}
             <div
               style={{
@@ -460,7 +462,7 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({
         </div>
 
         {/* Modal Body */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
+        <div style={{ flex: 1, overflowY: "auto", padding: "clamp(14px, 4vw, 24px)" }}>
           {viewMode === "SINGLE" ? (
             /* SINGLE TABLE VIEW */
             <div>
@@ -522,6 +524,7 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({
                           fontWeight: 700,
                           cursor: "pointer",
                           whiteSpace: "nowrap",
+                          flexShrink: 0,
                           border: isSelected
                             ? "1px solid var(--accent-primary)"
                             : "1px solid var(--border-light)",
@@ -555,7 +558,7 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "1fr 340px",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))",
                     gap: "28px",
                     alignItems: "start"
                   }}
@@ -568,22 +571,24 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({
                       display: "flex",
                       justifyContent: "center",
                       backgroundColor: "var(--bg-secondary)",
-                      padding: "24px",
+                      padding: "clamp(12px, 4vw, 24px)",
                       borderRadius: "16px",
-                      border: "1px solid var(--border-light)"
+                      border: "1px solid var(--border-light)",
+                      minWidth: 0
                     }}
                   >
                     {/* The Physical Table Stand Card */}
                     <div
                       className="qr-print-card"
                       style={{
-                        width: "320px",
+                        width: "100%",
+                        maxWidth: "320px",
                         backgroundColor: "#ffffff",
-                        color: "#0f172a",
+                        color: "#000000",
                         borderRadius: "20px",
                         boxShadow: "0 12px 30px rgba(0,0,0,0.12)",
                         overflow: "hidden",
-                        border: "1px solid #e2e8f0",
+                        border: "1px solid #f3e8cc",
                         textAlign: "center",
                         display: "flex",
                         flexDirection: "column"
@@ -592,7 +597,7 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({
                       {/* Top Header Bar */}
                       <div
                         style={{
-                          background: "linear-gradient(135deg, #ff4757, #ffa502)",
+                          background: "linear-gradient(135deg, #d42518, #f86015)",
                           height: "10px",
                           width: "100%"
                         }}
@@ -606,7 +611,7 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({
                             fontWeight: 900,
                             letterSpacing: "0.5px",
                             textTransform: "uppercase",
-                            color: "#0f172a"
+                            color: "#000000"
                           }}
                         >
                           {restaurantName}
@@ -615,7 +620,7 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({
                           style={{
                             fontSize: "13px",
                             fontWeight: 600,
-                            color: "#64748b",
+                            color: "#737373",
                             marginTop: "2px",
                             textTransform: "uppercase",
                             letterSpacing: "0.8px"
@@ -630,14 +635,14 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({
                             display: "inline-flex",
                             alignItems: "center",
                             gap: "6px",
-                            backgroundColor: "#ff4757",
+                            backgroundColor: "#d42518",
                             color: "#ffffff",
                             padding: "6px 18px",
                             borderRadius: "20px",
                             fontSize: "16px",
                             fontWeight: 850,
                             marginTop: "14px",
-                            boxShadow: "0 4px 10px rgba(255, 71, 87, 0.3)"
+                            boxShadow: "0 4px 10px rgba(212, 37, 24, 0.3)"
                           }}
                         >
                           Mesa {currentTable.number}
@@ -645,7 +650,7 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({
                         <div
                           style={{
                             fontSize: "13px",
-                            color: "#64748b",
+                            color: "#737373",
                             fontWeight: 600,
                             marginTop: "4px"
                           }}
@@ -657,10 +662,10 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({
                         <div
                           style={{
                             margin: "16px auto",
-                            backgroundColor: "#f8fafc",
+                            backgroundColor: "#fdf8ee",
                             padding: "12px",
                             borderRadius: "16px",
-                            border: "1px solid #e2e8f0",
+                            border: "1px solid #f3e8cc",
                             display: "inline-block",
                             boxShadow: "inset 0 2px 4px rgba(0,0,0,0.02)"
                           }}
@@ -684,7 +689,7 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
-                                color: "#94a3b8"
+                                color: "#a6a6a6"
                               }}
                             >
                               Generando QR...
@@ -697,7 +702,7 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({
                           style={{
                             fontSize: "13px",
                             fontWeight: 800,
-                            color: "#0f172a",
+                            color: "#000000",
                             lineHeight: 1.3
                           }}
                         >
@@ -706,7 +711,7 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({
                         <div
                           style={{
                             fontSize: "13px",
-                            color: "#64748b",
+                            color: "#737373",
                             marginTop: "4px",
                             lineHeight: 1.4
                           }}
@@ -719,11 +724,11 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({
                           <div
                             style={{
                               marginTop: "14px",
-                              backgroundColor: "#f1f5f9",
+                              backgroundColor: "#f7f0de",
                               padding: "6px 10px",
                               borderRadius: "8px",
                               fontSize: "13px",
-                              color: "#334155",
+                              color: "#333333",
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
@@ -742,11 +747,11 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({
                       {/* Footer Badge */}
                       <div
                         style={{
-                          backgroundColor: "#f8fafc",
+                          backgroundColor: "#fdf8ee",
                           padding: "8px",
-                          borderTop: "1px solid #f1f5f9",
+                          borderTop: "1px solid #f7f0de",
                           fontSize: "13px",
-                          color: "#94a3b8",
+                          color: "#a6a6a6",
                           fontWeight: 700,
                           letterSpacing: "0.5px"
                         }}
@@ -785,7 +790,7 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({
                             fontWeight: 700,
                             padding: "2px 8px",
                             borderRadius: "4px",
-                            backgroundColor: "rgba(17, 17, 17, 0.15)",
+                            backgroundColor: "rgba(0, 0, 0, 0.15)",
                             color: "var(--success)"
                           }}
                         >
@@ -862,9 +867,9 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({
                     <div
                       style={{
                         padding: "16px",
-                        backgroundColor: "rgba(17, 17, 17, 0.05)",
+                        backgroundColor: "rgba(0, 0, 0, 0.05)",
                         borderRadius: "14px",
-                        border: "1px solid rgba(17, 17, 17, 0.2)"
+                        border: "1px solid rgba(0, 0, 0, 0.2)"
                       }}
                     >
                       <h4
@@ -990,9 +995,9 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({
                       className="qr-print-card"
                       style={{
                         backgroundColor: "#ffffff",
-                        color: "#0f172a",
+                        color: "#000000",
                         borderRadius: "16px",
-                        border: "1px solid #e2e8f0",
+                        border: "1px solid #f3e8cc",
                         padding: "18px 16px",
                         textAlign: "center",
                         display: "flex",
@@ -1006,7 +1011,7 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({
                           fontSize: "14px",
                           fontWeight: 900,
                           textTransform: "uppercase",
-                          color: "#0f172a"
+                          color: "#000000"
                         }}
                       >
                         {restaurantName}
@@ -1015,7 +1020,7 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({
                       <div
                         style={{
                           display: "inline-block",
-                          backgroundColor: "#ff4757",
+                          backgroundColor: "#d42518",
                           color: "#ffffff",
                           padding: "4px 14px",
                           borderRadius: "14px",
@@ -1026,7 +1031,7 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({
                       >
                         Mesa {tbl.number}
                       </div>
-                      <div style={{ fontSize: "13px", color: "#64748b", marginTop: "2px", fontWeight: 600 }}>
+                      <div style={{ fontSize: "13px", color: "#737373", marginTop: "2px", fontWeight: 600 }}>
                         {tbl.areaName}
                       </div>
 
@@ -1034,9 +1039,9 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({
                         style={{
                           margin: "12px 0",
                           padding: "8px",
-                          backgroundColor: "#f8fafc",
+                          backgroundColor: "#fdf8ee",
                           borderRadius: "12px",
-                          border: "1px solid #e2e8f0"
+                          border: "1px solid #f3e8cc"
                         }}
                       >
                         {qr ? (
@@ -1054,7 +1059,7 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({
                               alignItems: "center",
                               justifyContent: "center",
                               fontSize: "13px",
-                              color: "#94a3b8"
+                              color: "#a6a6a6"
                             }}
                           >
                             Cargando...
@@ -1062,10 +1067,10 @@ export const TableQRModal: React.FC<TableQRModalProps> = ({
                         )}
                       </div>
 
-                      <div style={{ fontSize: "13px", fontWeight: 800, color: "#0f172a" }}>
+                      <div style={{ fontSize: "13px", fontWeight: 800, color: "#000000" }}>
                         Escanea para ordenar
                       </div>
-                      <div style={{ fontSize: "13px", color: "#64748b", marginTop: "2px" }}>
+                      <div style={{ fontSize: "13px", color: "#737373", marginTop: "2px" }}>
                         GoEats • Pedido directo a cocina
                       </div>
                     </div>

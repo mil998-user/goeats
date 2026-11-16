@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from "react";
+import { StatTile } from "../components/StatTile";
+import { EmptyState } from "../components/EmptyState";
 import { apiRequest } from "../utils/api";
+import { useSocket } from "../context/SocketContext";
 import { RestaurantRatings } from "../components/RestaurantRatings";
 import {
   TrendingUp,
@@ -104,6 +107,22 @@ export const Reports: React.FC = () => {
     fetchReports();
   }, [startDate, endDate]);
 
+  // Tiempo real: ventas y pedidos del dia sin recargar
+  const { socket } = useSocket();
+  useEffect(() => {
+    let timer: number | undefined;
+    const refresh = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(fetchReports, 1500);
+    };
+    const events = ["new-order", "order-status-updated", "order-cancelled", "sale-emitted", "tables-updated"];
+    events.forEach((name) => socket?.on(name, refresh));
+    return () => {
+      window.clearTimeout(timer);
+      events.forEach((name) => socket?.off(name, refresh));
+    };
+  }, [socket, startDate, endDate]);
+
   if (loading && !data) {
     return (
       <div style={{ display: "flex", justifyContent: "center", padding: "100px", backgroundColor: "var(--bg-primary)", minHeight: "100vh" }}>
@@ -173,41 +192,27 @@ export const Reports: React.FC = () => {
         gap: "20px",
         marginBottom: "30px"
       }}>
-        {/* KPI 1 */}
-        <div className="glass-card" style={{ padding: "20px", borderRadius: "var(--radius-md)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: "14px", color: "var(--text-secondary)" }}>Ventas del Día</span>
-            <div style={{ backgroundColor: "var(--success-glow)", color: "var(--success)", padding: "8px", borderRadius: "8px" }}>
-              <DollarSign size={20} />
-            </div>
-          </div>
-          <h2 style={{ fontSize: "28px", marginTop: "15px" }}>${indicators.todaySales.toFixed(2)}</h2>
-          <p style={{ fontSize: "13px", color: "var(--text-muted)", marginTop: "5px" }}>Efectivo + Tarjeta hoy</p>
-        </div>
-
-        {/* KPI 2 */}
-        <div className="glass-card" style={{ padding: "20px", borderRadius: "var(--radius-md)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: "14px", color: "var(--text-secondary)" }}>Mesas Ocupadas</span>
-            <div style={{ backgroundColor: "var(--warning-glow)", color: "var(--warning)", padding: "8px", borderRadius: "8px" }}>
-              <Coffee size={20} />
-            </div>
-          </div>
-          <h2 style={{ fontSize: "28px", marginTop: "15px" }}>{indicators.activeTables}</h2>
-          <p style={{ fontSize: "13px", color: "var(--text-muted)", marginTop: "5px" }}>Clientes en mesa activos</p>
-        </div>
-
-        {/* KPI 3 */}
-        <div className="glass-card" style={{ padding: "20px", borderRadius: "var(--radius-md)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: "14px", color: "var(--text-secondary)" }}>Pedidos Pendientes</span>
-            <div style={{ backgroundColor: "rgba(255, 71, 87, 0.15)", color: "var(--accent-primary)", padding: "8px", borderRadius: "8px" }}>
-              <Clock size={20} />
-            </div>
-          </div>
-          <h2 style={{ fontSize: "28px", marginTop: "15px" }}>{indicators.pendingOrders}</h2>
-          <p style={{ fontSize: "13px", color: "var(--text-muted)", marginTop: "5px" }}>En espera en el KDS</p>
-        </div>
+        <StatTile
+          tone="yellow"
+          label="Ventas del Día"
+          value={`$${indicators.todaySales.toFixed(2)}`}
+          hint="Efectivo + Tarjeta hoy"
+          icon={<DollarSign size={20} />}
+        />
+        <StatTile
+          tone="black"
+          label="Mesas Ocupadas"
+          value={indicators.activeTables}
+          hint="Clientes en mesa activos"
+          icon={<Coffee size={20} />}
+        />
+        <StatTile
+          tone="red"
+          label="Pedidos Pendientes"
+          value={indicators.pendingOrders}
+          hint="En espera en el KDS"
+          icon={<Clock size={20} />}
+        />
       </div>
 
       {/* Main Section: Sales History Chart */}
@@ -267,9 +272,7 @@ export const Reports: React.FC = () => {
           
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             {topSellingToday.length === 0 ? (
-              <p style={{ color: "var(--text-muted)", fontSize: "13px", textAlign: "center", padding: "20px 0" }}>
-                Aún no hay ventas registradas el día de hoy.
-              </p>
+              <EmptyState size={48} title="El día recién empieza" message="Aún no hay ventas registradas hoy." />
             ) : (
               topSellingToday.map((item, idx) => (
                 <div

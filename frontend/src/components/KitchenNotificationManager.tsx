@@ -332,8 +332,9 @@ export const KitchenNotificationManager: React.FC = () => {
         <div
           data-testid="push-notice"
           style={{
-            backgroundColor: "#111111",
-            borderBottom: "1px solid #444444",
+            backgroundColor: "var(--brand-yellow-soft)",
+            color: "var(--brand-black)",
+            borderBottom: "1px solid var(--border-light)",
             padding: "12px 16px",
             display: "flex",
             alignItems: "center",
@@ -348,20 +349,20 @@ export const KitchenNotificationManager: React.FC = () => {
               width: "32px",
               height: "32px",
               borderRadius: "50%",
-              backgroundColor: "rgba(255, 255, 255, 0.15)",
+              backgroundColor: "var(--brand-black)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "#ffffff",
+              color: "var(--brand-yellow)",
               flexShrink: 0
             }}>
               <BellRing size={18} />
             </div>
             <div>
-              <strong style={{ fontSize: "15px", color: "#ffffff", display: "block" }}>
+              <strong style={{ fontSize: "15px", color: "var(--brand-black)", display: "block" }}>
                 Avisos de cocina
               </strong>
-              <span style={{ fontSize: "14px", color: "#d4d4d4" }}>
+              <span style={{ fontSize: "14px", color: "var(--brand-black-80)" }}>
                 {pushPermission === "denied"
                   ? "Las notificaciones están bloqueadas en tu navegador. Haz clic en el candado de la dirección para permitirlas."
                   : "Permite los avisos para enterarte al instante cuando un plato esté casi listo o el cocinero te llame."}
@@ -375,13 +376,13 @@ export const KitchenNotificationManager: React.FC = () => {
                 type="button"
                 onClick={handleRequestPushPermission}
                 style={{
-                  background: "#ffffff",
-                  color: "#111111",
+                  background: "var(--brand-black)",
+                  color: "var(--brand-yellow)",
                   border: "none",
                   minHeight: "44px",
                   padding: "10px 16px",
                   fontSize: "14px",
-                  borderRadius: "var(--radius-sm)",
+                  borderRadius: "999px",
                   fontWeight: 700,
                   cursor: "pointer",
                   display: "flex",
@@ -399,9 +400,9 @@ export const KitchenNotificationManager: React.FC = () => {
               aria-label="Cerrar aviso"
               style={{
                 background: "none",
-                border: "1px solid #555555",
-                borderRadius: "8px",
-                color: "#ffffff",
+                border: "1px solid color-mix(in srgb, var(--brand-black) 30%, transparent)",
+                borderRadius: "999px",
+                color: "var(--brand-black)",
                 cursor: "pointer",
                 padding: "10px",
                 minWidth: "44px",
@@ -432,8 +433,8 @@ export const KitchenNotificationManager: React.FC = () => {
             border: `2px solid ${activeToast.type === "ALMOST_READY" ? "var(--warning)" : "var(--success)"}`,
             borderRadius: "var(--radius-lg)",
             boxShadow: activeToast.type === "ALMOST_READY"
-              ? "0 16px 40px rgba(255, 165, 2, 0.45)"
-              : "0 16px 40px rgba(46, 213, 115, 0.55)",
+              ? "0 16px 40px color-mix(in srgb, var(--brand-orange) 45%, transparent)"
+              : "0 16px 40px rgba(30, 143, 78, 0.55)",
             padding: "14px 18px",
             display: "flex",
             alignItems: "flex-start",
@@ -446,7 +447,7 @@ export const KitchenNotificationManager: React.FC = () => {
             width: "42px",
             height: "42px",
             borderRadius: "50%",
-            backgroundColor: activeToast.type === "ALMOST_READY" ? "rgba(255, 165, 2, 0.15)" : "rgba(46, 213, 115, 0.15)",
+            backgroundColor: activeToast.type === "ALMOST_READY" ? "color-mix(in srgb, var(--brand-orange) 15%, transparent)" : "rgba(30, 143, 78, 0.15)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -464,7 +465,7 @@ export const KitchenNotificationManager: React.FC = () => {
                   fontWeight: "bold",
                   padding: "2px 6px",
                   borderRadius: "4px",
-                  backgroundColor: activeToast.type === "ALMOST_READY" ? "rgba(255, 165, 2, 0.2)" : "rgba(46, 213, 115, 0.2)",
+                  backgroundColor: activeToast.type === "ALMOST_READY" ? "color-mix(in srgb, var(--brand-orange) 20%, transparent)" : "rgba(30, 143, 78, 0.2)",
                   color: activeToast.type === "ALMOST_READY" ? "var(--warning)" : "var(--success)",
                   letterSpacing: "0.5px"
                 }}>
@@ -538,7 +539,7 @@ export const KitchenNotificationManager: React.FC = () => {
               backgroundColor: unreadCount > 0 ? "var(--success)" : "var(--bg-secondary)",
               color: unreadCount > 0 ? "#ffffff" : "var(--text-primary)",
               border: `2px solid ${unreadCount > 0 ? "var(--success)" : "var(--border-light)"}`,
-              boxShadow: unreadCount > 0 ? "0 0 18px rgba(46, 213, 115, 0.6)" : "0 4px 16px rgba(0,0,0,0.4)",
+              boxShadow: unreadCount > 0 ? "0 0 18px rgba(30, 143, 78, 0.6)" : "0 4px 16px rgba(0,0,0,0.4)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -643,7 +644,7 @@ export const KitchenNotificationManager: React.FC = () => {
               <div style={{
                 padding: "6px 16px",
                 fontSize: "13px",
-                backgroundColor: pushPermission === "granted" ? "rgba(46, 213, 115, 0.1)" : "rgba(255, 71, 87, 0.1)",
+                backgroundColor: pushPermission === "granted" ? "rgba(30, 143, 78, 0.1)" : "color-mix(in srgb, var(--brand-red) 10%, transparent)",
                 color: pushPermission === "granted" ? "var(--success)" : "var(--danger)",
                 display: "flex",
                 alignItems: "center",
@@ -687,7 +688,7 @@ export const KitchenNotificationManager: React.FC = () => {
                         padding: "12px 16px",
                         borderBottom: "1px solid var(--border-light)",
                         cursor: "pointer",
-                        backgroundColor: notif.read ? "transparent" : "rgba(17, 17, 17, 0.08)",
+                        backgroundColor: notif.read ? "transparent" : "color-mix(in srgb, var(--brand-black) 8%, transparent)",
                         display: "flex",
                         flexDirection: "column",
                         gap: "4px",
@@ -700,7 +701,7 @@ export const KitchenNotificationManager: React.FC = () => {
                           fontWeight: "bold",
                           padding: "2px 8px",
                           borderRadius: "10px",
-                          backgroundColor: notif.type === "ALMOST_READY" ? "rgba(255, 165, 2, 0.15)" : "rgba(46, 213, 115, 0.15)",
+                          backgroundColor: notif.type === "ALMOST_READY" ? "color-mix(in srgb, var(--brand-orange) 15%, transparent)" : "rgba(30, 143, 78, 0.15)",
                           color: notif.type === "ALMOST_READY" ? "var(--warning)" : "var(--success)"
                         }}>
                           {notif.type === "ALMOST_READY" ? systemTextWithIcons("🟡 Casi Listo") : systemTextWithIcons("🟢 ¡Listo para Servir!")}

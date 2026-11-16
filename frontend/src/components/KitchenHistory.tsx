@@ -76,7 +76,7 @@ export const KitchenHistory: React.FC = () => {
         <p style={{ color: "var(--text-secondary)" }}>No hay platos terminados en este periodo.</p>
       ) : (
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
+          <table className="stack-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: "14px" }}>
             <thead>
               <tr style={{ textAlign: "left", borderBottom: "1px solid var(--border-light)" }}>
                 <th style={{ padding: "8px" }}>Hora</th>
@@ -89,18 +89,18 @@ export const KitchenHistory: React.FC = () => {
             <tbody>
               {rows.map((row) => (
                 <tr key={row.id} style={{ borderBottom: "1px solid var(--border-light)" }}>
-                  <td style={{ padding: "8px", whiteSpace: "nowrap" }}>
+                  <td data-label="Hora" style={{ padding: "8px", whiteSpace: "nowrap" }}>
                     {row.readyAt ? new Date(row.readyAt).toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" }) : "-"}
                   </td>
-                  <td style={{ padding: "8px" }}>
+                  <td data-label="Plato" style={{ padding: "8px" }}>
                     {row.quantity}x {row.dish}
                     {row.variant && row.variant !== "Unidad" ? ` (${row.variant})` : ""}
                   </td>
-                  <td style={{ padding: "8px", whiteSpace: "nowrap" }}>
+                  <td data-label="Pedido" style={{ padding: "8px", whiteSpace: "nowrap" }}>
                     #{row.orderId} {row.place ? `· ${row.place}` : ""}
                   </td>
-                  <td style={{ padding: "8px", whiteSpace: "nowrap" }}>{row.minutes === null ? "-" : `${row.minutes} min`}</td>
-                  <td style={{ padding: "8px" }}>{row.preparedBy || "-"}</td>
+                  <td data-label="Tardó" style={{ padding: "8px", whiteSpace: "nowrap" }}>{row.minutes === null ? "-" : `${row.minutes} min`}</td>
+                  <td data-label="Preparó" style={{ padding: "8px" }}>{row.preparedBy || "-"}</td>
                 </tr>
               ))}
             </tbody>

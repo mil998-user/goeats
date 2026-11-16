@@ -23,7 +23,7 @@ export const OrderStaffLine: React.FC<{ order: StaffOrder; canAttend?: boolean; 
         <button
           type="button"
           onClick={() => onAttend(order.id)}
-          style={{ display: "block", marginTop: "8px", padding: "10px 14px", fontSize: "14px", fontWeight: 700, borderRadius: "8px", border: "none", background: "#1e293b", color: "#ffffff", cursor: "pointer" }}
+          style={{ display: "block", marginTop: "8px", padding: "10px 14px", fontSize: "14px", fontWeight: 700, borderRadius: "8px", border: "none", background: "var(--brand-black)", color: "#ffffff", cursor: "pointer" }}
         >
           Yo atiendo este pedido
         </button>

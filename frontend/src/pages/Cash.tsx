@@ -125,8 +125,11 @@ export const Cash: React.FC = () => {
       fetchSessionData();
     };
     socket.on("cash-session-changed", handleCashSessionChange);
+    // Al volver la conexion (senal, celular desbloqueado) se piden los datos de nuevo
+    socket.on("connect", handleCashSessionChange);
     return () => {
       socket.off("cash-session-changed", handleCashSessionChange);
+      socket.off("connect", handleCashSessionChange);
     };
   }, [socket]);
 

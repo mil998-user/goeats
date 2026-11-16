@@ -369,10 +369,10 @@ export const RestaurantLocationPicker: React.FC<RestaurantLocationPickerProps> =
       // Custom Single Restaurant Marker (Orange / Gold Premium Pin)
       const restPinHtml = `
         <div style="position: relative; display: flex; flex-direction: column; align-items: center; cursor: grab; transform: translate(-50%, -100%);">
-          <div style="background: rgba(20, 24, 33, 0.95); color: #ffd700; padding: 4px 10px; border-radius: 14px; font-weight: 800; font-size: 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.5); white-space: nowrap; margin-bottom: 3px; border: 1px solid rgba(255,215,0,0.4); backdrop-filter: blur(6px);">
+          <div style="background: rgba(20, 24, 33, 0.95); color: #ffca26; padding: 4px 10px; border-radius: 14px; font-weight: 800; font-size: 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.5); white-space: nowrap; margin-bottom: 3px; border: 1px solid rgba(255,215,0,0.4); backdrop-filter: blur(6px);">
             ${escapeHtml(restaurantName)}
           </div>
-          <div style="width: 28px; height: 28px; background: #ff9f43; border: 3px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(255,159,67,0.6);">
+          <div style="width: 28px; height: 28px; background: #f86015; border: 3px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(248, 96, 21, 0.6);">
             <div style="width: 9px; height: 9px; background: #ffffff; border-radius: 50%;"></div>
           </div>
         </div>
@@ -420,7 +420,7 @@ export const RestaurantLocationPicker: React.FC<RestaurantLocationPickerProps> =
       display: "flex",
       flexDirection: "column",
       width: "100%",
-      backgroundColor: "var(--bg-secondary, #1a1e29)",
+      backgroundColor: "var(--bg-secondary, #000000)",
       borderRadius: "16px",
       overflow: "hidden",
       border: "1px solid var(--border-light, rgba(255,255,255,0.08))",
@@ -430,7 +430,7 @@ export const RestaurantLocationPicker: React.FC<RestaurantLocationPickerProps> =
       <div style={{
         position: "relative",
         padding: "10px 14px",
-        backgroundColor: "var(--bg-tertiary, #141722)",
+        backgroundColor: "var(--bg-tertiary, #000000)",
         borderBottom: "1px solid var(--border-light, rgba(255,255,255,0.06))",
         display: "flex",
         alignItems: "center",
@@ -442,7 +442,7 @@ export const RestaurantLocationPicker: React.FC<RestaurantLocationPickerProps> =
             left: "12px",
             top: "50%",
             transform: "translateY(-50%)",
-            color: "var(--text-muted, #718096)"
+            color: "var(--text-muted, #737373)"
           }} />
           <input
             type="text"
@@ -506,7 +506,7 @@ export const RestaurantLocationPicker: React.FC<RestaurantLocationPickerProps> =
               backgroundColor: "rgba(18, 22, 31, 0.98)",
               backdropFilter: "blur(12px)",
               borderRadius: "12px",
-              border: "1px solid rgba(255, 159, 67, 0.35)",
+              border: "1px solid rgba(248, 96, 21, 0.35)",
               boxShadow: "0 10px 25px rgba(0,0,0,0.5)",
               maxHeight: "240px",
               overflowY: "auto"
@@ -528,13 +528,13 @@ export const RestaurantLocationPicker: React.FC<RestaurantLocationPickerProps> =
                       transition: "background 0.15s ease"
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = "rgba(255, 159, 67, 0.18)";
+                      e.currentTarget.style.backgroundColor = "rgba(248, 96, 21, 0.18)";
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.backgroundColor = "transparent";
                     }}
                   >
-                    <MapPin size={15} color="#ff9f43" style={{ flexShrink: 0 }} />
+                    <MapPin size={15} color="#f86015" style={{ flexShrink: 0 }} />
                     <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {res.display_name}
                     </span>
@@ -554,7 +554,7 @@ export const RestaurantLocationPicker: React.FC<RestaurantLocationPickerProps> =
           onClick={() => executeAddressSearch(searchQuery)}
           disabled={searching}
           style={{
-            backgroundColor: "#ff9f43",
+            backgroundColor: "#f86015",
             color: "#000000",
             border: "none",
             borderRadius: "20px",
@@ -592,7 +592,7 @@ export const RestaurantLocationPicker: React.FC<RestaurantLocationPickerProps> =
               color: "#ffffff",
               padding: "7px 14px",
               borderRadius: "24px",
-              border: "1px solid rgba(255, 159, 67, 0.5)",
+              border: "1px solid rgba(248, 96, 21, 0.5)",
               boxShadow: "0 4px 14px rgba(0,0,0,0.3)",
               fontSize: "13px",
               fontWeight: "700",
@@ -601,9 +601,9 @@ export const RestaurantLocationPicker: React.FC<RestaurantLocationPickerProps> =
             }}
           >
             {locating ? (
-              <Loader2 size={14} className="spin" color="#ff9f43" />
+              <Loader2 size={14} className="spin" color="#f86015" />
             ) : (
-              <Navigation size={13} fill="#ff9f43" color="#ff9f43" />
+              <Navigation size={13} fill="#f86015" color="#f86015" />
             )}
             <span>{locating ? "Detectando..." : systemTextWithIcons("📍 Mi GPS Actual")}</span>
           </button>
@@ -613,7 +613,7 @@ export const RestaurantLocationPicker: React.FC<RestaurantLocationPickerProps> =
       {/* Sleek Bottom Info Strip */}
       <div style={{
         padding: "10px 14px",
-        backgroundColor: "var(--bg-tertiary, #141722)",
+        backgroundColor: "var(--bg-tertiary, #000000)",
         borderTop: "1px solid var(--border-light, rgba(255,255,255,0.06))",
         display: "flex",
         alignItems: "center",
@@ -623,15 +623,15 @@ export const RestaurantLocationPicker: React.FC<RestaurantLocationPickerProps> =
         fontSize: "13px"
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: "6px", flex: "1 1 200px", overflow: "hidden" }}>
-          <Store size={15} color="#ff9f43" style={{ flexShrink: 0 }} />
+          <Store size={15} color="#f86015" style={{ flexShrink: 0 }} />
           <span style={{ color: "var(--text-primary, #ffffff)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {addressLoading ? "Detectando calle del restaurante..." : detectedAddress || "Busca por calle, mueve el pin o usa GPS"}
           </span>
         </div>
 
         <div style={{
-          backgroundColor: "rgba(255, 159, 67, 0.12)",
-          color: "#ff9f43",
+          backgroundColor: "rgba(248, 96, 21, 0.12)",
+          color: "#f86015",
           padding: "3px 10px",
           borderRadius: "16px",
           fontWeight: "800",
@@ -639,7 +639,7 @@ export const RestaurantLocationPicker: React.FC<RestaurantLocationPickerProps> =
           display: "inline-flex",
           alignItems: "center",
           gap: "4px",
-          border: "1px solid rgba(255, 159, 67, 0.25)"
+          border: "1px solid rgba(248, 96, 21, 0.25)"
         }}>
           <span>{systemIconForEmoji("🏪")} Ubicación Oficial del Restaurante</span>
         </div>

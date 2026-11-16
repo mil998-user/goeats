@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { systemIconForEmoji, systemTextWithIcons } from "../utils/systemIcons";
 import { escapeHtml } from "../utils/html";
+import { buildComandaHeader, buildComandaFooter, COMANDA_HEADER_CSS } from "../utils/comandaHeader";
 
 
 export interface WaiterNotification {
@@ -511,6 +512,8 @@ export const POS: React.FC = () => {
     socket.on("order-status-updated", handleTableChange);
     socket.on("new-order", handleNewOrder);
     socket.on("order-cancelled", handleTableChange);
+    // Al volver la conexion (senal, celular desbloqueado) se piden los datos de nuevo
+    socket.on("connect", handleTableChange);
     socket.on("cash-session-changed", handleCashSessionChange);
     socket.on("waiter-order-notification", handleWaiterNotification);
 
@@ -518,6 +521,7 @@ export const POS: React.FC = () => {
       socket.off("order-status-updated", handleTableChange);
       socket.off("new-order", handleNewOrder);
       socket.off("order-cancelled", handleTableChange);
+      socket.off("connect", handleTableChange);
       socket.off("cash-session-changed", handleCashSessionChange);
       socket.off("waiter-order-notification", handleWaiterNotification);
     };
@@ -700,7 +704,7 @@ export const POS: React.FC = () => {
     }
   };
 
-  const handlePrintComanda = () => {
+  const handlePrintComanda = async () => {
     if (cart.length === 0) return;
 
     const printWindow = window.open("", "_blank");
@@ -725,6 +729,8 @@ export const POS: React.FC = () => {
 
     const dateStr = new Date().toLocaleString();
 
+    // Encabezado con logo y datos del local (se pide antes de escribir la ventana)
+    const headerHtml = await buildComandaHeader();
     printWindow.document.write(`
       <html>
         <head>
@@ -741,13 +747,11 @@ export const POS: React.FC = () => {
             .table-items { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
             .total { font-size: 16px; font-weight: bold; border-top: 1px dashed #000; padding-top: 10px; display: flex; justify-content: space-between; }
             .footer { text-align: center; margin-top: 20px; font-size: 10px; border-top: 1px dashed #ccc; padding-top: 10px; }
+            ${COMANDA_HEADER_CSS}
           </style>
         </head>
         <body>
-          <div class="header">
-            <div class="title">GoEats Comanda</div>
-            <div style="font-size: 12px;">Comprobante de Pedido</div>
-          </div>
+          ${headerHtml}
           <div class="details">
             <div><strong>Fecha:</strong> ${dateStr}</div>
             <div><strong>Tipo:</strong> ${orderType === "DINE_IN" ? "SERVICIO EN MESA" : orderType === "TAKEOUT" ? "RECOGER EN LOCAL" : "DOMICILIO / DELIVERY"}</div>
@@ -767,6 +771,7 @@ export const POS: React.FC = () => {
           <div class="footer">
             <p>*** No válido como factura ***</p>
             <p>¡Gracias por su preferencia!</p>
+            ${buildComandaFooter()}
           </div>
           <script>
             window.onload = function() {
@@ -933,7 +938,7 @@ export const POS: React.FC = () => {
           alignItems: "center",
           gap: "8px",
           borderRadius: "var(--radius-sm)",
-          backgroundColor: unreadNotifsCount > 0 ? "rgba(17, 17, 17, 0.2)" : undefined,
+          backgroundColor: unreadNotifsCount > 0 ? "rgba(0, 0, 0, 0.2)" : undefined,
           borderColor: unreadNotifsCount > 0 ? "var(--accent-primary)" : undefined,
           cursor: "pointer"
         }}
@@ -1040,7 +1045,7 @@ export const POS: React.FC = () => {
                     padding: "12px 16px",
                     borderBottom: "1px solid var(--border-light)",
                     cursor: notif.tableId ? "pointer" : "default",
-                    backgroundColor: notif.read ? "transparent" : "rgba(17, 17, 17, 0.08)",
+                    backgroundColor: notif.read ? "transparent" : "rgba(0, 0, 0, 0.08)",
                     display: "flex",
                     flexDirection: "column",
                     gap: "4px",
@@ -1053,7 +1058,7 @@ export const POS: React.FC = () => {
                       fontWeight: "bold",
                       padding: "2px 8px",
                       borderRadius: "10px",
-                      backgroundColor: notif.type === "ALMOST_READY" ? "rgba(255, 165, 2, 0.15)" : "rgba(46, 213, 115, 0.15)",
+                      backgroundColor: notif.type === "ALMOST_READY" ? "rgba(248, 96, 21, 0.15)" : "rgba(30, 143, 78, 0.15)",
                       color: notif.type === "ALMOST_READY" ? "var(--warning)" : "var(--success)"
                     }}>
                       {notif.type === "ALMOST_READY" ? systemTextWithIcons("🟡 Casi Listo") : systemTextWithIcons("🟢 ¡Listo para Servir!")}
@@ -1123,7 +1128,7 @@ export const POS: React.FC = () => {
               width: "60px",
               height: "60px",
               borderRadius: "50%",
-              backgroundColor: "rgba(17, 17, 17, 0.1)",
+              backgroundColor: "rgba(0, 0, 0, 0.1)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -1296,11 +1301,11 @@ export const POS: React.FC = () => {
                             backgroundColor: isSelected
                               ? "var(--accent-primary)"
                               : isAllReady
-                              ? "rgba(46, 213, 115, 0.2)"
+                              ? "rgba(30, 143, 78, 0.2)"
                               : isAlmostReady
-                              ? "rgba(255, 165, 2, 0.15)"
+                              ? "rgba(248, 96, 21, 0.15)"
                               : isOccupied
-                              ? "rgba(17, 17, 17, 0.15)"
+                              ? "rgba(0, 0, 0, 0.15)"
                               : "var(--bg-secondary)",
                             border: `2px solid ${
                               isSelected
@@ -1314,9 +1319,9 @@ export const POS: React.FC = () => {
                                 : "var(--border-light)"
                             }`,
                             boxShadow: isAllReady
-                              ? "0 0 14px rgba(46, 213, 115, 0.5)"
+                              ? "0 0 14px rgba(30, 143, 78, 0.5)"
                               : isAlmostReady
-                              ? "0 0 10px rgba(255, 165, 2, 0.4)"
+                              ? "0 0 10px rgba(248, 96, 21, 0.4)"
                               : "none",
                             color: isSelected ? "#ffffff" : isOccupied ? "var(--accent-primary)" : "var(--text-primary)"
                           }}
@@ -1333,7 +1338,7 @@ export const POS: React.FC = () => {
                               fontWeight: "bold",
                               borderRadius: "10px",
                               padding: "2px 6px",
-                              boxShadow: "0 0 8px rgba(46, 213, 115, 0.8)",
+                              boxShadow: "0 0 8px rgba(30, 143, 78, 0.8)",
                               display: "flex",
                               alignItems: "center",
                               gap: "2px",
@@ -1353,7 +1358,7 @@ export const POS: React.FC = () => {
                               fontWeight: "bold",
                               borderRadius: "10px",
                               padding: "2px 6px",
-                              boxShadow: "0 0 8px rgba(255, 165, 2, 0.6)",
+                              boxShadow: "0 0 8px rgba(248, 96, 21, 0.6)",
                               display: "flex",
                               alignItems: "center",
                               gap: "2px",
@@ -1417,7 +1422,7 @@ export const POS: React.FC = () => {
                         backgroundColor: isSelected
                           ? "var(--accent-primary)"
                           : isPending
-                          ? "rgba(17, 17, 17, 0.05)"
+                          ? "rgba(0, 0, 0, 0.05)"
                           : "var(--bg-secondary)",
                         border: `1px solid ${
                           isSelected
@@ -1482,8 +1487,8 @@ export const POS: React.FC = () => {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                backgroundColor: "rgba(17, 17, 17, 0.08)",
-                border: "1px solid rgba(17, 17, 17, 0.25)",
+                backgroundColor: "rgba(0, 0, 0, 0.08)",
+                border: "1px solid rgba(0, 0, 0, 0.25)",
                 borderRadius: "var(--radius-md)",
                 padding: "8px 14px",
                 gap: "10px"
@@ -1519,8 +1524,8 @@ export const POS: React.FC = () => {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                backgroundColor: "rgba(255, 165, 2, 0.1)",
-                border: "1px solid rgba(255, 165, 2, 0.3)",
+                backgroundColor: "rgba(248, 96, 21, 0.1)",
+                border: "1px solid rgba(248, 96, 21, 0.3)",
                 borderRadius: "var(--radius-md)",
                 padding: "8px 14px",
                 gap: "10px"
@@ -1751,7 +1756,7 @@ export const POS: React.FC = () => {
                                 )}
                               </span>
                               {categoryLabel && (
-                                <span className="pos-dish-card-diet" style={{ color: "#4b5563", maxWidth: "55%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={categoryLabel}>
+                                <span className="pos-dish-card-diet" style={{ color: "#595959", maxWidth: "55%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={categoryLabel}>
                                   {categoryLabel}
                                 </span>
                               )}
@@ -1831,9 +1836,9 @@ export const POS: React.FC = () => {
                             ? "1px solid var(--warning)"
                             : undefined,
                           boxShadow: isAllReady
-                            ? "0 0 10px rgba(46, 213, 115, 0.4)"
+                            ? "0 0 10px rgba(30, 143, 78, 0.4)"
                             : isAlmostReady
-                            ? "0 0 8px rgba(255, 165, 2, 0.3)"
+                            ? "0 0 8px rgba(248, 96, 21, 0.3)"
                             : undefined,
                           cursor: "pointer"
                         }}
@@ -1911,7 +1916,7 @@ export const POS: React.FC = () => {
                     fontSize: "13px",
                     fontWeight: "bold",
                     color: "var(--success)",
-                    backgroundColor: "rgba(46, 213, 115, 0.15)",
+                    backgroundColor: "rgba(30, 143, 78, 0.15)",
                     padding: "3px 8px",
                     borderRadius: "10px",
                     display: "inline-flex",
@@ -1925,7 +1930,7 @@ export const POS: React.FC = () => {
                     fontSize: "13px",
                     fontWeight: "bold",
                     color: "var(--warning)",
-                    backgroundColor: "rgba(255, 165, 2, 0.15)",
+                    backgroundColor: "rgba(248, 96, 21, 0.15)",
                     padding: "3px 8px",
                     borderRadius: "10px",
                     display: "inline-flex",
@@ -2051,7 +2056,7 @@ export const POS: React.FC = () => {
           {/* Transfer receipt check banner (security feature) */}
           {activeOrderObj && activeOrderObj.status === "PENDING" && activeOrderObj.paymentMethodString === "TRANSFER" && (
             <div style={{
-              backgroundColor: "rgba(17, 17, 17, 0.05)",
+              backgroundColor: "rgba(0, 0, 0, 0.05)",
               border: "1px solid var(--accent-primary)",
               padding: "10px",
               borderRadius: "var(--radius-sm)",
@@ -2250,7 +2255,7 @@ export const POS: React.FC = () => {
                   padding: "12px",
                   fontSize: "14px",
                   fontWeight: 700,
-                  backgroundColor: user?.role === "MOZO" ? undefined : "rgba(17, 17, 17, 0.08)",
+                  backgroundColor: user?.role === "MOZO" ? undefined : "rgba(0, 0, 0, 0.08)",
                   borderColor: "var(--accent-primary)",
                   color: user?.role === "MOZO" ? "#ffffff" : "var(--accent-primary)"
                 }}
@@ -2268,7 +2273,7 @@ export const POS: React.FC = () => {
                     activeOrderObj.status === "PENDING" && activeOrderObj.paymentMethodString === "TRANSFER" ? (
                       <div style={{
                         flex: 1,
-                        backgroundColor: "rgba(17, 17, 17, 0.05)",
+                        backgroundColor: "rgba(0, 0, 0, 0.05)",
                         border: "1px solid var(--accent-primary)",
                         color: "var(--accent-primary)",
                         padding: "10px",
@@ -2285,7 +2290,7 @@ export const POS: React.FC = () => {
                     ) : activeOrderObj.status === "CANCELLED" ? (
                       <div style={{
                         flex: 1,
-                        backgroundColor: "rgba(255, 71, 87, 0.1)",
+                        backgroundColor: "rgba(212, 37, 24, 0.1)",
                         border: "1px solid var(--accent-primary)",
                         color: "var(--accent-primary)",
                         padding: "10px",
@@ -2319,7 +2324,7 @@ export const POS: React.FC = () => {
                     ) : activeOrderObj.paymentStatus === "APPROVED" || activeOrderObj.payphoneTransactionId ? (
                       <div style={{
                         flex: 1,
-                        backgroundColor: "rgba(46, 213, 115, 0.1)",
+                        backgroundColor: "rgba(30, 143, 78, 0.1)",
                         border: "1px solid var(--success)",
                         color: "var(--success)",
                         padding: "10px",
@@ -2435,7 +2440,7 @@ export const POS: React.FC = () => {
               {selectedClient ? (
                 <div style={{
                   padding: "10px",
-                  backgroundColor: "rgba(46, 213, 115, 0.05)",
+                  backgroundColor: "rgba(30, 143, 78, 0.05)",
                   border: "1px solid var(--success)",
                   borderRadius: "var(--radius-sm)",
                   fontSize: "13px",
@@ -2463,7 +2468,7 @@ export const POS: React.FC = () => {
                 !showNewClientForm && (
                   <div style={{
                     padding: "10px",
-                    backgroundColor: "rgba(17, 17, 17, 0.03)",
+                    backgroundColor: "rgba(0, 0, 0, 0.03)",
                     border: "1px dashed var(--border-light)",
                     borderRadius: "var(--radius-sm)",
                     fontSize: "13px",
@@ -2869,14 +2874,14 @@ export const POS: React.FC = () => {
             padding: "28px",
             boxShadow: "0 15px 50px rgba(0,0,0,0.3)",
             textAlign: "center",
-            border: "2px solid #ff4757"
+            border: "2px solid #d42518"
           }}>
             <div style={{
               width: "68px",
               height: "68px",
               borderRadius: "50%",
-              background: "rgba(255, 71, 87, 0.15)",
-              color: "#ff4757",
+              background: "rgba(212, 37, 24, 0.15)",
+              color: "#d42518",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -2888,7 +2893,7 @@ export const POS: React.FC = () => {
 
             <span style={{
               display: "inline-block",
-              background: "#ff4757",
+              background: "#d42518",
               color: "#fff",
               padding: "4px 12px",
               borderRadius: "20px",
@@ -2900,7 +2905,7 @@ export const POS: React.FC = () => {
               ¡ALERTA PEDIDOSYA!
             </span>
 
-            <h2 style={{ margin: "4px 0 8px 0", color: "#2f3542", fontSize: "1.6rem" }}>
+            <h2 style={{ margin: "4px 0 8px 0", color: "#000000", fontSize: "1.6rem" }}>
               Nuevo Pedido de Delivery
             </h2>
             <p style={{ margin: "0 0 20px 0", color: "#747d8c", fontSize: "1rem" }}>
@@ -2908,7 +2913,7 @@ export const POS: React.FC = () => {
             </p>
 
             <div style={{
-              background: "#f8f9fa",
+              background: "#fdf8ee",
               border: "1px solid #e9ecef",
               borderRadius: "14px",
               padding: "16px",
@@ -2945,7 +2950,7 @@ export const POS: React.FC = () => {
                   flex: 2,
                   padding: "12px",
                   borderRadius: "10px",
-                  background: "#2ed573",
+                  background: "#1e8f4e",
                   color: "#fff",
                   fontWeight: "800",
                   fontSize: "1rem",
