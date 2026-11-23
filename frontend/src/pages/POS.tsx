@@ -39,11 +39,8 @@ import {
   MonitorCheck,
   MapPin
 } from "lucide-react";
-import { systemIconForEmoji, systemTextWithIcons } from "../utils/systemIcons";
 import { splitTakeAway } from "../utils/takeAway";
 import { printComanda } from "../utils/comanda";
-import { escapeHtml } from "../utils/html";
-import { buildComandaHeader, buildComandaFooter, COMANDA_HEADER_CSS } from "../utils/comandaHeader";
 
 
 export interface WaiterNotification {

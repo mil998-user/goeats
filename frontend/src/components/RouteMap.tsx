@@ -665,7 +665,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
               onClick={() => (simState === "RUNNING" ? stopSimulation() : startSimulation())}
               title="Solo para pruebas: recorre la ruta del local al cliente"
             >
-              {systemIconForEmoji("🧪")} {simState === "RUNNING" ? "Detener simulación" : simState === "ARRIVED" ? "Simular otra vez" : "Simular recorrido"}
+              <Play size={14} aria-hidden="true" /> {simState === "RUNNING" ? "Detener simulación" : simState === "ARRIVED" ? "Simular otra vez" : "Simular recorrido"}
             </button>
           )}
         </div>
