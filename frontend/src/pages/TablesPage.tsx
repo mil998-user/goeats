@@ -16,8 +16,7 @@ import {
   CreditCard,
   QrCode
 } from "lucide-react";
-import { escapeHtml } from "../utils/html";
-import { buildComandaHeader, buildComandaFooter, COMANDA_HEADER_CSS } from "../utils/comandaHeader";
+import { comandaFromOrder, printComanda } from "../utils/comanda";
 import { TableGroupActions } from "../components/TableGroupActions";
 
 export const TablesPage: React.FC = () => {
@@ -149,83 +148,11 @@ export const TablesPage: React.FC = () => {
     }
   };
 
-  const handlePrintComanda = async (order: any) => {
+  // Comanda: only date and time, table, order number and dishes (bosses, 17 nov)
+  const handlePrintComanda = (order: any) => {
     if (!order) return;
-
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) {
-      alert("Por favor permite las ventanas emergentes para poder imprimir.");
-      return;
-    }
-
-    const itemsHtml = order.items.map((i: any) => `
-      <tr style="border-bottom: 1px dashed #ccc;">
-        <td style="padding: 6px 0; font-size: 14px;">${i.quantity}x ${escapeHtml(i.variant?.menuItem?.name || "Plato")} (${escapeHtml(i.variant?.name || "Porción")})</td>
-        <td style="padding: 6px 0; text-align: right; font-size: 14px;">$${(i.price * i.quantity).toFixed(2)}</td>
-      </tr>
-      ${i.comments ? `
-      <tr>
-        <td colspan="2" style="font-size: 12px; color: #666; font-style: italic; padding-bottom: 6px;">
-          * Nota: ${escapeHtml(i.comments)}
-        </td>
-      </tr>
-      ` : ""}
-    `).join("");
-
-    const dateStr = new Date(order.createdAt).toLocaleString();
-
-    // Encabezado con logo y datos del local (se pide antes de escribir la ventana)
-    const headerHtml = await buildComandaHeader();
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Comanda Mesa ${selectedTable?.number || ""} - GoEats</title>
-          <style>
-            @media print {
-              body { margin: 0; padding: 10px; font-family: monospace; color: #000; width: 80mm; }
-            }
-            body { font-family: monospace; padding: 20px; width: 80mm; margin: 0 auto; color: #333; }
-            .header { text-align: center; margin-bottom: 15px; }
-            .title { font-size: 18px; font-weight: bold; margin: 5px 0; text-transform: uppercase; }
-            .details { font-size: 12px; margin-bottom: 15px; border-bottom: 1px dashed #000; padding-bottom: 10px; }
-            .table-items { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
-            .total { font-size: 16px; font-weight: bold; border-top: 1px dashed #000; padding-top: 10px; display: flex; justify-content: space-between; }
-            .footer { text-align: center; margin-top: 20px; font-size: 10px; border-top: 1px dashed #ccc; padding-top: 10px; }
-            ${COMANDA_HEADER_CSS}
-          </style>
-        </head>
-        <body>
-          ${headerHtml}
-          <div class="details">
-            <div><strong>Fecha:</strong> ${dateStr}</div>
-            <div><strong>Mesa:</strong> Mesa ${selectedTable?.number || ""}</div>
-            <div><strong>Cliente:</strong> ${escapeHtml(order.customerName || "Varios")}</div>
-            <div><strong>Nro Pedido:</strong> #${order.id}</div>
-          </div>
-          <table class="table-items">
-            <tbody>
-              ${itemsHtml}
-            </tbody>
-          </table>
-          <div class="total">
-            <span>TOTAL A COBRAR</span>
-            <span>$${order.total.toFixed(2)}</span>
-          </div>
-          <div class="footer">
-            <p>*** Pre-cuenta sugerida - No válido como boleta/factura ***</p>
-            <p>¡Gracias por su visita!</p>
-            ${buildComandaFooter()}
-          </div>
-          <script>
-            window.onload = function() {
-              window.print();
-              setTimeout(function() { window.close(); }, 500);
-            };
-          </script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
+    const data = comandaFromOrder(order);
+    printComanda({ ...data, type: "DINE_IN", tableNumber: data.tableNumber ?? selectedTable?.number ?? null });
   };
 
   const activeArea = diningAreas.find((a) => a.id === selectedAreaId);
@@ -646,7 +573,7 @@ export const TablesPage: React.FC = () => {
                   style={{ width: "100%", padding: "12px", fontSize: "14px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
                 >
                   <Printer size={16} />
-                  Imprimir Comanda / Pre-cuenta
+                  Imprimir comanda
                 </button>
 
                 <button

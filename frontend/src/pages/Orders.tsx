@@ -17,8 +17,7 @@ import {
   Clock,
   Printer
 } from "lucide-react";
-import { escapeHtml } from "../utils/html";
-import { buildComandaHeader, buildComandaFooter, COMANDA_HEADER_CSS } from "../utils/comandaHeader";
+import { comandaFromOrder, printComanda } from "../utils/comanda";
 
 export const Orders: React.FC = () => {
   const navigate = useNavigate();
@@ -137,108 +136,9 @@ export const Orders: React.FC = () => {
     }
   };
 
-  const handlePrintComanda = async (order: any) => {
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) {
-      alert("Por favor permite las ventanas emergentes para poder imprimir.");
-      return;
-    }
-
-    const itemsHtml = order.items.map((i: any) => `
-      <tr style="border-bottom: 1px dashed #ccc;">
-        <td style="padding: 6px 0; font-size: 14px;">${i.quantity}x ${escapeHtml(i.variant?.menuItem?.name || "Plato")} (${escapeHtml(i.variant?.name || "Porción")})</td>
-        <td style="padding: 6px 0; text-align: right; font-size: 14px;">$${(i.price * i.quantity).toFixed(2)}</td>
-      </tr>
-      ${i.comments ? `
-      <tr>
-        <td colspan="2" style="font-size: 12px; color: #666; font-style: italic; padding-bottom: 6px;">
-          * Nota: ${escapeHtml(i.comments)}
-        </td>
-      </tr>
-      ` : ""}
-    `).join("");
-
-    const dateStr = new Date(order.createdAt).toLocaleString();
-
-    // Desglose para que el total cuadre: platos, envio, otros y propina
-    const money = (n: number) => `$${n.toFixed(2)}`;
-    const itemsSubtotal = order.items.reduce((sum: number, i: any) => sum + Number(i.price || 0) * Number(i.quantity || 0), 0);
-    const shipping = Number(order.shippingCost || 0);
-    const tip = Number(order.tipAmount || 0);
-    const orderTotal = Number(order.total || 0);
-    const other = Math.round((orderTotal - itemsSubtotal - shipping) * 100) / 100;
-    const row = (label: string, value: string) =>
-      `<div class="row"><span>${label}</span><span>${value}</span></div>`;
-    const breakdownHtml = [
-      row("Subtotal platos", money(itemsSubtotal)),
-      shipping > 0 ? row("Envío a domicilio", money(shipping)) : "",
-      other > 0 ? row("Otros cargos", money(other)) : "",
-      other < 0 ? row("Descuento", `-${money(Math.abs(other))}`) : "",
-    ].join("");
-    const tipHtml = tip > 0
-      ? row("Propina al motorizado", money(tip)) + `<div class="row strong"><span>Total a pagar</span><span>${money(orderTotal + tip)}</span></div>`
-      : "";
-
-    // Encabezado con logo y datos del local (se pide antes de escribir la ventana)
-    const headerHtml = await buildComandaHeader();
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Comanda - GoEats</title>
-          <style>
-            @page { margin: 0; }
-            @media print {
-              body { margin: 0; padding: 10px; font-family: monospace; color: #000; width: 80mm; }
-            }
-            body { font-family: monospace; padding: 20px; width: 80mm; margin: 0 auto; color: #333; }
-            .header { text-align: center; margin-bottom: 15px; }
-            .title { font-size: 18px; font-weight: bold; margin: 5px 0; text-transform: uppercase; }
-            .details { font-size: 12px; margin-bottom: 15px; border-bottom: 1px dashed #000; padding-bottom: 10px; }
-            .table-items { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
-            .total { font-size: 16px; font-weight: bold; border-top: 1px dashed #000; padding-top: 10px; display: flex; justify-content: space-between; }
-            .row { display: flex; justify-content: space-between; font-size: 13px; padding: 2px 0; }
-            .row.strong { font-weight: bold; font-size: 14px; }
-            .breakdown { border-top: 1px dashed #000; padding-top: 8px; margin-bottom: 8px; }
-            .after-total { margin-top: 8px; }
-            .footer { text-align: center; margin-top: 20px; font-size: 10px; border-top: 1px dashed #ccc; padding-top: 10px; }
-            ${COMANDA_HEADER_CSS}
-          </style>
-        </head>
-        <body>
-          ${headerHtml}
-          <div class="details">
-            <div><strong>Fecha:</strong> ${dateStr}</div>
-            <div><strong>Tipo:</strong> ${order.type === "DINE_IN" ? "SERVICIO EN MESA" : order.type === "TAKEOUT" ? "RECOGER EN LOCAL" : "DOMICILIO / DELIVERY"}</div>
-            ${order.table ? `<div><strong>Mesa:</strong> Mesa ${order.table.number}</div>` : ""}
-            <div><strong>Cliente:</strong> ${escapeHtml(order.customerName || "Varios")}</div>
-            <div><strong>Nro Pedido:</strong> #${order.id}</div>
-          </div>
-          <table class="table-items">
-            <tbody>
-              ${itemsHtml}
-            </tbody>
-          </table>
-          <div class="breakdown">${breakdownHtml}</div>
-          <div class="total">
-            <span>TOTAL</span>
-            <span>${money(orderTotal)}</span>
-          </div>
-          <div class="after-total">${tipHtml}</div>
-          <div class="footer">
-            <p>*** No válido como factura ***</p>
-            <p>¡Gracias por su preferencia!</p>
-            ${buildComandaFooter()}
-          </div>
-          <script>
-            window.onload = function() {
-              window.print();
-              setTimeout(function() { window.close(); }, 500);
-            };
-          </script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
+  // Comanda: only date and time, service, order number and dishes (bosses, 17 nov)
+  const handlePrintComanda = (order: any) => {
+    printComanda(comandaFromOrder(order));
   };
 
   // Filter orders

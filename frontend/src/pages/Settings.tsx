@@ -1279,13 +1279,21 @@ export const Settings: React.FC = () => {
 
               <div className="input-group">
                 <label>Logo del Restaurante</label>
+                {/* The owner sees the logo itself, not the file path */}
+                {logo && (
+                  <img
+                    src={logo}
+                    alt="Logo actual del restaurante"
+                    style={{ display: "block", width: "72px", height: "72px", objectFit: "contain", borderRadius: "14px", border: "1px solid var(--border-light)", backgroundColor: "#ffffff", padding: "4px", marginBottom: "10px" }}
+                  />
+                )}
                 <input
                   type="text"
-                  placeholder="URL de la imagen (ej. https://ejemplo.com/logo.png)"
-                  value={logo.startsWith("data:image") ? "Archivo cargado localmente" : logo}
+                  placeholder="O pega un enlace https de la imagen (opcional)"
+                  value={logo.startsWith("http") ? logo : ""}
                   onChange={(e) => setLogo(e.target.value)}
                   className="input-field"
-                  disabled={logo.startsWith("data:image")}
+                  aria-label="Enlace de la imagen del logo"
                   style={{ marginBottom: "6px" }}
                 />
                 <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
@@ -2197,7 +2205,7 @@ export const Settings: React.FC = () => {
             gap: "12px",
             boxShadow: "0 10px 30px rgba(0,0,0,0.6)"
           }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <div className="settings-save-note" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
               <CheckCircle size={16} color="#1e8f4e" />
               <span style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
                 Guarda los cambios para actualizar el menú público y mapa de clientes.
@@ -2224,7 +2232,7 @@ export const Settings: React.FC = () => {
               ) : (
                 <>
                   <Save size={16} />
-                  {systemIconForEmoji("💾")} Guardar Todos los Cambios
+                  Guardar cambios
                 </>
               )}
             </button>
@@ -3509,7 +3517,7 @@ export const Settings: React.FC = () => {
                       onChange={(e) => setPurchaseType(e.target.value)}
                       className="input-field"
                     >
-                      <option value="CONTADO">CONTADO (Aplica egreso directo de Caja POS)</option>
+                      <option value="CONTADO">Contado (sale de la caja)</option>
                       <option value="CREDITO">CRÉDITO (Registra saldo en Cuentas por Pagar)</option>
                     </select>
                   </div>

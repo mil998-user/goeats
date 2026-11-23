@@ -23,8 +23,8 @@ import {
   LayoutGrid
 } from "lucide-react";
 import { systemIconForEmoji, systemTextWithIcons } from "../utils/systemIcons";
-import { escapeHtml } from "../utils/html";
-import { buildComandaHeader, buildComandaFooter, COMANDA_HEADER_CSS } from "../utils/comandaHeader";
+import { splitTakeAway } from "../utils/takeAway";
+import { printComanda } from "../utils/comanda";
 
 
 export interface WaiterNotification {
@@ -87,7 +87,17 @@ interface CartItem {
   price: number;
   quantity: number;
   comments: string;
+  takeAway: boolean;
 }
+
+// A dish can be twice in the cart: once to eat at the table and once to take away
+const cartKey = (item: { variantId: number; takeAway?: boolean }) => `${item.variantId}:${item.takeAway ? 1 : 0}`;
+
+// Dish note of a saved order, without the "PARA LLEVAR" tag, which goes to its own field in the cart
+const cartNote = (comments?: string | null) => {
+  const { takeAway, note } = splitTakeAway(comments);
+  return { comments: note, takeAway };
+};
 
 interface Client {
   id: number;
@@ -113,7 +123,22 @@ export const POS: React.FC = () => {
   
   // Cart & Order State
   const [cart, setCart] = useState<CartItem[]>([]);
+  // Cashier mode to add dishes of a table order that the customer takes away (only those go to kitchen as take-away)
+  const [addTakeAway, setAddTakeAway] = useState(false);
   const [orderType, setOrderType] = useState<"DINE_IN" | "TAKEOUT" | "DELIVERY">("DINE_IN");
+  // Only the cashier or owner marks take-away dishes, and only on table orders (the waiter never sees it)
+  const canMarkTakeAway = orderType === "DINE_IN" && user?.role !== "MOZO";
+  const addingTakeAway = canMarkTakeAway && addTakeAway;
+  useEffect(() => setAddTakeAway(false), [selectedTable?.id, orderType]);
+  const isWaiter = user?.role === "MOZO";
+  // The cashier has no menu on the tables view: "Para llevar" opens it for the chosen table, "Para la mesa" goes back
+  const chooseTakeAway = (takeAway: boolean) => {
+    setAddTakeAway(takeAway);
+    if (user?.role === "CAJERO") {
+      setSearchParams({ view: takeAway ? "menu" : "tables" });
+      setActiveMobileTab(takeAway ? "menu" : "tables");
+    }
+  };
   const [customerName, setCustomerName] = useState("Varios");
   const [orderComments, setOrderComments] = useState("");
   const [deliveryAddress, setDeliveryAddress] = useState("");
@@ -274,7 +299,7 @@ export const POS: React.FC = () => {
   const handleOpenCashSession = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedRegisterId) {
-      alert("Por favor selecciona una caja registradora");
+      alert("Elige una caja.");
       return;
     }
     try {
@@ -352,10 +377,16 @@ export const POS: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (user?.role === "CAJERO" && (!viewParam || viewParam === "menu")) {
+    // The cashier works from the tables; the menu only opens to add take-away dishes to a table
+    if (user?.role === "CAJERO" && (!viewParam || (viewParam === "menu" && !addTakeAway))) {
       setSearchParams({ view: "tables" });
     }
-  }, [user, viewParam]);
+    // The waiter picks the table first; the menu opens once he has one
+    if (user?.role === "MOZO" && viewParam === "menu" && !selectedTable && !isLoadingOrderRef.current) {
+      setSearchParams({ view: "tables" });
+      setActiveMobileTab("tables");
+    }
+  }, [user, viewParam, addTakeAway, selectedTable]);
 
   useEffect(() => {
     const tableIdParam = searchParams.get("tableId") || searchParams.get("table");
@@ -392,7 +423,7 @@ export const POS: React.FC = () => {
               menuItemName: item.variant.menuItem.name,
               price: item.price,
               quantity: item.quantity,
-              comments: item.comments || ""
+              ...cartNote(item.comments)
             }));
             setCart(formattedCart);
             if (order.tableId && diningAreas.length > 0) {
@@ -543,7 +574,7 @@ export const POS: React.FC = () => {
       menuItemName: item.variant.menuItem.name,
       price: item.price,
       quantity: item.quantity,
-      comments: item.comments || ""
+      ...cartNote(item.comments)
     }));
     setCart(formattedCart);
     
@@ -578,7 +609,7 @@ export const POS: React.FC = () => {
             menuItemName: item.variant.menuItem.name,
             price: item.price,
             quantity: item.quantity,
-            comments: item.comments || ""
+            ...cartNote(item.comments)
           }));
           setCart(formattedCart);
         }
@@ -601,10 +632,12 @@ export const POS: React.FC = () => {
       alert("Por favor, selecciona una mesa antes de agregar productos.");
       return;
     }
+    const takeAway = addingTakeAway;
+    const key = cartKey({ variantId: variant.id, takeAway });
     setCart(prev => {
-      const existing = prev.find(i => i.variantId === variant.id);
+      const existing = prev.find(i => cartKey(i) === key);
       if (existing) {
-        return prev.map(i => i.variantId === variant.id ? { ...i, quantity: i.quantity + 1 } : i);
+        return prev.map(i => cartKey(i) === key ? { ...i, quantity: i.quantity + 1 } : i);
       }
       return [...prev, {
         variantId: variant.id,
@@ -612,19 +645,20 @@ export const POS: React.FC = () => {
         menuItemName: item.name,
         price: variant.price,
         quantity: 1,
-        comments: ""
+        comments: "",
+        takeAway
       }];
     });
   };
 
-  const handleUpdateQty = (variantId: number, diff: number) => {
+  const handleUpdateQty = (key: string, diff: number) => {
     if (orderType === "DINE_IN" && !selectedTable) {
       alert("Por favor, selecciona una mesa antes de modificar cantidades.");
       return;
     }
     setCart(prev =>
       prev.map(i => {
-        if (i.variantId === variantId) {
+        if (cartKey(i) === key) {
           const newQty = i.quantity + diff;
           return newQty > 0 ? { ...i, quantity: newQty } : null;
         }
@@ -633,12 +667,25 @@ export const POS: React.FC = () => {
     );
   };
 
-  const handleRemoveFromCart = (variantId: number) => {
+  const handleRemoveFromCart = (key: string) => {
     if (orderType === "DINE_IN" && !selectedTable) {
       alert("Por favor, selecciona una mesa antes de quitar productos.");
       return;
     }
-    setCart(prev => prev.filter(i => i.variantId !== variantId));
+    setCart(prev => prev.filter(i => cartKey(i) !== key));
+  };
+
+  // Moves a cart row between "en mesa" and "para llevar"; joins it with the other row of the same dish if there is one
+  const toggleRowTakeAway = (key: string) => {
+    setCart(prev => {
+      const row = prev.find(i => cartKey(i) === key);
+      if (!row) return prev;
+      const moved = { ...row, takeAway: !row.takeAway };
+      const target = prev.find(i => cartKey(i) === cartKey(moved));
+      const rest = prev.filter(i => cartKey(i) !== key);
+      if (!target) return prev.map(i => cartKey(i) === key ? moved : i);
+      return rest.map(i => cartKey(i) === cartKey(moved) ? { ...i, quantity: i.quantity + row.quantity, comments: i.comments || row.comments } : i);
+    });
   };
 
 
@@ -652,6 +699,14 @@ export const POS: React.FC = () => {
 
   const handlePlaceOrder = async () => {
     if (cart.length === 0 || placingOrderRef.current) return;
+    if (orderType === "TAKEOUT" && (!customerName.trim() || customerName.trim() === "Varios")) {
+      alert("Escribe el nombre de quien retira el pedido.");
+      return;
+    }
+    if (orderType === "DELIVERY" && (!deliveryAddress.trim() || !deliveryPhone.trim())) {
+      alert("Escribe la dirección y el teléfono para el domicilio.");
+      return;
+    }
     placingOrderRef.current = true;
     setPlacingOrder(true);
     try {
@@ -664,12 +719,13 @@ export const POS: React.FC = () => {
           : undefined,
         deliveryReference: orderType === "DELIVERY" ? deliveryReference : undefined,
         deliveryObservation: orderType === "DELIVERY" ? deliveryReference : undefined,
-        deliveryPhone: orderType === "DELIVERY" ? deliveryPhone : undefined,
+        deliveryPhone: orderType === "DELIVERY" || orderType === "TAKEOUT" ? deliveryPhone : undefined,
         tableId: orderType === "DINE_IN" ? selectedTable?.id : undefined,
         items: cart.map(i => ({
           variantId: i.variantId.toString(),
           quantity: i.quantity.toString(),
-          comments: i.comments
+          comments: i.comments,
+          takeAway: i.takeAway
         }))
       };
 
@@ -704,85 +760,18 @@ export const POS: React.FC = () => {
     }
   };
 
-  const handlePrintComanda = async () => {
+  // Comanda of the cart on screen: only date and time, service, order number and dishes (bosses, 17 nov)
+  const handlePrintComanda = () => {
     if (cart.length === 0) return;
-
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) {
-      alert("Por favor permite las ventanas emergentes para poder imprimir.");
-      return;
-    }
-
-    const itemsHtml = cart.map(i => `
-      <tr style="border-bottom: 1px dashed #ccc;">
-        <td style="padding: 6px 0; font-size: 14px;">${i.quantity}x ${escapeHtml(i.menuItemName)} (${escapeHtml(i.name)})</td>
-        <td style="padding: 6px 0; text-align: right; font-size: 14px;">$${(i.price * i.quantity).toFixed(2)}</td>
-      </tr>
-      ${i.comments ? `
-      <tr>
-        <td colspan="2" style="font-size: 12px; color: #666; font-style: italic; padding-bottom: 6px;">
-          * Nota: ${escapeHtml(i.comments)}
-        </td>
-      </tr>
-      ` : ""}
-    `).join("");
-
-    const dateStr = new Date().toLocaleString();
-
-    // Encabezado con logo y datos del local (se pide antes de escribir la ventana)
-    const headerHtml = await buildComandaHeader();
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Comanda - GoEats</title>
-          <style>
-            @page { margin: 0; }
-            @media print {
-              body { margin: 0; padding: 10px; font-family: monospace; color: #000; width: 80mm; }
-            }
-            body { font-family: monospace; padding: 20px; width: 80mm; margin: 0 auto; color: #333; }
-            .header { text-align: center; margin-bottom: 15px; }
-            .title { font-size: 18px; font-weight: bold; margin: 5px 0; text-transform: uppercase; }
-            .details { font-size: 12px; margin-bottom: 15px; border-bottom: 1px dashed #000; padding-bottom: 10px; }
-            .table-items { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
-            .total { font-size: 16px; font-weight: bold; border-top: 1px dashed #000; padding-top: 10px; display: flex; justify-content: space-between; }
-            .footer { text-align: center; margin-top: 20px; font-size: 10px; border-top: 1px dashed #ccc; padding-top: 10px; }
-            ${COMANDA_HEADER_CSS}
-          </style>
-        </head>
-        <body>
-          ${headerHtml}
-          <div class="details">
-            <div><strong>Fecha:</strong> ${dateStr}</div>
-            <div><strong>Tipo:</strong> ${orderType === "DINE_IN" ? "SERVICIO EN MESA" : orderType === "TAKEOUT" ? "RECOGER EN LOCAL" : "DOMICILIO / DELIVERY"}</div>
-            ${selectedTable ? `<div><strong>Mesa:</strong> Mesa ${selectedTable.number}</div>` : ""}
-            <div><strong>Cliente:</strong> ${escapeHtml(customerName || "Varios")}</div>
-            ${activeOrderId ? `<div><strong>Nro Pedido:</strong> #${activeOrderId}</div>` : ""}
-          </div>
-          <table class="table-items">
-            <tbody>
-              ${itemsHtml}
-            </tbody>
-          </table>
-          <div class="total">
-            <span>TOTAL</span>
-            <span>$${calculateTotal().toFixed(2)}</span>
-          </div>
-          <div class="footer">
-            <p>*** No válido como factura ***</p>
-            <p>¡Gracias por su preferencia!</p>
-            ${buildComandaFooter()}
-          </div>
-          <script>
-            window.onload = function() {
-              window.print();
-              setTimeout(function() { window.close(); }, 500);
-            };
-          </script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
+    printComanda({
+      orderId: activeOrderId,
+      createdAt: activeOrderObj?.createdAt ?? new Date(),
+      type: orderType,
+      tableNumber: selectedTable?.number ?? null,
+      customerName,
+      note: orderComments,
+      items: cart.map((i) => ({ quantity: i.quantity, name: i.menuItemName, variant: i.name, comments: i.comments, takeAway: i.takeAway })),
+    });
   };
 
   // Client search
@@ -1138,10 +1127,10 @@ export const POS: React.FC = () => {
               <Store size={32} />
             </div>
             <h2 style={{ fontSize: "20px", fontWeight: "bold", margin: 0, color: "var(--text-primary)" }}>
-              Apertura de Caja Obligatoria
+              Abre la caja para empezar
             </h2>
             <p style={{ fontSize: "14px", color: "var(--text-secondary)", margin: 0, lineHeight: 1.5 }}>
-              Para poder tomar pedidos y utilizar el menú POS, es necesario que abras una sesión de caja registradora.
+              Escribe con cuánto dinero en efectivo empiezas. Al cerrar, la caja te dirá si cuadra.
             </p>
 
             <form onSubmit={handleOpenCashSession} style={{ width: "100%", display: "flex", flexDirection: "column", gap: "15px", marginTop: "10px", textAlign: "left" }}>
@@ -1167,7 +1156,7 @@ export const POS: React.FC = () => {
               </div>
 
               <div className="input-group">
-                <label style={{ fontWeight: 600, fontSize: "13px", color: "var(--text-primary)" }}>Monto Inicial de Apertura ($) *</label>
+                <label style={{ fontWeight: 600, fontSize: "13px", color: "var(--text-primary)" }}>¿Con cuánto dinero empiezas? ($)</label>
                 <input
                   type="number"
                   step="0.01"
@@ -1192,7 +1181,7 @@ export const POS: React.FC = () => {
                   fontWeight: 600
                 }}
               >
-                Abrir Caja y Continuar
+                Abrir caja
               </button>
             </form>
           </div>
@@ -1262,7 +1251,7 @@ export const POS: React.FC = () => {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", marginBottom: "20px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <Utensils size={20} style={{ color: "var(--accent-primary)" }} />
-                <h2 style={{ fontSize: "18px", margin: 0 }}>Servicios de Mesa — Salones</h2>
+                <h2 style={{ fontSize: "18px", margin: 0 }}>{isWaiter ? "¿Qué mesa vas a atender?" : "Servicios de Mesa — Salones"}</h2>
               </div>
               <div>
                 {renderNotificationBell()}
@@ -1275,7 +1264,7 @@ export const POS: React.FC = () => {
                   <h4 style={{ fontSize: "14px", color: "var(--text-muted)", marginBottom: "12px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
                     {area.name}
                   </h4>
-                  <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+                  <div className="pos-table-grid">
                     {area.tables.map(table => {
                       const isSelected = selectedTable?.id === table.id;
                       const isOccupied = table.status === "OCCUPIED";
@@ -1286,10 +1275,11 @@ export const POS: React.FC = () => {
                       return (
                         <button
                           key={table.id}
+                          type="button"
+                          className="pos-table-btn"
                           onClick={() => handleSelectTable(table)}
+                          aria-label={`Mesa ${table.number}, ${isOccupied ? "ocupada" : "libre"}, ${table.capacity} personas`}
                           style={{
-                            width: "88px",
-                            height: "88px",
                             borderRadius: "var(--radius-md)",
                             display: "flex",
                             flexDirection: "column",
@@ -1368,8 +1358,11 @@ export const POS: React.FC = () => {
                             </span>
                           )}
 
-                          <span style={{ fontSize: "20px", fontWeight: "bold" }}>{table.number}</span>
-                          <span style={{ fontSize: "13px", opacity: 0.7 }}>{table.capacity} personas</span>
+                          <span className="pos-table-btn-number">{table.number}</span>
+                          <span style={{ fontSize: "13px", opacity: 0.8 }}>{table.capacity} personas</span>
+                          {!isAllReady && !isAlmostReady && (
+                            <span className="pos-table-btn-state">{isOccupied ? "Ocupada" : "Libre"}</span>
+                          )}
                           {isAllReady && (
                             <span style={{ fontSize: "13px", color: "var(--success)", fontWeight: 700, marginTop: "2px" }}>
                               Servir {systemIconForEmoji("🛎️")}
@@ -1710,7 +1703,7 @@ export const POS: React.FC = () => {
                   >
                     {searchedItems.map(item => {
                       // Find if item has quantity in cart
-                      const cartItem = cart.find(c => c.menuItemName === item.name);
+                      const cartItem = cart.find(c => c.menuItemName === item.name && c.takeAway === addingTakeAway);
                       const isItemInCart = !!cartItem;
                       
                       // Check if it's taxable (production area is set)
@@ -1767,7 +1760,7 @@ export const POS: React.FC = () => {
                               <div className="pos-dish-counter">
                                 <button
                                   type="button"
-                                  onClick={() => handleUpdateQty(cartItem.variantId, -1)}
+                                  onClick={() => handleUpdateQty(cartKey(cartItem), -1)}
                                   className="pos-dish-counter-btn"
                                 >
                                   <Minus size={14} />
@@ -1974,7 +1967,8 @@ export const POS: React.FC = () => {
           </div>
         </div>
 
-        {/* Dine In / Take Away Tabs */}
+        {/* Dine In / Take Away Tabs (not for the waiter: he only serves tables) */}
+        {!isWaiter && (
         <div style={{ padding: "15px 20px 5px 20px" }}>
           <div style={{ display: "flex", gap: "8px", backgroundColor: "var(--bg-tertiary)", padding: "4px", borderRadius: "var(--radius-sm)" }}>
             <button
@@ -1999,12 +1993,13 @@ export const POS: React.FC = () => {
             </button>
           </div>
         </div>
+        )}
 
         {/* Input Details based on type */}
         <div style={{ padding: "5px 20px 10px 20px" }}>
           {orderType !== "DINE_IN" && (
             <div className="input-group" style={{ marginBottom: "10px", gap: "4px" }}>
-              <label style={{ fontSize: "13px", color: "var(--text-muted)" }}>Nombre de Cliente</label>
+              <label style={{ fontSize: "13px", color: "var(--text-muted)" }}>{orderType === "TAKEOUT" ? "¿Quién retira?" : "¿Quién recibe?"}</label>
               <input
                 type="text"
                 className="input-field"
@@ -2053,6 +2048,38 @@ export const POS: React.FC = () => {
             </div>
           )}
 
+          {orderType === "TAKEOUT" && (
+            <div className="input-group" style={{ marginBottom: "10px", gap: "4px" }}>
+              <label htmlFor="pos-pickup-phone" style={{ fontSize: "13px", color: "var(--text-muted)" }}>Teléfono para avisar (opcional)</label>
+              <input
+                id="pos-pickup-phone"
+                type="tel"
+                inputMode="tel"
+                className="input-field"
+                style={{ padding: "8px 12px", fontSize: "13px" }}
+                placeholder="099..."
+                value={deliveryPhone}
+                onChange={(e) => setDeliveryPhone(e.target.value)}
+              />
+            </div>
+          )}
+
+          {(orderType !== "DINE_IN" || selectedTable) && (
+            <div className="input-group" style={{ marginBottom: "10px", gap: "4px" }}>
+              <label htmlFor="pos-order-note" style={{ fontSize: "13px", color: "var(--text-muted)" }}>Observaciones del pedido</label>
+              <textarea
+                id="pos-order-note"
+                className="input-field"
+                rows={2}
+                maxLength={180}
+                style={{ padding: "8px 12px", fontSize: "13px", resize: "vertical", fontFamily: "inherit" }}
+                placeholder="Ej: traer todo junto, cliente apurado"
+                value={orderComments}
+                onChange={(e) => setOrderComments(e.target.value)}
+              />
+            </div>
+          )}
+
           {/* Transfer receipt check banner (security feature) */}
           {activeOrderObj && activeOrderObj.status === "PENDING" && activeOrderObj.paymentMethodString === "TRANSFER" && (
             <div style={{
@@ -2085,6 +2112,18 @@ export const POS: React.FC = () => {
           )}
         </div>
 
+        {canMarkTakeAway && selectedTable && (
+          <div className="pos-takeaway-mode" role="group" aria-label="Cómo se agregan los platos">
+            <button type="button" className={!addTakeAway ? "active" : ""} aria-pressed={!addTakeAway} onClick={() => chooseTakeAway(false)}>
+              Para la mesa
+            </button>
+            <button type="button" className={addTakeAway ? "active" : ""} aria-pressed={addTakeAway} onClick={() => chooseTakeAway(true)}>
+              Para llevar
+            </button>
+            {addTakeAway && <small>Los platos que agregues ahora salen a cocina marcados PARA LLEVAR.</small>}
+          </div>
+        )}
+
         {/* Cart items list */}
         <div style={{
           flex: 1,
@@ -2108,7 +2147,7 @@ export const POS: React.FC = () => {
           ) : (
             cart.map(item => (
               <div
-                key={item.variantId}
+                key={cartKey(item)}
                 style={{
                   display: "flex",
                   gap: "12px",
@@ -2125,15 +2164,29 @@ export const POS: React.FC = () => {
                   <div style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
                     {item.name} • ${item.price.toFixed(2)}
                   </div>
+                  {canMarkTakeAway ? (
+                    <button
+                      type="button"
+                      className={`pos-takeaway-chip ${item.takeAway ? "active" : ""}`}
+                      onClick={() => toggleRowTakeAway(cartKey(item))}
+                      aria-pressed={item.takeAway}
+                      title={item.takeAway ? "Pasar a la mesa" : "Marcar para llevar"}
+                    >
+                      {item.takeAway ? "Para llevar" : "En mesa"}
+                    </button>
+                  ) : item.takeAway ? (
+                    <span className="pos-takeaway-chip active">Para llevar</span>
+                  ) : null}
                   
                   {/* Item comment input */}
                   <input
                     type="text"
                     placeholder="Nota de preparación..."
+                    maxLength={150}
                     value={item.comments}
                     onChange={(e) => {
                       const val = e.target.value;
-                      setCart(prev => prev.map(i => i.variantId === item.variantId ? { ...i, comments: val } : i));
+                      setCart(prev => prev.map(i => cartKey(i) === cartKey(item) ? { ...i, comments: val } : i));
                     }}
                     style={{
                       fontSize: "13px",
@@ -2150,7 +2203,7 @@ export const POS: React.FC = () => {
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <button
                     type="button"
-                    onClick={() => handleUpdateQty(item.variantId, -1)}
+                    onClick={() => handleUpdateQty(cartKey(item), -1)}
                     style={{
                       width: "24px",
                       height: "24px",
@@ -2167,7 +2220,7 @@ export const POS: React.FC = () => {
                   <span style={{ fontSize: "13px", fontWeight: "bold" }}>{item.quantity}</span>
                   <button
                     type="button"
-                    onClick={() => handleAddToCart({ name: item.menuItemName } as any, { id: item.variantId, name: item.name, price: item.price } as any)}
+                    onClick={() => handleUpdateQty(cartKey(item), 1)}
                     style={{
                       width: "24px",
                       height: "24px",
@@ -2185,7 +2238,7 @@ export const POS: React.FC = () => {
                   {/* Delete button */}
                   <button
                     type="button"
-                    onClick={() => handleRemoveFromCart(item.variantId)}
+                    onClick={() => handleRemoveFromCart(cartKey(item))}
                     style={{ color: "var(--danger)", padding: "4px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
                   >
                     <Trash2 size={14} />

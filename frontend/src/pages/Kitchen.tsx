@@ -2,10 +2,11 @@ import React, { useEffect, useState } from "react";
 import { EmptyState } from "../components/EmptyState";
 import { useSocket } from "../context/SocketContext";
 import { apiRequest } from "../utils/api";
-import { Play, CheckCircle, Loader2, ChefHat, BellRing, CheckCircle2 } from "lucide-react";
-import { systemIconForEmoji, systemTextWithIcons } from "../utils/systemIcons";
+import { Play, CheckCircle, Loader2, ChefHat, BellRing, CheckCircle2, Timer, History, ArrowLeft } from "lucide-react";
+import { systemIconForEmoji } from "../utils/systemIcons";
+import { splitTakeAway } from "../utils/takeAway";
 import { KitchenHistory } from "../components/KitchenHistory";
-
+import { BASE_MINUTES, MINUTES_PER_EXTRA_DISH, MAX_MINUTES, estimateMinutes } from "../utils/kitchenTime";
 
 interface OrderItem {
   id: number;
@@ -13,12 +14,11 @@ interface OrderItem {
   quantity: number;
   comments: string | null;
   status: "PENDING" | "PREPARING" | "READY" | "SERVED";
+  createdAt: string;
   variant: {
     name: string;
     menuItem: {
       name: string;
-      productionAreaId: number | null;
-      productionArea?: { id: number; name: string } | null;
     };
   };
   order: {
@@ -31,27 +31,33 @@ interface OrderItem {
   };
 }
 
-interface ProductionArea {
-  id: number;
-  name: string;
-}
+// Approximate kitchen time: same rule as the customer tracking (utils/kitchenTime.ts)
+
+const SERVICE_LABEL: Record<OrderItem["order"]["type"], string> = {
+  DINE_IN: "Para servir",
+  TAKEOUT: "Para llevar",
+  DELIVERY: "Domicilio",
+};
 
 export const Kitchen: React.FC = () => {
   const { socket, isConnected } = useSocket();
   const [items, setItems] = useState<OrderItem[]>([]);
-  const [productionAreas, setProductionAreas] = useState<ProductionArea[]>([]);
-  const [selectedArea, setSelectedArea] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"live" | "history">("live");
   const [callingWaiterOrderId, setCallingWaiterOrderId] = useState<number | null>(null);
   const [calledSuccessMap, setCalledSuccessMap] = useState<Record<number, boolean>>({});
+  // Clock for the countdowns
+  const [now, setNow] = useState(() => Date.now());
 
-  const handleCallWaiter = async (orderId: number, _tableName?: string) => {
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 15000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const handleCallWaiter = async (orderId: number) => {
     try {
       setCallingWaiterOrderId(orderId);
-      await apiRequest(`/kitchen/orders/${orderId}/call-waiter`, {
-        method: "POST",
-      });
+      await apiRequest(`/kitchen/orders/${orderId}/call-waiter`, { method: "POST" });
       setCalledSuccessMap(prev => ({ ...prev, [orderId]: true }));
       setTimeout(() => {
         setCalledSuccessMap(prev => ({ ...prev, [orderId]: false }));
@@ -63,7 +69,7 @@ export const Kitchen: React.FC = () => {
     }
   };
 
-  // Simple beep alert for new orders using web audio API
+  // Short beep for new orders using the web audio API
   const playAlert = () => {
     try {
       const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -72,35 +78,31 @@ export const Kitchen: React.FC = () => {
       oscillator.connect(gainNode);
       gainNode.connect(audioCtx.destination);
       oscillator.type = "sine";
-      oscillator.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+      oscillator.frequency.setValueAtTime(587.33, audioCtx.currentTime);
       gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
       oscillator.start();
       oscillator.stop(audioCtx.currentTime + 0.15);
-      
       setTimeout(() => {
         const osc2 = audioCtx.createOscillator();
         const gain2 = audioCtx.createGain();
         osc2.connect(gain2);
         gain2.connect(audioCtx.destination);
         osc2.type = "sine";
-        osc2.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+        osc2.frequency.setValueAtTime(880, audioCtx.currentTime);
         gain2.gain.setValueAtTime(0.1, audioCtx.currentTime);
         osc2.start();
         osc2.stop(audioCtx.currentTime + 0.25);
       }, 180);
-    } catch (e) {
+    } catch {
       console.log("Audio alert blocked or unsupported");
     }
   };
 
   const fetchItems = async () => {
     try {
-      const params: Record<string, string> = {};
-      if (selectedArea !== null) {
-        params.productionAreaId = selectedArea.toString();
-      }
-      const data = await apiRequest("/kitchen/pending", { params });
+      const data = await apiRequest("/kitchen/pending");
       setItems(data.items);
+      setNow(Date.now());
     } catch (error) {
       console.error("Error fetching kitchen items:", error);
     } finally {
@@ -108,56 +110,30 @@ export const Kitchen: React.FC = () => {
     }
   };
 
-  // Fetch production areas to filter by
-  const fetchAreas = async () => {
-    try {
-      // Get categories/menus to infer production areas, or hit menu configuration
-      // We can also fetch the default list of areas if we list them.
-      // Let's deduce areas from the backend or default to Cocina & Bar
-      setProductionAreas([
-        { id: 1, name: "Cocina" },
-        { id: 2, name: "Bar" },
-      ]);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
   useEffect(() => {
-    fetchAreas();
+    fetchItems();
   }, []);
 
   useEffect(() => {
-    setLoading(true);
-    fetchItems();
-  }, [selectedArea]);
-
-  useEffect(() => {
     if (!socket) return;
-
-    // Listen for new orders
-    const handleNewOrder = (order: any) => {
-      console.log("[KDS] New order received:", order);
+    const handleNewOrder = () => {
       playAlert();
       fetchItems();
     };
-
-    // Listen for updates from other kitchen terminals
-    const handleItemStatusUpdated = () => {
-      fetchItems();
-    };
+    const handleItemStatusUpdated = () => fetchItems();
 
     socket.on("new-order", handleNewOrder);
     socket.on("kitchen-item-status-updated", handleItemStatusUpdated);
-    // Al volver la conexion (senal, celular desbloqueado) se piden los datos de nuevo
+    socket.on("order-status-updated", handleItemStatusUpdated);
+    // When the connection comes back (signal, phone unlocked) the data is asked again
     socket.on("connect", handleItemStatusUpdated);
-
     return () => {
       socket.off("new-order", handleNewOrder);
       socket.off("kitchen-item-status-updated", handleItemStatusUpdated);
+      socket.off("order-status-updated", handleItemStatusUpdated);
       socket.off("connect", handleItemStatusUpdated);
     };
-  }, [socket, selectedArea]);
+  }, [socket]);
 
   const handleUpdateStatus = async (itemId: number, newStatus: "PREPARING" | "READY" | "SERVED") => {
     try {
@@ -165,423 +141,170 @@ export const Kitchen: React.FC = () => {
         method: "PUT",
         body: JSON.stringify({ status: newStatus }),
       });
-      // Local state is updated via socket broadcast, but let's update immediately just in case
-      setItems(prev =>
-        prev.map(item => (item.id === itemId ? { ...item, status: newStatus } : item))
-      );
-    } catch (error) {
+      setItems(prev => prev.map(item => (item.id === itemId ? { ...item, status: newStatus } : item)));
+    } catch {
       alert("Error al actualizar el estado del producto");
     }
   };
 
-  // Group items by order
+  // One card per order, oldest first
   const ordersMap = new Map<number, { order: OrderItem["order"]; items: OrderItem[] }>();
   items.forEach(item => {
-    if (!ordersMap.has(item.orderId)) {
-      ordersMap.set(item.orderId, {
-        order: item.order,
-        items: []
-      });
-    }
+    if (!ordersMap.has(item.orderId)) ordersMap.set(item.orderId, { order: item.order, items: [] });
     ordersMap.get(item.orderId)!.items.push(item);
   });
 
-  const activeOrders = Array.from(ordersMap.values()).sort(
-    (a, b) => new Date(a.order.createdAt).getTime() - new Date(b.order.createdAt).getTime()
-  );
-
-  const formatElapsed = (dateStr: string) => {
-    const elapsedMs = Date.now() - new Date(dateStr).getTime();
-    const mins = Math.floor(elapsedMs / 60000);
-    if (mins < 1) return "Hace instantes";
-    return `Hace ${mins} min`;
-  };
+  const activeOrders = Array.from(ordersMap.values())
+    .map(group => {
+      const pending = group.items.filter(i => i.status === "PENDING" || i.status === "PREPARING");
+      // The clock starts with the oldest dish still to make: dishes added later to a table start their own time
+      const startedAt = pending.length
+        ? Math.min(...pending.map(i => new Date(i.createdAt || group.order.createdAt).getTime()))
+        : new Date(group.order.createdAt).getTime();
+      const dishes = pending.reduce((sum, i) => sum + i.quantity, 0);
+      const estimate = estimateMinutes(dishes);
+      const left = Math.ceil((startedAt + estimate * 60000 - now) / 60000);
+      return { ...group, pending, startedAt, estimate, left };
+    })
+    // Orders still to make first (oldest on top); finished ones go to the end until they are delivered
+    .sort((a, b) => Number(a.pending.length === 0) - Number(b.pending.length === 0) || a.startedAt - b.startedAt);
 
   return (
-    <div style={{ padding: "clamp(12px, 3vw, 24px)", minHeight: "100vh", backgroundColor: "var(--bg-primary)" }}>
-      {/* Header */}
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        marginBottom: "20px",
-        flexWrap: "wrap",
-        gap: "12px"
-      }}>
+    <div className="kds-page">
+      <header className="kds-header">
         <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <ChefHat size={28} style={{ color: "var(--accent-primary)" }} />
-            <h1 style={{ fontSize: "clamp(20px, 4vw, 28px)", margin: 0 }}>Pantalla de Cocina (KDS)</h1>
+          <div className="kds-title">
+            <ChefHat size={28} aria-hidden="true" />
+            <h1>{view === "history" ? "Historial de cocina" : "Cocina"}</h1>
           </div>
-          <p style={{ color: "var(--text-secondary)", fontSize: "13px", marginTop: "4px" }}>
-            Pedidos en preparación en tiempo real • {isConnected ? (
-              <span style={{ color: "var(--success)" }}>● Conectado</span>
-            ) : (
-              <span style={{ color: "var(--danger)" }}>● Desconectado</span>
-            )}
+          <p className="kds-subtitle">
+            {view === "live" && <><strong>{activeOrders.filter(o => o.pending.length).length}</strong> pedidos por preparar · </>}
+            {isConnected ? <span className="kds-online">● En vivo</span> : <span className="kds-offline">● Sin conexión</span>}
           </p>
         </div>
-
-        <div style={{ display: "flex", gap: "8px" }} role="group" aria-label="Vista de cocina">
-          <button
-            type="button"
-            aria-pressed={view === "live"}
-            onClick={() => setView("live")}
-            className={view === "live" ? "glow-btn" : "secondary-btn"}
-            style={{ padding: "8px 16px", minHeight: "44px", borderRadius: "var(--radius-sm)" }}
-          >
-            En curso
-          </button>
-          <button
-            type="button"
-            aria-pressed={view === "history"}
-            onClick={() => setView("history")}
-            className={view === "history" ? "glow-btn" : "secondary-btn"}
-            style={{ padding: "8px 16px", minHeight: "44px", borderRadius: "var(--radius-sm)" }}
-          >
-            Historial
-          </button>
-        </div>
-
-        {/* Filter Area Selection */}
-        {view === "live" && (
-        <div style={{ display: "flex", gap: "8px", overflowX: "auto", maxWidth: "100%", paddingBottom: "4px" }}>
-          <button
-            onClick={() => setSelectedArea(null)}
-            className={selectedArea === null ? "glow-btn" : "secondary-btn"}
-            style={{ padding: "8px 16px", borderRadius: "var(--radius-sm)" }}
-          >
-            Todos
-          </button>
-          {productionAreas.map(area => (
-            <button
-              key={area.id}
-              onClick={() => setSelectedArea(area.id)}
-              className={selectedArea === area.id ? "glow-btn" : "secondary-btn"}
-              style={{ padding: "8px 16px", borderRadius: "var(--radius-sm)" }}
-            >
-              {area.name}
-            </button>
-          ))}
-        </div>
-        )}
-      </div>
+        <button
+          type="button"
+          className="secondary-btn kds-history-btn"
+          onClick={() => setView(view === "live" ? "history" : "live")}
+        >
+          {view === "live" ? <><History size={16} /> Historial</> : <><ArrowLeft size={16} /> Volver a los pedidos</>}
+        </button>
+      </header>
 
       {view === "history" ? (
         <KitchenHistory />
       ) : loading ? (
         <div style={{ display: "flex", justifyContent: "center", padding: "100px" }}>
-          <Loader2 className="spinner" size={48} style={{ animation: "spin 1s linear infinite" }} />
+          <Loader2 size={48} style={{ animation: "spin 1s linear infinite" }} />
         </div>
       ) : activeOrders.length === 0 ? (
-        <div className="glass-card" style={{
-          textAlign: "center",
-          padding: "60px 20px",
-          maxWidth: "500px",
-          margin: "40px auto",
-          borderRadius: "var(--radius-lg)"
-        }}>
+        <div className="glass-card" style={{ textAlign: "center", padding: "60px 20px", maxWidth: "500px", margin: "40px auto", borderRadius: "var(--radius-lg)" }}>
           <EmptyState title="¡Todo listo en cocina!" message="No hay platos pendientes por preparar en este momento." />
         </div>
       ) : (
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 300px), 1fr))",
-          gap: "16px",
-          alignItems: "start"
-        }}>
-          {activeOrders.map(group => {
-            const readyCount = group.items.filter(i => i.status === "READY" || i.status === "SERVED").length;
-            const totalCount = group.items.length;
-            const isAllReady = totalCount > 0 && readyCount === totalCount;
-            const isAlmostReady = readyCount > 0 && !isAllReady;
-            const percent = totalCount > 0 ? Math.round((readyCount / totalCount) * 100) : 0;
-            const isCalling = callingWaiterOrderId === group.order.id;
-            const isCalled = !!calledSuccessMap[group.order.id];
+        <>
+          <p className="kds-help">
+            <Timer size={14} aria-hidden="true" /> Tiempo aproximado: {BASE_MINUTES} min por pedido y {MINUTES_PER_EXTRA_DISH} más por cada plato extra (máximo {MAX_MINUTES}).
+          </p>
+          <div className="kds-grid">
+            {activeOrders.map(group => {
+              const { order } = group;
+              const readyCount = group.items.filter(i => i.status === "READY" || i.status === "SERVED").length;
+              const isAllReady = group.pending.length === 0;
+              const timeState = isAllReady ? "ready" : group.left < 0 ? "late" : group.left <= 3 ? "soon" : "ok";
+              const isCalling = callingWaiterOrderId === order.id;
+              const isCalled = !!calledSuccessMap[order.id];
+              const who = order.type === "DINE_IN" && order.table ? `Mesa ${order.table.number}` : order.customerName;
 
-            const orderColor = isAllReady
-              ? "var(--success)"
-              : isAlmostReady
-              ? "var(--warning)"
-              : group.order.type === "DINE_IN"
-              ? "var(--success)"
-              : group.order.type === "DELIVERY"
-              ? "var(--accent-primary)"
-              : "var(--warning)";
-            
-            return (
-              <div
-                key={group.order.id}
-                className="glass-card animate-fade-in"
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  borderRadius: "var(--radius-md)",
-                  borderTop: `6px solid ${orderColor}`,
-                  boxShadow: isAllReady ? "0 0 16px rgba(30, 143, 78, 0.25)" : "none",
-                  overflow: "hidden"
-                }}
-              >
-                {/* Ticket Header */}
-                <div style={{
-                  padding: "16px",
-                  borderBottom: "1px solid var(--border-light)",
-                  backgroundColor: "var(--bg-tertiary)"
-                }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <div>
-                      <h3 style={{ fontSize: "18px", margin: 0 }}>
-                        {group.order.type === "DINE_IN" && group.order.table
-                          ? `Mesa ${group.order.table.number}`
-                          : group.order.type === "DELIVERY"
-                          ? systemTextWithIcons("🚚 Delivery")
-                          : systemTextWithIcons("🛍️ Recoger en local")}
-                      </h3>
-                      <div style={{ marginTop: "4px", fontSize: "13px", color: "var(--text-secondary)" }}>
-                        Cliente: <strong>{group.order.customerName}</strong>
-                      </div>
+              return (
+                <article key={order.id} className={`kds-card kds-card--${timeState}`} aria-label={`Pedido ${order.id}, ${SERVICE_LABEL[order.type]}, ${who}`}>
+                  <div className="kds-card-head">
+                    <div className="kds-card-who">
+                      <span className={`kds-service kds-service--${order.type.toLowerCase()}`}>{SERVICE_LABEL[order.type]}</span>
+                      <h2>{who}</h2>
+                      <span className="kds-order-number">Pedido #{order.id}</span>
                     </div>
-                    <span style={{
-                      fontSize: "13px",
-                      color: "var(--text-secondary)",
-                      backgroundColor: "var(--bg-secondary)",
-                      padding: "4px 8px",
-                      borderRadius: "var(--radius-sm)",
-                      border: "1px solid var(--border-light)"
-                    }}>
-                      {formatElapsed(group.order.createdAt)}
-                    </span>
-                  </div>
-
-                  {/* Readiness status badge & Progress Bar */}
-                  <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "6px" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{
-                        fontSize: "13px",
-                        fontWeight: 700,
-                        padding: "3px 8px",
-                        borderRadius: "10px",
-                        backgroundColor: isAllReady
-                          ? "rgba(30, 143, 78, 0.15)"
-                          : isAlmostReady
-                          ? "color-mix(in srgb, var(--brand-orange) 15%, transparent)"
-                          : "var(--bg-secondary)",
-                        color: isAllReady
-                          ? "var(--success)"
-                          : isAlmostReady
-                          ? "var(--warning)"
-                          : "var(--text-secondary)",
-                        border: `1px solid ${isAllReady ? "var(--success)" : isAlmostReady ? "var(--warning)" : "var(--border-light)"}`
-                      }}>
-                        {isAllReady ? systemTextWithIcons("🟢 ¡Todos listos!") : isAlmostReady ? systemTextWithIcons("🟡 Casi listo") : systemTextWithIcons("⏳ En preparación")} ({readyCount}/{totalCount})
-                      </span>
-                      <span style={{ fontSize: "13px", color: "var(--text-secondary)", fontWeight: 600 }}>
-                        {percent}%
-                      </span>
-                    </div>
-                    <div style={{ width: "100%", height: "6px", backgroundColor: "var(--bg-primary)", borderRadius: "3px", overflow: "hidden" }}>
-                      <div style={{
-                        width: `${percent}%`,
-                        height: "100%",
-                        backgroundColor: isAllReady ? "var(--success)" : isAlmostReady ? "var(--warning)" : "var(--accent-primary)",
-                        transition: "width 0.4s ease"
-                      }} />
-                    </div>
-                  </div>
-
-                  {group.order.comments && (
-                    <div style={{
-                      marginTop: "10px",
-                      fontSize: "13px",
-                      backgroundColor: "color-mix(in srgb, var(--brand-orange) 8%, transparent)",
-                      borderLeft: "3px solid var(--warning)",
-                      padding: "6px 10px",
-                      color: "var(--warning)"
-                    }}>
-                      Obs: {group.order.comments}
-                    </div>
-                  )}
-                </div>
-
-                {/* Ticket Body / Items List */}
-                <div style={{ padding: "16px", flex: 1, display: "flex", flexDirection: "column", gap: "12px" }}>
-                  {group.items.map(item => (
-                    <div
-                      key={item.id}
-                      style={{
-                        padding: "12px",
-                        backgroundColor: "var(--bg-secondary)",
-                        border: "1px solid var(--border-light)",
-                        borderRadius: "var(--radius-sm)",
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "6px",
-                        opacity: item.status === "READY" ? 0.6 : 1,
-                        transition: "all var(--transition-fast)"
-                      }}
-                    >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                        <div style={{ fontSize: "15px" }}>
-                          <span style={{
-                            color: "var(--accent-primary)",
-                            fontWeight: "bold",
-                            marginRight: "8px",
-                            fontSize: "16px"
-                          }}>
-                            {item.quantity}x
-                          </span>
-                          <strong>{item.variant.menuItem.name}</strong>{" "}
-                          <span style={{ fontSize: "13px", color: "var(--text-secondary)" }}>
-                            ({item.variant.name})
-                          </span>
-                        </div>
-                        
-                        {/* Status tag */}
-                        <span style={{
-                          fontSize: "13px",
-                          fontWeight: 700,
-                          padding: "2px 6px",
-                          borderRadius: "4px",
-                          textTransform: "uppercase",
-                          backgroundColor: item.status === "PREPARING" ? "var(--warning-glow)" : "var(--bg-tertiary)",
-                          color: item.status === "PREPARING" ? "var(--warning)" : "var(--text-secondary)"
-                        }}>
-                          {item.status === "PENDING" ? "Pendiente" : item.status === "PREPARING" ? "Preparando" : "Listo"}
-                        </span>
-                      </div>
-
-                      {item.comments && (
-                        <div style={{ fontSize: "13px", color: "var(--accent-secondary)", fontStyle: "italic" }}>
-                          * {item.comments}
-                        </div>
+                    <div className={`kds-timer kds-timer--${timeState}`}>
+                      {isAllReady ? (
+                        <>Listo</>
+                      ) : group.left < 0 ? (
+                        <>Atrasado<strong>{Math.abs(group.left)} min</strong></>
+                      ) : (
+                        <>Listo en<strong>~{Math.max(group.left, 1)} min</strong></>
                       )}
-
-                      {/* Action buttons */}
-                      <div style={{ display: "flex", gap: "8px", marginTop: "6px" }}>
-                        {item.status === "PENDING" && (
-                          <button
-                            onClick={() => handleUpdateStatus(item.id, "PREPARING")}
-                            className="secondary-btn"
-                            style={{
-                              flex: 1,
-                              padding: "6px 12px",
-                              fontSize: "13px",
-                              backgroundColor: "color-mix(in srgb, var(--brand-orange) 15%, transparent)",
-                              borderColor: "color-mix(in srgb, var(--brand-orange) 30%, transparent)",
-                              color: "var(--warning)"
-                            }}
-                          >
-                            <Play size={12} style={{ marginRight: "4px" }} />
-                            Preparar
-                          </button>
-                        )}
-                        {(item.status === "PENDING" || item.status === "PREPARING") && (
-                          <button
-                            onClick={() => handleUpdateStatus(item.id, "READY")}
-                            className="glow-btn"
-                            style={{
-                              flex: 1,
-                              padding: "6px 12px",
-                              fontSize: "13px"
-                            }}
-                          >
-                            <CheckCircle size={12} style={{ marginRight: "4px" }} />
-                            Listo
-                          </button>
-                        )}
-                        {item.status === "READY" && item.order.type === "DELIVERY" && (
-                          <span style={{ flex: 1, padding: "6px 12px", fontSize: "13px", textAlign: "center", color: "var(--text-secondary)" }}>
-                            Esperando al motorizado
-                          </span>
-                        )}
-                        {item.status === "READY" && item.order.type !== "DELIVERY" && (
-                          <button
-                            onClick={() => handleUpdateStatus(item.id, "SERVED")}
-                            className="secondary-btn"
-                            style={{
-                              flex: 1,
-                              padding: "6px 12px",
-                              fontSize: "13px",
-                              backgroundColor: "rgba(30, 143, 78, 0.1)",
-                              borderColor: "rgba(30, 143, 78, 0.3)",
-                              color: "var(--success)"
-                            }}
-                          >
-                            Entregar
-                          </button>
-                        )}
-                      </div>
                     </div>
-                  ))}
-                </div>
+                  </div>
 
-                {/* Card Footer: Call Waiter Button */}
-                <div style={{
-                  padding: "12px 16px",
-                  backgroundColor: "var(--bg-tertiary)",
-                  borderTop: "1px solid var(--border-light)"
-                }}>
-                  <button
-                    onClick={() => handleCallWaiter(group.order.id, group.order.table ? `Mesa ${group.order.table.number}` : group.order.customerName)}
-                    disabled={isCalling}
-                    style={{
-                      width: "100%",
-                      padding: "10px 14px",
-                      borderRadius: "var(--radius-sm)",
-                      border: isAllReady ? "none" : "1px solid var(--border-light)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "8px",
-                      fontWeight: 700,
-                      fontSize: "13px",
-                      cursor: isCalling ? "not-allowed" : "pointer",
-                      backgroundColor: isCalled
-                        ? "var(--success)"
-                        : isAllReady
-                        ? "var(--success)"
-                        : isAlmostReady
-                        ? "color-mix(in srgb, var(--brand-orange) 20%, transparent)"
-                        : "var(--bg-secondary)",
-                      color: isCalled || isAllReady
-                        ? "#ffffff"
-                        : isAlmostReady
-                        ? "var(--warning)"
-                        : "var(--text-primary)",
-                      boxShadow: isAllReady ? "0 0 14px rgba(30, 143, 78, 0.4)" : "none",
-                      transition: "all var(--transition-fast)"
-                    }}
-                  >
-                    {isCalling ? (
-                      <>
-                        <Loader2 size={16} className="spinner" style={{ animation: "spin 1s linear infinite" }} />
-                        Llamando al mesero...
-                      </>
-                    ) : isCalled ? (
-                      <>
-                        <CheckCircle2 size={16} />
-                        ¡Mesero notificado! {systemIconForEmoji("🛎️")}
-                      </>
-                    ) : isAllReady ? (
-                      <>
-                        <BellRing size={16} />
-                        {systemIconForEmoji("🛎️")} ¡Llamar al Mesero (Mesa Lista)!
-                      </>
-                    ) : (
-                      <>
-                        <BellRing size={16} />
-                        {systemIconForEmoji("🛎️")} Llamar al Mesero
-                      </>
+                  {order.comments && <p className="kds-order-note">Obs: {order.comments}</p>}
+
+                  <ul className="kds-items">
+                    {group.items.map(item => {
+                      const { takeAway, note } = splitTakeAway(item.comments);
+                      return (
+                        <li key={item.id} className={`kds-item kds-item--${item.status.toLowerCase()}`}>
+                          <div className="kds-item-line">
+                            <span className="kds-qty">{item.quantity}×</span>
+                            <div className="kds-item-name">
+                              <strong>{item.variant.menuItem.name}</strong>
+                              <span>{item.variant.name}</span>
+                            </div>
+                            <span className="kds-item-state">
+                              {item.status === "PENDING" ? "Pendiente" : item.status === "PREPARING" ? "Preparando" : "Listo"}
+                            </span>
+                          </div>
+                          {takeAway && order.type === "DINE_IN" && <span className="pos-takeaway-chip active kds-item-takeaway">PARA LLEVAR</span>}
+                          {note && <p className="kds-item-note">* {note}</p>}
+                          <div className="kds-item-actions">
+                            {item.status === "PENDING" && (
+                              <button type="button" className="secondary-btn kds-btn-prepare" onClick={() => handleUpdateStatus(item.id, "PREPARING")}>
+                                <Play size={14} /> Preparar
+                              </button>
+                            )}
+                            {(item.status === "PENDING" || item.status === "PREPARING") && (
+                              <button type="button" className="glow-btn kds-btn-ready" onClick={() => handleUpdateStatus(item.id, "READY")}>
+                                <CheckCircle size={14} /> Listo
+                              </button>
+                            )}
+                            {item.status === "READY" && order.type === "DELIVERY" && (
+                              <span className="kds-waiting">Esperando al motorizado</span>
+                            )}
+                            {item.status === "READY" && order.type !== "DELIVERY" && (
+                              <button type="button" className="secondary-btn kds-btn-serve" onClick={() => handleUpdateStatus(item.id, "SERVED")}>
+                                {order.type === "TAKEOUT" ? "Entregado al cliente" : "Entregar"}
+                              </button>
+                            )}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+
+                  <div className="kds-card-foot">
+                    <span>{readyCount} de {group.items.length} listos</span>
+                    {order.type === "DINE_IN" && (
+                      <button
+                        type="button"
+                        className={`kds-call ${isAllReady || isCalled ? "kds-call--ready" : ""}`}
+                        onClick={() => handleCallWaiter(order.id)}
+                        disabled={isCalling}
+                      >
+                        {isCalling ? (
+                          <><Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} /> Llamando…</>
+                        ) : isCalled ? (
+                          <><CheckCircle2 size={16} /> Mesero avisado {systemIconForEmoji("🛎️")}</>
+                        ) : (
+                          <><BellRing size={16} /> {isAllReady ? "Llamar al mesero: mesa lista" : "Llamar al mesero"}</>
+                        )}
+                      </button>
                     )}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </>
       )}
 
-      {/* Embedded CSS spinner style */}
       <style>{`
         @keyframes spin {
           0% { transform: rotate(0deg); }

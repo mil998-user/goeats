@@ -110,11 +110,9 @@ export const SuperAdmin: React.FC = () => {
   const [ratePricePerKm, setRatePricePerKm] = useState("0.50");
   const [rateCostPerOrder, setRateCostPerOrder] = useState("0.50");
   const [rateIsActive, setRateIsActive] = useState(true);
-  const [rateBalanceRule, setRateBalanceRule] = useState<"PREPAID" | "DEBT_LIMIT">("PREPAID");
   const [savingRate, setSavingRate] = useState(false);
   const [ratePlusDriverBonus, setRatePlusDriverBonus] = useState("0.50");
   const [rateRadiusKm, setRateRadiusKm] = useState("5");
-  const [rateWaitMin, setRateWaitMin] = useState("3");
 
   // SaaS States
   const [saasCustomers, setSaasCustomers] = useState<any[]>([]);
@@ -545,9 +543,7 @@ export const SuperAdmin: React.FC = () => {
           costPerOrder: parseFloat(rateCostPerOrder),
           plusDriverBonus: parseFloat(ratePlusDriverBonus),
           dispatchRadiusKm: parseFloat(rateRadiusKm),
-          dispatchWaitMin: parseInt(rateWaitMin, 10),
-          isActive: rateIsActive,
-          balanceRule: rateBalanceRule
+          isActive: rateIsActive
         })
       });
       if (res.success) {
@@ -559,7 +555,7 @@ export const SuperAdmin: React.FC = () => {
         setRateCostPerOrder("0.50");
         setRatePlusDriverBonus("0.50");
         setRateIsActive(true);
-        setRateBalanceRule("PREPAID"); setRateRadiusKm("5"); setRateWaitMin("3");
+        setRateRadiusKm("5");
         loadRates();
       }
     } catch (err: any) {
@@ -577,9 +573,7 @@ export const SuperAdmin: React.FC = () => {
     setRateCostPerOrder(rate.costPerOrder.toString());
     setRatePlusDriverBonus((rate.plusDriverBonus ?? 0.50).toString());
     setRateRadiusKm(String(rate.dispatchRadiusKm ?? 5));
-    setRateWaitMin(String(rate.dispatchWaitMin ?? 3));
     setRateIsActive(rate.isActive);
-    setRateBalanceRule(rate.balanceRule === "DEBT_LIMIT" ? "DEBT_LIMIT" : "PREPAID");
   };
 
   const loadRestaurants = async () => {
@@ -831,10 +825,10 @@ export const SuperAdmin: React.FC = () => {
           </div>
           <div>
             <h1 style={{ fontSize: "24px", margin: 0, background: "var(--accent-gradient)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-              Panel de SuperAdministrador
+              Administración de GoEats
             </h1>
             <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: 0 }}>
-              SaaS GoEats — Gestión Centralizada de Clientes y Restaurantes
+              Restaurantes, clientes, motorizados y pagos.
             </p>
           </div>
         </div>
@@ -1081,7 +1075,7 @@ export const SuperAdmin: React.FC = () => {
                 }} />
                 <input
                   type="text"
-                  placeholder="Buscar por nombre, slug, dueño o email..."
+                  placeholder="Buscar por nombre, enlace, dueño o correo..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="input-field"
@@ -1133,7 +1127,7 @@ export const SuperAdmin: React.FC = () => {
                   <thead>
                     <tr style={{ borderBottom: "1px solid var(--border-light)" }}>
                       <th style={{ padding: "16px 20px", textAlign: "left", fontSize: "13px", color: "var(--text-muted)" }}>RESTAURANTE</th>
-                      <th style={{ padding: "16px 20px", textAlign: "left", fontSize: "13px", color: "var(--text-muted)" }}>SLUG / ENLACE</th>
+                      <th style={{ padding: "16px 20px", textAlign: "left", fontSize: "13px", color: "var(--text-muted)" }}>ENLACE</th>
                       <th style={{ padding: "16px 20px", textAlign: "left", fontSize: "13px", color: "var(--text-muted)" }}>DUEÑO / CONTACTO</th>
                       <th style={{ padding: "16px 20px", textAlign: "left", fontSize: "13px", color: "var(--text-muted)" }}>FECHA REGISTRO</th>
                       <th style={{ padding: "16px 20px", textAlign: "center", fontSize: "13px", color: "var(--text-muted)" }}>ESTADO</th>
@@ -1732,7 +1726,7 @@ export const SuperAdmin: React.FC = () => {
                     setRatePricePerKm("0.50");
                     setRateCostPerOrder("0.50");
                     setRateIsActive(true);
-                  setRateBalanceRule("PREPAID"); setRateRadiusKm("5"); setRateWaitMin("3");
+                  setRateRadiusKm("5");
                   }}
                   className="secondary-btn"
                   style={{ padding: "6px 12px", fontSize: "13px" }}
@@ -1775,7 +1769,7 @@ export const SuperAdmin: React.FC = () => {
                           )}
                         </div>
                         <div style={{ fontSize: "13px", color: "var(--text-secondary)", marginTop: "4px" }}>
-                          Base: ${r.basePrice.toFixed(2)} • Km: ${r.pricePerKm.toFixed(2)} • Comisión: ${r.costPerOrder.toFixed(2)} • Bono Plus: ${r.plusDriverBonus?.toFixed(2) || "0.00"} • {r.balanceRule === "DEBT_LIMIT" ? "Saldo: con límite de deuda" : "Saldo: con recarga"} • Radio: {r.dispatchRadiusKm ?? 5} km • Espera: {r.dispatchWaitMin ?? 3} min
+                          Base: ${r.basePrice.toFixed(2)} • Km: ${r.pricePerKm.toFixed(2)} • Comisión: ${r.costPerOrder.toFixed(2)} • Bono Plus: ${r.plusDriverBonus?.toFixed(2) || "0.00"} • Radio: {r.dispatchRadiusKm ?? 5} km
                         </div>
                       </div>
                       <button
@@ -1884,42 +1878,11 @@ export const SuperAdmin: React.FC = () => {
                       className="input-field"
                     />
                   </div>
-                  <div className="input-group">
-                    <label htmlFor="rateWaitMin">Espera antes de ofrecer a todos (min)</label>
-                    <input
-                      id="rateWaitMin"
-                      type="number"
-                      step="1"
-                      min="0"
-                      max="30"
-                      required
-                      value={rateWaitMin}
-                      onChange={(e) => setRateWaitMin(e.target.value)}
-                      className="input-field"
-                    />
-                  </div>
                 </div>
                 <small style={{ color: "var(--text-muted)", fontSize: "13px", margin: "-6px 0 14px", display: "block" }}>
-                  Un pedido listo se ofrece primero a los motorizados dentro del radio. Pasada la espera lo ven todos y, si sigue sin motorizado, llega una alerta a este panel.
+                  Un pedido listo se ofrece primero a los motorizados dentro del radio durante 1 minuto. Después lo ven todos y, si sigue sin motorizado, llega una alerta a este panel. El saldo del motorizado nunca queda en negativo: necesita saldo para la comisión y para la parte de GoEats del efectivo que cobra.
                 </small>
 
-                <div className="input-group">
-                  <label htmlFor="rateBalanceRule">Regla de saldo del motorizado</label>
-                  <select
-                    id="rateBalanceRule"
-                    value={rateBalanceRule}
-                    onChange={(e) => setRateBalanceRule(e.target.value === "DEBT_LIMIT" ? "DEBT_LIMIT" : "PREPAID")}
-                    className="input-field"
-                  >
-                    <option value="PREPAID">Con recarga: necesita saldo para tomar pedidos</option>
-                    <option value="DEBT_LIMIT">Con límite de deuda: puede quedar en negativo hasta su límite</option>
-                  </select>
-                  <small style={{ color: "var(--text-muted)", fontSize: "13px", marginTop: "2px", display: "block" }}>
-                    {rateBalanceRule === "DEBT_LIMIT"
-                      ? "El límite de cada motorizado es $50 si no se cambia. Al llegar al límite no puede tomar más pedidos hasta abonar."
-                      : "Si su saldo es menor que la comisión, no puede tomar pedidos hasta recargar."}
-                  </small>
-                </div>
 
                 <div className="input-group" style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "15px" }}>
                   <input
@@ -1946,7 +1909,7 @@ export const SuperAdmin: React.FC = () => {
                         setRateCostPerOrder("0.50");
                         setRatePlusDriverBonus("0.50");
                         setRateIsActive(true);
-                      setRateBalanceRule("PREPAID"); setRateRadiusKm("5"); setRateWaitMin("3");
+                      setRateRadiusKm("5");
                       }}
                       className="secondary-btn"
                       style={{ flex: 1, padding: "10px" }}
@@ -2443,7 +2406,7 @@ export const SuperAdmin: React.FC = () => {
             {/* Plans Form */}
             <div className="glass-card" style={{ padding: "25px" }}>
               <h2 style={{ fontSize: "18px", marginBottom: "20px" }}>
-                {selectedPlan ? `Editar Plan: ${selectedPlan.name}` : "Crear Nuevo Plan SaaS"}
+                {selectedPlan ? `Editar Plan: ${selectedPlan.name}` : "Crear plan nuevo"}
               </h2>
 
               <form onSubmit={handleSavePlan}>
@@ -2570,7 +2533,7 @@ export const SuperAdmin: React.FC = () => {
         {activeTab === "saas_orders" && (
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-              <h2 style={{ fontSize: "18px", margin: 0 }}>Pedidos de Recargas y Planes SaaS</h2>
+              <h2 style={{ fontSize: "18px", margin: 0 }}>Pagos de recargas y de Plus</h2>
               <button type="button" onClick={loadSaasOrders} className="secondary-btn" style={{ padding: "8px 16px", fontSize: "13px" }}>
                 Actualizar Lista
               </button>
@@ -2610,7 +2573,7 @@ export const SuperAdmin: React.FC = () => {
                             {order.user.role === "MOTORIZADO" ? systemTextWithIcons("Motorizado 🛵") : systemTextWithIcons("Cliente 🍔")}
                           </td>
                           <td style={{ padding: "16px 20px", fontSize: "13px" }}>
-                            {order.type === "RECHARGE" ? "Recarga Wallet" : "Club GoEats Plus"}
+                            {order.type === "RECHARGE" ? "Recarga de saldo" : "Club GoEats Plus"}
                           </td>
                           <td style={{ padding: "16px 20px", fontSize: "13px", color: "var(--text-secondary)" }}>
                             {order.planName}
@@ -2721,7 +2684,7 @@ export const SuperAdmin: React.FC = () => {
               </div>
 
               <div className="input-group">
-                <label>Subdominio / Slug URL</label>
+                <label>Enlace de su carta</label>
                 <div style={{ position: "relative" }}>
                   <Globe size={16} style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
                   <input
@@ -2962,7 +2925,7 @@ export const SuperAdmin: React.FC = () => {
             <div style={{ fontSize: "13px", color: "var(--text-secondary)", marginBottom: "20px", display: "flex", flexDirection: "column", gap: "6px" }}>
               <div><strong>Usuario:</strong> {selectedReceiptOrder.user.name} (@{selectedReceiptOrder.user.username})</div>
               <div><strong>Rol:</strong> {selectedReceiptOrder.user.role === "MOTORIZADO" ? "Motorizado" : "Cliente"}</div>
-              <div><strong>Tipo:</strong> {selectedReceiptOrder.type === "RECHARGE" ? "Recarga de Wallet" : "Membresía GoEats Plus"}</div>
+              <div><strong>Tipo:</strong> {selectedReceiptOrder.type === "RECHARGE" ? "Recarga de saldo" : "Membresía GoEats Plus"}</div>
               <div><strong>Plan Adquirido:</strong> {selectedReceiptOrder.planName}</div>
               <div><strong>Valor del Plan:</strong> ${selectedReceiptOrder.amount.toFixed(2)}</div>
               <div><strong>Fecha Solicitud:</strong> {new Date(selectedReceiptOrder.createdAt).toLocaleString()}</div>
@@ -3046,7 +3009,7 @@ export const SuperAdmin: React.FC = () => {
               gap: "8px"
             }}>
               <div><strong>Restaurante:</strong> {selectedApproveRestaurant.name}</div>
-              <div><strong>Enlace Slug:</strong> /r/{selectedApproveRestaurant.slug}</div>
+              <div><strong>Enlace:</strong> /r/{selectedApproveRestaurant.slug}</div>
               {selectedApproveRestaurant.address && <div><strong>Dirección:</strong> {selectedApproveRestaurant.address}</div>}
               {selectedApproveRestaurant.phone && <div><strong>Teléfono:</strong> {selectedApproveRestaurant.phone}</div>}
               
