@@ -22,6 +22,7 @@ import {
   HelpCircle
 } from "lucide-react";
 import { RouteMap } from "../components/RouteMap";
+import { OrderTracker } from "../components/OrderTracker";
 import { FoodPreferencesModal } from "../components/FoodPreferencesModal";
 import { CustomerProfileView } from "../components/CustomerProfileView";
 import { SupportModal } from "../components/SupportModal";
@@ -30,6 +31,7 @@ import { systemIconForEmoji } from "../utils/systemIcons";
 import { OrderRatingBox, type OrderRating } from "../components/OrderRatingBox";
 import { MyReservations } from "../components/MyReservations";
 import { CalendarDays } from "lucide-react";
+import "../styles/customer.css";
 
 // Pago con tarjeta apagado hasta tener proveedor (VITE_CARD_PAYMENTS=true lo enciende)
 const CARD_PAYMENTS_ENABLED = import.meta.env.VITE_CARD_PAYMENTS === "true";
@@ -539,17 +541,6 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
     }
   };
 
-  const getStepIndex = (status: string) => {
-    switch (status) {
-      case "PENDING": return 0;
-      case "PREPARING": return 1;
-      case "READY": return 2;
-      case "DELIVERING": return 3;
-      case "DELIVERED": return 4;
-      default: return -1;
-    }
-  };
-
   const getPaymentMethodLabel = (method?: string) => {
     switch (method) {
       case "CASH": return "Efectivo/Contraentrega";
@@ -568,7 +559,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
   }
 
   return (
-    <div style={{ maxWidth: "1000px", margin: "20px auto 40px auto", padding: "0 16px" }} className="customer-dashboard-container animate-fade-in">
+    <div style={{ maxWidth: "1000px", margin: "20px auto 40px auto", padding: "0 16px" }} className="customer-dashboard-container cd-page animate-fade-in">
       {/* Header / Back */}
       <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
         <Link to="/restaurants" style={{ display: "flex", alignItems: "center", gap: "6px", color: "var(--text-secondary)", fontSize: "13.5px", fontWeight: 600, textDecoration: "none" }}>
@@ -580,10 +571,10 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
       <div className="customer-dashboard-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", flexWrap: "wrap", gap: "14px" }}>
         <div>
           <h1 style={{ fontSize: "clamp(22px, 5vw, 28px)", fontWeight: 800, color: "var(--text-primary)", margin: 0, letterSpacing: "-0.5px" }}>
-            Hola, {user?.name} {systemIconForEmoji("👋")}
+            Hola, {user?.name?.split(" ")[0]} {systemIconForEmoji("👋")}
           </h1>
           <p style={{ color: "var(--text-secondary)", margin: "4px 0 0 0", fontSize: "14px" }}>
-            Administra tus pedidos, revisa estadísticas y gestiona tu Club GoEats Plus.
+            Aquí ves tus pedidos, tus reservas y tu plan Plus.
           </p>
         </div>
 
@@ -1044,16 +1035,11 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
           alignItems: "center",
           gap: "16px"
         }}>
-          <div style={{
-            backgroundColor: "color-mix(in srgb, var(--brand-red) 5%, transparent)",
-            color: "var(--accent-primary)",
-            padding: "12px",
-            borderRadius: "var(--radius-md)"
-          }}>
+          <div className="cd-stat-ico tone-red">
             <ShoppingBag size={24} />
           </div>
           <div>
-            <div style={{ fontSize: "13px", color: "var(--text-muted)", fontWeight: 600 }}>PEDIDOS REALIZADOS</div>
+            <div style={{ fontSize: "13px", color: "var(--text-muted)", fontWeight: 600 }}>PEDIDOS HECHOS</div>
             <div style={{ fontSize: "24px", fontWeight: 800, color: "var(--text-primary)" }}>{stats.totalOrders}</div>
           </div>
         </div>
@@ -1068,12 +1054,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
           alignItems: "center",
           gap: "16px"
         }}>
-          <div style={{
-            backgroundColor: "rgba(46, 204, 113, 0.05)",
-            color: "var(--success)",
-            padding: "12px",
-            borderRadius: "var(--radius-md)"
-          }}>
+          <div className="cd-stat-ico tone-yellow">
             <TrendingUp size={24} />
           </div>
           <div>
@@ -1093,12 +1074,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
           alignItems: "center",
           gap: "16px"
         }}>
-          <div style={{
-            backgroundColor: "rgba(243, 232, 204, 0.3)",
-            color: "#000000",
-            padding: "12px",
-            borderRadius: "var(--radius-md)"
-          }}>
+          <div className="cd-stat-ico tone-black">
             <Check size={24} />
           </div>
           <div>
@@ -1157,18 +1133,22 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                       </div>
                     </div>
                     
-                    <span style={{
-                      backgroundColor: colors.bg,
-                      color: colors.text,
-                      border: `1px solid ${colors.border}`,
-                      fontSize: "13px",
-                      fontWeight: 700,
-                      padding: "4px 10px",
-                      borderRadius: "50px"
-                    }}>
-                      {getStatusLabel(order.status)}
-                    </span>
+                    {!active && (
+                      <span style={{
+                        backgroundColor: colors.bg,
+                        color: colors.text,
+                        border: `1px solid ${colors.border}`,
+                        fontSize: "13px",
+                        fontWeight: 700,
+                        padding: "4px 10px",
+                        borderRadius: "50px"
+                      }}>
+                        {getStatusLabel(order.status)}
+                      </span>
+                    )}
                   </div>
+
+                  {active && <OrderTracker order={order} compact />}
 
                   {active && order.type === "DELIVERY" && order.deliveryPin && (
                     <DeliveryPinBox pin={order.deliveryPin} />
@@ -1319,112 +1299,22 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
               <X size={20} />
             </button>
 
-            <h3 style={{ fontSize: "18px", fontWeight: 800, margin: "0 0 10px 0" }}>
-              Seguimiento del Pedido #{trackingOrder.id}
-            </h3>
-            <p style={{ fontSize: "14px", color: "var(--text-secondary)", margin: "0 0 24px 0" }}>
-              {trackingOrder.restaurant.name}
+            <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--text-secondary)", margin: "0 32px 16px 0" }}>
+              Pedido #{trackingOrder.id} · {trackingOrder.restaurant.name}
             </p>
+
+            <OrderTracker order={trackingOrder} />
 
             {trackingOrder.type === "DELIVERY" && trackingOrder.deliveryPin &&
               trackingOrder.status !== "DELIVERED" && trackingOrder.status !== "CANCELLED" && (
-                <DeliveryPinBox pin={trackingOrder.deliveryPin} large />
+                <div style={{ marginTop: "20px" }}>
+                  <DeliveryPinBox pin={trackingOrder.deliveryPin} large />
+                </div>
               )}
 
-            {/* Stepper Progress */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "24px", padding: "10px 0" }}>
-              {[
-                { title: "Pedido Recibido", desc: "El local ha registrado tu compra.", icon: <Clock size={16} /> },
-                { title: "En Cocina", desc: "Tus platos están siendo preparados.", icon: <Clock size={16} /> },
-                { title: "Listo para Despacho", desc: "Pedido listo, esperando repartidor.", icon: <CheckCircle size={16} /> },
-                { 
-                  title: "En camino",
-                  desc: trackingOrder.deliveryDriver 
-                    ? `Tu motorizado: ${trackingOrder.deliveryDriver.name} va en camino.` 
-                    : "El repartidor va rumbo a tu dirección.", 
-                  icon: <MapPin size={16} /> 
-                },
-                { title: "Entregado", desc: "¡Buen provecho! Pedido entregado.", icon: <CheckCircle size={16} /> }
-              ].map((step, idx) => {
-                const currentStepIdx = getStepIndex(trackingOrder.status);
-                const isCompleted = idx < currentStepIdx;
-                const isActive = idx === currentStepIdx;
-
-                return (
-                  <div key={idx} style={{ display: "flex", gap: "16px", position: "relative" }}>
-                    {/* Line between steps */}
-                    {idx < 4 && (
-                      <div style={{
-                        position: "absolute",
-                        left: "15px",
-                        top: "30px",
-                        bottom: "-25px",
-                        width: "2px",
-                        backgroundColor: isCompleted ? "var(--success)" : "var(--border-light)"
-                      }}></div>
-                    )}
-
-                    {/* Step bubble */}
-                    <div style={{
-                      width: "32px",
-                      height: "32px",
-                      borderRadius: "50px",
-                      backgroundColor: isCompleted ? "var(--success)" : (isActive ? "var(--accent-primary)" : "var(--border-light)"),
-                      color: isCompleted || isActive ? "#ffffff" : "var(--text-muted)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontWeight: 700,
-                      zIndex: 2
-                    }}>
-                      {isCompleted ? <Check size={14} /> : (idx + 1)}
-                    </div>
-
-                    {/* Text info */}
-                    <div style={{ flex: 1 }}>
-                      <h4 style={{
-                        fontSize: "14px",
-                        fontWeight: 700,
-                        margin: 0,
-                        color: isActive ? "var(--accent-primary)" : (isCompleted ? "var(--success)" : "var(--text-primary)")
-                      }}>
-                        {step.title}
-                      </h4>
-                      <p style={{ fontSize: "13px", color: "var(--text-secondary)", margin: "2px 0 0 0" }}>
-                        {step.desc}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Live GPS Route Map */}
-            {trackingOrder.type === "DELIVERY" && (
+            {/* Live map only while the driver is on the way */}
+            {trackingOrder.type === "DELIVERY" && trackingOrder.status === "DELIVERING" && (
               <div style={{ marginTop: "16px", marginBottom: "12px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                  <label style={{ fontSize: "13px", fontWeight: "700", display: "flex", alignItems: "center", gap: "6px", color: "var(--text-primary)", margin: 0 }}>
-                    {systemIconForEmoji("🗺️")} Ruta y Ubicación en Tiempo Real
-                  </label>
-                  {trackingOrder.status === "DELIVERING" && (
-                    <span style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "5px",
-                      fontSize: "13px",
-                      fontWeight: "700",
-                      color: "#1e8f4e",
-                      background: "rgba(30, 143, 78, 0.12)",
-                      padding: "3px 8px",
-                      borderRadius: "12px",
-                      border: "1px solid rgba(30, 143, 78, 0.3)"
-                    }}>
-                      <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#1e8f4e", display: "inline-block" }}></span>
-                      {trackingOrder.driverLat ? "Repartidor en camino (GPS Activo)" : "Repartidor asignado"}
-                    </span>
-                  )}
-                </div>
-
                 <RouteMap
                   orderId={trackingOrder.id}
                   restaurantName={trackingOrder.restaurant.name}
@@ -1440,7 +1330,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                   driverLng={trackingOrder.driverLng}
                   driverName={trackingOrder.deliveryDriver?.name}
                   status={trackingOrder.status}
-                  height="340px"
+                  height="300px"
                 />
               </div>
             )}
@@ -1460,13 +1350,10 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                   <div><strong>Teléfono:</strong> {trackingOrder.deliveryPhone}</div>
                 </>
               )}
-              {trackingOrder.type === "TAKEOUT" && (
-                <div><strong>Instrucciones:</strong> Acércate al local para retirar tu pedido.</div>
-              )}
               {trackingOrder.type === "DINE_IN" && (
                 <div><strong>Consumo en Mesa:</strong> Mesa {trackingOrder.table?.number || trackingOrder.tableId}</div>
               )}
-              <div style={{ marginTop: "8px", borderTop: "1px solid var(--border-light)", paddingTop: "8px" }}>
+              <div style={trackingOrder.type === "TAKEOUT" ? undefined : { marginTop: "8px", borderTop: "1px solid var(--border-light)", paddingTop: "8px" }}>
                 <strong>Método de Pago:</strong> {getPaymentMethodLabel(trackingOrder.paymentMethod || (trackingOrder as any).paymentMethodString)}
               </div>
             </div>
@@ -1485,7 +1372,7 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
                 marginTop: "20px"
               }}
             >
-              Cerrar Seguimiento
+              Cerrar
             </button>
           </div>
         </div>,

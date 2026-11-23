@@ -940,7 +940,7 @@ export const Auth: React.FC = () => {
       <aside className="au-side" aria-hidden="true">
         <BrandLogo size={34} />
         <div className="au-side-copy">
-          <h2>Pide, cocina y reparte en un solo lugar.</h2>
+          <h2>Pide, cocina y reparte en <span className="ge-mark">un solo lugar.</span></h2>
           <p>Una sola cuenta de GoEats para clientes, restaurantes y repartidores de Loja.</p>
         </div>
         <div className="au-side-art">

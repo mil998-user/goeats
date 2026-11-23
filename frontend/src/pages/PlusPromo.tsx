@@ -3,7 +3,8 @@ import { PlatformBankInfo } from "../components/PlatformBankInfo";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { apiRequest } from "../utils/api";
-import { 
+import {
+  ArrowRight,
   ShieldCheck, 
   Heart,
   Sparkles,
@@ -13,6 +14,7 @@ import {
   Clock
 } from "lucide-react";
 import { systemIconForEmoji } from "../utils/systemIcons";
+import "../styles/plus.css";
 
 // Pago con tarjeta apagado hasta tener proveedor (VITE_CARD_PAYMENTS=true lo enciende)
 const CARD_PAYMENTS_ENABLED = import.meta.env.VITE_CARD_PAYMENTS === "true";
@@ -214,7 +216,7 @@ export const PlusPromo: React.FC = () => {
   };
 
   return (
-    <div style={{ 
+    <div className="px-page" style={{ 
       minHeight: "100vh", 
       backgroundColor: "var(--bg-primary)", 
       color: "var(--text-primary)", 
@@ -268,135 +270,66 @@ export const PlusPromo: React.FC = () => {
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <section style={{ 
-        textAlign: "center", 
-        padding: "80px 20px 60px 20px", 
-        maxWidth: "800px", 
-        margin: "0 auto",
-        position: "relative"
-      }}>
-        <div style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: "6px",
-          backgroundColor: "color-mix(in srgb, var(--brand-yellow) 10%, transparent)",
-          border: "1px solid color-mix(in srgb, var(--brand-yellow) 30%, transparent)",
-          color: "#f86015",
-          padding: "6px 16px",
-          borderRadius: "50px",
-          fontSize: "13px",
-          fontWeight: 700,
-          marginBottom: "24px"
-        }}>
-          <Sparkles size={14} /> CLUB EXCLUSIVO GOEATS
+      {/* Inicio (22 nov, estilo de la plantilla): durazno suave, titulo grande con trazo amarillo
+          y un ticket del envio en $0 con el sello de la boca */}
+      <section className="px-hero">
+        <div className="px-hero-copy">
+          <span className="px-chip">
+            <Sparkles size={14} /> Club GoEats Plus
+          </span>
+          <h1>
+            Tus comidas favoritas, con <span className="ge-mark">envíos gratis</span> e ilimitados.
+          </h1>
+          <p>
+            Únete a <strong>GoEats Plus</strong> y despídete del costo de envío. Tus pedidos van primero y el
+            motorizado recibe un bono por cada uno.
+          </p>
+          <button type="button" className="px-cta" onClick={scrollToPlans}>
+            Ver los planes <ArrowRight size={18} />
+          </button>
         </div>
-        <h1 style={{ 
-          fontSize: "clamp(28px, 6vw, 52px)", 
-          fontWeight: 900, 
-          lineHeight: "1.15", 
-          margin: "0 0 20px 0",
-          background: "linear-gradient(135deg, var(--text-primary) 0%, #f86015 100%)",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent"
-        }}>
-          Tus comidas favoritas, con envíos gratis e ilimitados.
-        </h1>
-        <p style={{ 
-          fontSize: "clamp(15px, 3.5vw, 18px)", 
-          color: "var(--text-secondary)", 
-          lineHeight: "1.6", 
-          margin: "0 auto 35px auto",
-          maxWidth: "600px" 
-        }}>
-          Únete a <strong>GoEats Plus</strong> y despídete del costo de envío. Disfruta de la máxima prioridad en cada orden y apoya a los motorizados sin comisiones.
-        </p>
-        <button 
-          onClick={scrollToPlans}
-          style={{ 
-            backgroundColor: "var(--brand-black)", 
-            color: "#ffffff", 
-            border: "none", 
-            padding: "16px 36px", 
-            borderRadius: "50px", 
-            fontWeight: 800, 
-            fontSize: "16px", 
-            cursor: "pointer", 
-            boxShadow: "0 4px 15px rgba(0,0,0,0.1)",
-            transition: "all 0.2s ease"
-          }}
-          onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-2px)"}
-          onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
-        >
-          Únete al Club Plus {systemIconForEmoji("✨")}
-        </button>
+        <div className="px-ticket" aria-hidden="true">
+          <span className="px-ticket-seal">
+            <img src="/brand/boca-negra.png" alt="" />
+          </span>
+          <small>Con GoEats Plus</small>
+          <strong>Envío a domicilio</strong>
+          <span className="px-ticket-price">$0.00</span>
+          <span className="px-ticket-note">En todos tus pedidos a domicilio</span>
+        </div>
       </section>
 
-      {/* Benefits grid */}
-      <section style={{ 
-        maxWidth: "1100px", 
-        margin: "40px auto 80px auto", 
-        padding: "0 20px",
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))",
-        gap: "24px"
-      }}>
-        {/* Benefit 1 */}
-        <div style={{ 
-          backgroundColor: "var(--bg-secondary)", 
-          border: "1px solid var(--border-light)", 
-          borderRadius: "16px", 
-          padding: "30px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "15px"
-        }}>
-          <div style={{ backgroundColor: "rgba(30, 143, 78, 0.1)", color: "#1e8f4e", padding: "12px", borderRadius: "12px", width: "fit-content" }}>
-            <Zap size={24} />
-          </div>
-          <h3 style={{ fontSize: "20px", fontWeight: "bold", margin: 0, color: "var(--text-primary)" }}>Envíos Gratis Ilimitados</h3>
-          <p style={{ color: "var(--text-secondary)", fontSize: "14px", lineHeight: "1.5", margin: 0 }}>
-            Ordena de cualquier local afiliado en la plataforma tantas veces como quieras. El costo de envío será siempre de $0.00 en todos los pedidos de delivery.
+      {/* Beneficios: tarjetas blancas con el icono en un circulo de color */}
+      <section className="px-benefits">
+        <article className="px-benefit">
+          <span className="px-benefit-ico tone-yellow">
+            <Zap size={26} />
+          </span>
+          <h3>Envíos gratis ilimitados</h3>
+          <p>
+            Pide a cualquier local de GoEats las veces que quieras. El envío a domicilio siempre cuesta $0.00.
           </p>
-        </div>
-
-        {/* Benefit 2 */}
-        <div style={{ 
-          backgroundColor: "var(--bg-secondary)", 
-          border: "1px solid var(--border-light)", 
-          borderRadius: "16px", 
-          padding: "30px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "15px"
-        }}>
-          <div style={{ backgroundColor: "color-mix(in srgb, var(--brand-yellow) 10%, transparent)", color: "#f86015", padding: "12px", borderRadius: "12px", width: "fit-content" }}>
-            <Heart size={24} />
-          </div>
-          <h3 style={{ fontSize: "20px", fontWeight: "bold", margin: 0, color: "var(--text-primary)" }}>Apoyo e Incentivo al Repartidor</h3>
-          <p style={{ color: "var(--text-secondary)", fontSize: "14px", lineHeight: "1.5", margin: 0 }}>
-            ¡Tus envíos gratis no afectan al conductor! Al contrario: los repartidores no pagan comisión por tu pedido y reciben un <strong>bono adicional de $0.50</strong> pagado directamente por GoEats. Tus pedidos vuelan {systemIconForEmoji("🛵")}.
+        </article>
+        <article className="px-benefit">
+          <span className="px-benefit-ico tone-red">
+            <Heart size={26} />
+          </span>
+          <h3>Apoyo al repartidor</h3>
+          <p>
+            Tu envío gratis no le cuesta al motorizado: no paga comisión por tu pedido y recibe un{" "}
+            <strong>bono de $0.50</strong> que paga GoEats.
           </p>
-        </div>
-
-        {/* Benefit 3 */}
-        <div style={{ 
-          backgroundColor: "var(--bg-secondary)", 
-          border: "1px solid var(--border-light)", 
-          borderRadius: "16px", 
-          padding: "30px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "15px"
-        }}>
-          <div style={{ backgroundColor: "rgba(243, 232, 204, 0.6)", color: "#000000", padding: "12px", borderRadius: "12px", width: "fit-content" }}>
-            <ShieldCheck size={24} />
-          </div>
-          <h3 style={{ fontSize: "20px", fontWeight: "bold", margin: 0, color: "var(--text-primary)" }}>Soporte y Prioridad Premium</h3>
-          <p style={{ color: "var(--text-secondary)", fontSize: "14px", lineHeight: "1.5", margin: 0 }}>
-            Tus pedidos entran con etiqueta prioritaria a la cocina de los locales y son asignados de inmediato al conductor más cercano. Atención al cliente VIP en caso de cualquier novedad.
+        </article>
+        <article className="px-benefit">
+          <span className="px-benefit-ico tone-black">
+            <ShieldCheck size={26} />
+          </span>
+          <h3>Prioridad y soporte</h3>
+          <p>
+            Tus pedidos llegan a cocina con prioridad y se asignan al motorizado más cercano. Si pasa algo, te
+            atendemos primero.
           </p>
-        </div>
+        </article>
       </section>
 
       {/* Pricing packages */}
@@ -406,8 +339,8 @@ export const PlusPromo: React.FC = () => {
         borderTop: "1px solid var(--border-light)"
       }}>
         <div style={{ maxWidth: "1100px", margin: "0 auto", textAlign: "center" }}>
-          <h2 style={{ fontSize: "clamp(24px, 5vw, 36px)", fontWeight: 800, margin: "0 0 10px 0", color: "var(--text-primary)" }}>Planes Flexibles para Todos</h2>
-          <p style={{ color: "var(--text-secondary)", margin: "0 0 40px 0", fontSize: "14px" }}>Elige la suscripción que mejor se adapte a tus necesidades de consumo.</p>
+          <h2 style={{ fontSize: "clamp(24px, 5vw, 36px)", fontWeight: 800, margin: "0 0 10px 0", color: "var(--text-primary)" }}>Elige tu plan</h2>
+          <p style={{ color: "var(--text-secondary)", margin: "0 0 40px 0", fontSize: "14px" }}>Mira los planes y elige el que más te sirva.</p>
 
           {!isAuthenticated ? (
             <div style={{ maxWidth: "560px", margin: "0 auto", padding: "30px 24px", border: "1px solid var(--border-light)", borderRadius: "16px", backgroundColor: "var(--bg-primary)" }}>
@@ -512,7 +445,7 @@ export const PlusPromo: React.FC = () => {
         borderTop: "1px solid var(--border-light)",
         backgroundColor: "var(--bg-secondary)"
       }}>
-        &copy; {new Date().getFullYear()} GoEats SaaS Platform. Todos los derechos reservados.
+        &copy; {new Date().getFullYear()} GoEats · Hecho en Loja.
       </footer>
 
       {/* Dynamic Auth + Checkout Modal */}

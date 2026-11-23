@@ -1137,6 +1137,376 @@ button, input, select, textarea {
   color: var(--accent-primary);
 }
 
+/* Kitchen screen: one list of orders, service type and approximate time (bosses, 17 nov) */
+.kds-page {
+  padding: clamp(12px, 3vw, 24px);
+  min-height: 100vh;
+  background: var(--bg-primary);
+}
+
+.kds-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.kds-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--brand-red, #d42518);
+}
+
+.kds-title h1 {
+  margin: 0;
+  font-size: clamp(22px, 4vw, 30px);
+  font-weight: 800 !important;
+  color: var(--brand-black, #000);
+}
+
+.kds-subtitle {
+  margin: 4px 0 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.kds-online { color: var(--success); font-weight: 700; }
+.kds-offline { color: var(--brand-red, #d42518); font-weight: 700; }
+
+.kds-history-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 8px 16px;
+  border-radius: 999px;
+}
+
+.kds-help {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.kds-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.kds-card {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: 18px;
+  background: var(--brand-white, #fff);
+  border: 1px solid var(--border-light);
+  border-top: 8px solid var(--success);
+  overflow: hidden;
+}
+
+.kds-card--soon { border-top-color: var(--brand-orange, #f86015); }
+.kds-card--late { border-top-color: var(--brand-red, #d42518); box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-red, #d42518) 35%, transparent); }
+.kds-card--ready { border-top-color: var(--success); }
+
+.kds-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 16px 10px;
+  background: var(--brand-cream, #f3e8cc);
+}
+
+.kds-card-who { min-width: 0; }
+
+.kds-card-who h2 {
+  margin: 6px 0 2px;
+  font-size: 22px;
+  font-weight: 800 !important;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.kds-order-number {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.kds-service {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.kds-service--dine_in { background: var(--brand-black, #000); color: var(--brand-white, #fff); }
+.kds-service--takeout { background: var(--brand-orange, #f86015); color: var(--brand-white, #fff); }
+.kds-service--delivery { background: var(--brand-red, #d42518); color: var(--brand-white, #fff); }
+
+.kds-timer {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.kds-timer strong {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--brand-black, #000);
+}
+
+.kds-timer--soon strong { color: var(--brand-orange, #f86015); }
+.kds-timer--late, .kds-timer--late strong { color: var(--brand-red, #d42518); }
+.kds-timer--ready { font-size: 18px; color: var(--success); }
+
+.kds-order-note {
+  margin: 0;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--brand-black, #000);
+  background: color-mix(in srgb, var(--brand-yellow, #ffca26) 35%, transparent);
+  overflow-wrap: anywhere;
+}
+
+.kds-items {
+  list-style: none;
+  margin: 0;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.kds-item {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-light);
+  background: var(--bg-secondary);
+}
+
+/* A ready dish fades, but its "Entregar" button stays clear */
+.kds-item--ready .kds-item-line,
+.kds-item--ready .kds-item-note { opacity: 0.55; }
+
+.kds-item-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.kds-qty {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--brand-red, #d42518);
+}
+
+.kds-item-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+
+.kds-item-name span {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.kds-item-state {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.kds-item--preparing .kds-item-state { color: var(--brand-orange, #f86015); }
+
+.kds-item-takeaway { margin-top: 6px; }
+
+.kds-item-note {
+  margin: 6px 0 0;
+  font-size: 14px;
+  font-style: italic;
+  color: var(--brand-red, #d42518);
+  overflow-wrap: anywhere;
+}
+
+.kds-item-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.kds-item-actions button {
+  flex: 1;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.kds-waiting {
+  flex: 1;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.kds-card-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 16px 14px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.kds-call {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border-light);
+  background: var(--bg-secondary);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--brand-black, #000);
+  cursor: pointer;
+}
+
+.kds-call--ready {
+  border-color: var(--success);
+  background: var(--success);
+  color: var(--brand-white, #fff);
+}
+
+/* Table buttons: big enough to tap fast on a phone (bosses, 17 nov) */
+.pos-table-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(128px, 100%), 1fr));
+  gap: 12px;
+}
+
+.pos-table-btn {
+  min-width: 0;
+  min-height: 112px;
+  padding: 12px 8px;
+  gap: 2px;
+  border-radius: 18px !important;
+}
+
+.pos-table-btn:focus-visible {
+  outline: 3px solid var(--brand-black, #000);
+  outline-offset: 3px;
+}
+
+.pos-table-btn-number {
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.pos-table-btn-state {
+  margin-top: 4px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+@media (max-width: 480px) {
+  .pos-table-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Take-away dishes of a table order (cashier) */
+.pos-takeaway-mode {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 20px 0;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--brand-cream, #f3e8cc);
+}
+
+.pos-takeaway-mode button {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--brand-black, #000);
+  background: transparent;
+  cursor: pointer;
+}
+
+.pos-takeaway-mode button.active {
+  background: var(--brand-black, #000);
+  color: var(--brand-white, #fff);
+}
+
+.pos-takeaway-mode small {
+  flex-basis: 100%;
+  padding: 2px 10px 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.pos-takeaway-chip {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-light);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  background: transparent;
+  cursor: pointer;
+}
+
+.pos-takeaway-chip.active {
+  border-color: var(--brand-orange, #f86015);
+  background: var(--brand-orange, #f86015);
+  color: var(--brand-white, #fff);
+}
+
+span.pos-takeaway-chip {
+  cursor: default;
+}
+
 /* Payment Card Selector */
 .pos-payment-card {
   flex: 1;
@@ -5033,12 +5403,22 @@ h1, h2, h3 {
 .stat-tile.tone-black .stat-tile-icon { background: var(--brand-black); color: var(--brand-yellow); }
 
 /* ---- Marcador amarillo para titulos de seccion (usar className="brand-marker") ---- */
+/* Titulo grueso como la landing, con una pastilla amarilla a la izquierda */
 .brand-marker {
-  text-decoration-line: underline;
-  text-decoration-color: var(--brand-yellow);
-  text-decoration-thickness: 0.32em;
-  text-underline-offset: -0.12em;
-  text-decoration-skip-ink: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800 !important;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+.brand-marker::before {
+  content: "";
+  flex: none;
+  width: 6px;
+  height: 0.95em;
+  border-radius: 999px;
+  background: var(--brand-yellow);
 }
 
 /* ---- Banda de bienvenida amarilla con la boca del logo ---- */
@@ -5465,5 +5845,35 @@ body.has-tabbar .app-content {
   .cat-section > h2 {
     font-size: 1.3rem !important;
     margin-bottom: 12px !important;
+  }
+}
+
+/* Delivery simulator button on the driver map (9.12, only in tests) */
+.route-sim-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: #1e8f4e;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.route-sim-btn[data-state="RUNNING"] {
+  background: #d42518;
+}
+.route-sim-btn:focus-visible {
+  outline: 3px solid #ffca26;
+  outline-offset: 2px;
+}
+
+/* Settings save bar on the phone: only the button, so it covers less of the form */
+@media (max-width: 640px) {
+  .settings-save-note {
+    display: none !important;
   }
 }

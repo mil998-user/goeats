@@ -1,0 +1,176 @@
+/* Customer order tracking (plan 9.11.7): components/OrderTracker.tsx */
+.otk {
+  --otk-dot: 40px;
+  --otk-bar: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+.otk--compact {
+  --otk-dot: 28px;
+  --otk-bar: 4px;
+  gap: 10px;
+}
+
+/* Head: big icon of the current step, one line of status and the time chip */
+.otk-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.otk-hero {
+  position: relative;
+  flex: 0 0 auto;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--brand-yellow);
+  color: var(--brand-black);
+}
+.otk-hero::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 3px solid var(--brand-yellow);
+  animation: otk-pulse 1.8s ease-out infinite;
+}
+.otk--done .otk-hero {
+  background: var(--success);
+  color: #ffffff;
+}
+.otk--cancelled .otk-hero {
+  background: var(--brand-red-soft);
+  color: var(--brand-red);
+}
+.otk--done .otk-hero::after,
+.otk--cancelled .otk-hero::after {
+  display: none;
+}
+.otk-head-text {
+  flex: 1 1 160px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.otk-title {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+.otk--compact .otk-title {
+  font-size: 15px;
+}
+.otk--cancelled .otk-title {
+  color: var(--brand-red);
+}
+.otk-detail {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+.otk-eta {
+  flex: 0 0 auto;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--brand-black);
+  color: var(--brand-yellow);
+  font-size: 15px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.otk--compact .otk-eta {
+  padding: 3px 10px;
+  font-size: 13px;
+}
+
+/* Steps: four icons on one bar that fills as the order advances */
+.otk-track {
+  position: relative;
+}
+.otk-bar {
+  position: absolute;
+  top: calc(var(--otk-dot) / 2 - var(--otk-bar) / 2);
+  left: 12.5%;
+  right: 12.5%;
+  height: var(--otk-bar);
+  border-radius: 999px;
+  background: var(--brand-cream);
+  overflow: hidden;
+}
+.otk-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--success);
+  transition: width 1.2s var(--ease-spring, ease);
+}
+.otk-steps {
+  position: relative;
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.otk-step {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+.otk-dot {
+  width: var(--otk-dot);
+  height: var(--otk-dot);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+  border: 2px solid var(--bg-secondary);
+  transition: background 0.4s ease, color 0.4s ease;
+}
+.otk-step--done .otk-dot {
+  background: var(--success);
+  color: #ffffff;
+}
+.otk-step--now .otk-dot {
+  background: var(--brand-red);
+  color: #ffffff;
+  box-shadow: 0 0 0 4px var(--brand-red-tint);
+}
+.otk-label {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.otk--compact .otk-label {
+  font-size: 11px;
+}
+.otk-step--done .otk-label {
+  color: var(--text-secondary);
+}
+.otk-step--now .otk-label {
+  color: var(--text-primary);
+  font-weight: 800;
+}
+
+@keyframes otk-pulse {
+  0% { transform: scale(0.92); opacity: 0.9; }
+  100% { transform: scale(1.25); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .otk-hero::after { animation: none; display: none; }
+  .otk-bar-fill { transition: none; }
+}

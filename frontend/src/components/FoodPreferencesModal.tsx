@@ -4,6 +4,7 @@ import { Sparkles, Check, X } from "lucide-react";
 import { apiRequest } from "../utils/api";
 import { FOOD_PREFERENCE_CATEGORIES, normalizeFoodPreferences } from "../utils/foodPreferences";
 import { useAuth } from "../context/AuthContext";
+import "../styles/preferences.css";
 
 interface FoodPreferencesModalProps {
   isOpen: boolean;
@@ -52,6 +53,19 @@ export const FoodPreferencesModal: React.FC<FoodPreferencesModalProps> = ({
 
     return () => window.clearTimeout(timer);
   }, [isOpen, user]);
+
+  // Cerrar con Escape y no dejar que la pagina de atras se mueva
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -103,141 +117,43 @@ export const FoodPreferencesModal: React.FC<FoodPreferencesModalProps> = ({
     }
   };
 
-  return createPortal(
-    <div style={{
-      position: "fixed",
-      top: 0,
-      left: 0,
-      width: "100%",
-      height: "100%",
-      backgroundColor: "rgba(15, 23, 42, 0.75)",
-      backdropFilter: "blur(8px)",
-      zIndex: 999999,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: "16px",
-      animation: "fadeIn 0.2s ease-out",
-    }}>
-      <div style={{
-        backgroundColor: "#ffffff",
-        borderRadius: "20px",
-        width: "100%",
-        maxWidth: "720px",
-        boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.35)",
-        overflow: "hidden",
-        position: "relative",
-        display: "flex",
-        flexDirection: "column",
-        maxHeight: "90dvh",
-        border: "1px solid rgba(226, 232, 240, 0.8)",
-      }} role="dialog" aria-modal="true" aria-labelledby="food-preferences-title">
-        {/* Top Header */}
-        <div style={{
-          padding: "22px 24px 18px",
-          borderBottom: "1px solid #f7f0de",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          backgroundColor: "#ffffff"
-        }}>
-          <div>
-            <div style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-              padding: "4px 10px",
-              borderRadius: "20px",
-              backgroundColor: "#f7f0de",
-              color: "var(--brand-black)",
-              fontSize: "13px",
-              fontWeight: 700,
-              marginBottom: "8px",
-            }}>
-              <Sparkles size={14} />
-              Recomendaciones Inteligentes
-            </div>
-            <h2 style={{
-              fontSize: "24px",
-              fontWeight: 800,
-              color: "var(--brand-black)",
-              margin: "0 0 6px 0",
-              letterSpacing: "-0.4px"
-            }}>
-              <span id="food-preferences-title">{title}</span>
-            </h2>
-            <p style={{
-              fontSize: "13px",
-              color: "#737373",
-              margin: 0,
-              lineHeight: "1.4"
-            }}>
-              {subtitle}
-            </p>
-          </div>
+  const allSelected = selected.length === FOOD_PREFERENCE_CATEGORIES.length;
 
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              background: "#f7f0de",
-              border: "none",
-              borderRadius: "50%",
-              width: "34px",
-              height: "34px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              color: "#737373",
-              transition: "all 0.2s ease",
-            }}
-            title="Cerrar"
-          >
+  return createPortal(
+    <div className="fp-overlay" onClick={onClose}>
+      <div
+        className="fp-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="food-preferences-title"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <header className="fp-head">
+          <div style={{ minWidth: 0 }}>
+            <span className="fp-eyebrow">
+              <Sparkles size={14} />
+              Recomendaciones para ti
+            </span>
+            <h2 id="food-preferences-title" className="fp-title">{title}</h2>
+            <p className="fp-sub">{subtitle}</p>
+          </div>
+          <button type="button" className="fp-close" onClick={onClose} aria-label="Cerrar">
             <X size={18} />
           </button>
-        </div>
+        </header>
 
-        {/* Action Bar: Counts & Select all */}
-        <div style={{
-          padding: "12px 28px",
-          backgroundColor: "#fdf8ee",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          borderBottom: "1px solid #f7f0de",
-          fontSize: "13px",
-        }}>
-          <span style={{ color: "#595959", fontWeight: 600 }}>
+        <div className="fp-bar">
+          <span>
             {selected.length === 0
-              ? "Sin preferencias seleccionadas: verás todos los restaurantes."
-              : `${selected.length} categoría${selected.length > 1 ? "s" : ""} seleccionada${selected.length > 1 ? "s" : ""}`}
+              ? "Sin gustos elegidos: verás todos los restaurantes."
+              : `${selected.length} categoría${selected.length > 1 ? "s" : ""} elegida${selected.length > 1 ? "s" : ""}`}
           </span>
-          <button
-            type="button"
-            onClick={handleSelectAll}
-            style={{
-              background: "none",
-              border: "none",
-              color: "var(--brand-black)",
-              fontWeight: 700,
-              cursor: "pointer",
-              fontSize: "13px",
-            }}
-          >
-            {selected.length === FOOD_PREFERENCE_CATEGORIES.length ? "Deseleccionar todas" : "Seleccionar todas"}
+          <button type="button" className="fp-all" onClick={handleSelectAll}>
+            {allSelected ? "Quitar todas" : "Elegir todas"}
           </button>
         </div>
 
-        {/* Category Grid */}
-        <div style={{
-          padding: "18px 22px",
-          overflowY: "auto",
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))",
-          gap: "12px",
-          flex: 1,
-        }}>
+        <div className="fp-grid">
           {FOOD_PREFERENCE_CATEGORIES.map((cat) => {
             const isSelected = selected.includes(cat.id);
             const CategoryIcon = cat.icon;
@@ -245,127 +161,34 @@ export const FoodPreferencesModal: React.FC<FoodPreferencesModalProps> = ({
               <button
                 key={cat.id}
                 type="button"
+                className={`fp-card${isSelected ? " is-on" : ""}`}
                 onClick={() => toggleCategory(cat.id)}
                 aria-pressed={isSelected}
-                style={{
-                  minHeight: "142px",
-                  borderRadius: "16px",
-                  padding: "15px",
-                  cursor: "pointer",
-                  border: isSelected ? "1px solid var(--brand-black)" : "1px solid #f3e8cc",
-                  backgroundColor: isSelected ? "#f5f5f5" : "#ffffff",
-                  boxShadow: isSelected ? "0 3px 10px rgba(0, 0, 0, 0.08)" : "none",
-                  transition: "border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "stretch",
-                  textAlign: "left",
-                  userSelect: "none",
-                }}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-                  <span style={{
-                    width: "38px",
-                    height: "38px",
-                    borderRadius: "12px",
-                    display: "grid",
-                    placeItems: "center",
-                    backgroundColor: isSelected ? "var(--brand-black)" : "#f7f0de",
-                    color: isSelected ? "#ffffff" : "var(--brand-black-80)",
-                  }}>
-                    <CategoryIcon size={19} strokeWidth={1.8} />
+                <span className="fp-card-top">
+                  <span className="fp-icon">
+                    <CategoryIcon size={20} strokeWidth={1.9} />
                   </span>
-                  <div style={{
-                    width: "22px",
-                    height: "22px",
-                    borderRadius: "7px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    border: isSelected ? "1px solid var(--brand-black)" : "1px solid #f3e8cc",
-                    backgroundColor: isSelected ? "var(--brand-black)" : "#ffffff",
-                    color: "#ffffff",
-                  }}>
-                    {isSelected ? <Check size={12} strokeWidth={3} /> : null}
-                  </div>
-                </div>
-
-                <div style={{
-                  fontSize: "13px",
-                  fontWeight: 700,
-                  color: "var(--brand-black)",
-                  lineHeight: 1.35,
-                  marginBottom: "5px",
-                }}>
-                  {cat.name}
-                </div>
-
-                <div style={{
-                  fontSize: "13px",
-                  color: "#737373",
-                  lineHeight: 1.4
-                }}>
-                  {cat.description}
-                </div>
+                  <span className="fp-check" aria-hidden="true">
+                    {isSelected ? <Check size={13} strokeWidth={3} /> : null}
+                  </span>
+                </span>
+                <span className="fp-name">{cat.name}</span>
+                <span className="fp-desc">{cat.description}</span>
               </button>
             );
           })}
         </div>
 
-        {/* Footer */}
-        <div style={{
-          padding: "14px 20px",
-          borderTop: "1px solid #f7f0de",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: "10px",
-          backgroundColor: "#ffffff",
-        }}>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              padding: "10px 16px",
-              borderRadius: "10px",
-              border: "1px solid var(--brand-cream)",
-              backgroundColor: "transparent",
-              color: "#737373",
-              fontWeight: 600,
-              fontSize: "13px",
-              cursor: "pointer",
-            }}
-          >
+        <footer className="fp-foot">
+          <button type="button" className="fp-later" onClick={onClose}>
             Ahora no
           </button>
-
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={isSaving}
-            style={{
-              flex: 1,
-              maxWidth: "280px",
-              padding: "11px 20px",
-              borderRadius: "10px",
-              border: "none",
-              background: "var(--brand-black)",
-              color: "#ffffff",
-              fontWeight: 700,
-              fontSize: "13px",
-              cursor: "pointer",
-              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.18)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "8px",
-              transition: "transform 0.15s ease",
-            }}
-          >
-            <Sparkles size={15} />
-            {isSaving ? "Guardando..." : "Guardar preferencias"}
+          <button type="button" className="fp-save" onClick={handleSave} disabled={isSaving}>
+            <Sparkles size={16} />
+            {isSaving ? "Guardando..." : "Guardar mis gustos"}
           </button>
-        </div>
+        </footer>
       </div>
     </div>,
     document.body

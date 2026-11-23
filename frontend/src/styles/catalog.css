@@ -1,0 +1,832 @@
+/* =====================================================================
+   Carta de un restaurante (/r/:slug) con la marca de la landing.
+   Fondo crema, portada redondeada, cada categoria en su banda de color,
+   platos en tarjetas blancas, carrito con cabecera amarilla y la
+   informacion del local en tarjeta negra para que el mapa resalte.
+   ===================================================================== */
+.pc-page {
+  --pc-shadow: 0 1px 2px rgba(40, 25, 5, 0.06), 0 12px 32px rgba(40, 25, 5, 0.08);
+  --pc-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --pc-muted: #6b6357;
+  background: var(--brand-cream-soft);
+  /* Nada puede empujar la pagina hacia los lados en ningun ancho */
+  overflow-x: clip;
+}
+
+/* ---------- Barra superior ---------- */
+.pc-nav {
+  background: color-mix(in srgb, var(--brand-cream-soft) 88%, transparent);
+  backdrop-filter: saturate(1.4) blur(14px);
+  -webkit-backdrop-filter: saturate(1.4) blur(14px);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+.pc-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 999px;
+  background: var(--brand-white);
+  color: var(--brand-black);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(40, 25, 5, 0.06), 0 4px 12px rgba(40, 25, 5, 0.06);
+  transition: background 0.2s, color 0.2s;
+}
+.pc-back:hover { background: var(--brand-black); color: var(--brand-white); }
+.pc-back:focus-visible { outline: 3px solid var(--brand-red); outline-offset: 2px; }
+
+/* ---------- Portada ---------- */
+.pc-hero {
+  position: relative;
+  max-width: 1200px;
+  margin: 20px auto 0;
+  padding: 0 20px;
+}
+.pc-hero-cover {
+  height: 320px;
+  border-radius: 32px;
+  background-color: var(--brand-red);
+  background-size: cover;
+  background-position: center;
+}
+/* Degradado para que el texto blanco se lea sobre cualquier foto */
+.pc-hero-cover::after {
+  content: "";
+  position: absolute;
+  inset: 0 20px;
+  border-radius: 32px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 25%, rgba(20, 10, 0, 0.78) 100%);
+  pointer-events: none;
+}
+.pc-hero-body {
+  position: absolute;
+  left: 52px;
+  right: 52px;
+  bottom: 30px;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: 22px;
+  color: var(--brand-white);
+}
+.pc-hero-logo {
+  flex: none;
+  width: 104px;
+  height: 104px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 8px;
+  border-radius: 28px;
+  background: var(--brand-white);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+.pc-hero-logo img { width: 100%; height: 100%; object-fit: contain; }
+.pc-hero-logo span { font-size: 40px; font-weight: 800; color: var(--brand-red); }
+.pc-hero-info { min-width: 0; }
+.pc-hero-name {
+  margin: 0;
+  font-size: clamp(30px, 4vw, 48px);
+  font-weight: 800 !important;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: inherit;
+}
+.pc-hero-desc {
+  margin: 8px 0 0;
+  max-width: 640px;
+  font-size: 16px;
+  line-height: 1.4;
+  opacity: 0.92;
+}
+.pc-hero-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+.pc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  max-width: 100%;
+}
+.pc-chip--rating { background: var(--brand-white); color: var(--brand-black); }
+.pc-chip--open { background: #1e8f4e; color: var(--brand-white); }
+.pc-chip--closed { background: var(--brand-red); color: var(--brand-white); }
+.pc-chip--action {
+  background: var(--brand-yellow);
+  color: var(--brand-black);
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.25s var(--pc-ease);
+}
+.pc-chip--action:hover { transform: translateY(-1px); }
+.pc-chip--action:focus-visible { outline: 3px solid var(--brand-white); outline-offset: 2px; }
+
+/* ---------- Menu ---------- */
+.pc-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.pc-page .cat-chips {
+  top: 64px;
+  background: color-mix(in srgb, var(--brand-cream-soft) 92%, transparent);
+}
+.pc-page .cat-chips button {
+  border: none;
+  box-shadow: 0 1px 2px rgba(40, 25, 5, 0.06), 0 4px 12px rgba(40, 25, 5, 0.05);
+  color: var(--brand-black);
+  font-weight: 700;
+}
+.pc-page .cat-chips button:hover { background: var(--brand-yellow); }
+.pc-page .cat-chips button:focus-visible { outline: 3px solid var(--brand-red); outline-offset: 2px; }
+
+/* Cada categoria en su banda de color, como en /restaurants */
+.pc-band {
+  padding: 28px 24px 24px;
+  border-radius: 32px;
+}
+/* 22 nov: fondos suaves de la plantilla, uno distinto por categoria; el color fuerte va en la raya del titulo */
+.pc-band--sun { background: var(--ge-sun); }
+.pc-band--white { background: var(--brand-white); }
+.pc-band--peach { background: var(--ge-peach); }
+.pc-band--blush { background: var(--ge-blush); }
+.pc-band--sun .brand-marker::before { background: var(--brand-red); }
+.pc-band--white .brand-marker::before { background: var(--brand-yellow); }
+.pc-band--peach .brand-marker::before { background: var(--brand-red); }
+.pc-band--blush .brand-marker::before { background: var(--brand-red); }
+/* Sobre blanco los platos llevan borde para no perderse */
+.pc-band--white .pc-dish { box-shadow: 0 0 0 1px var(--border-light), var(--pc-shadow); }
+.pc-band-title {
+  margin: 0;
+  font-size: clamp(22px, 2.6vw, 28px) !important;
+  color: var(--brand-black);
+}
+.pc-band-desc {
+  margin: 6px 0 0 16px;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.68);
+}
+.pc-dishes {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+/* Plato: texto a la izquierda y foto a la derecha */
+.pc-dish {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 132px;
+  gap: 20px;
+  align-items: center;
+  padding: 18px;
+  border-radius: 24px;
+  background: var(--brand-white);
+  box-shadow: var(--pc-shadow);
+  transition: transform 0.35s var(--pc-ease);
+}
+.pc-dish:hover { transform: translateY(-2px); }
+.pc-dish-text { min-width: 0; }
+.pc-dish-name {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em;
+  color: var(--brand-black);
+}
+.pc-dish-desc {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--pc-muted);
+}
+.pc-dish-prices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+.pc-dish-img {
+  width: 132px;
+  height: 132px;
+  border-radius: 20px;
+  object-fit: cover;
+}
+.pc-dish-img--empty {
+  display: grid;
+  place-items: center;
+  background: var(--brand-cream);
+  color: var(--brand-red);
+}
+.pc-promo {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--brand-red);
+  color: var(--brand-white);
+  font-weight: 700;
+}
+/* Boton de precio: crema con "+" rojo; al pasar se pone amarillo */
+.pc-page .price-pill {
+  border: none;
+  background: var(--brand-cream-soft);
+  font-weight: 600;
+}
+.pc-page .price-pill:hover { background: var(--brand-yellow); }
+.pc-page .price-pill:focus-visible { outline: 3px solid var(--brand-red); outline-offset: 2px; }
+
+/* ---------- Columna derecha ---------- */
+.pc-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+/* Carrito con cabecera amarilla */
+.pc-page .pc-cart,
+.sheet-body .pc-cart {
+  padding: 0 22px 22px !important;
+  overflow: hidden;
+  border: none !important;
+  border-radius: 28px !important;
+  background: var(--brand-white) !important;
+  box-shadow: var(--pc-shadow) !important;
+}
+.pc-cart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 -22px 18px;
+  padding: 18px 22px;
+  background: var(--brand-yellow);
+  color: var(--brand-black);
+}
+.pc-cart-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em;
+}
+.pc-cart-count {
+  display: grid;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--brand-black);
+  color: var(--brand-yellow);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+/* Productos del carrito: nombre, quitar, contador y subtotal */
+.pc-cart-items {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0 0 20px;
+  padding: 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.pc-cart-item {
+  padding: 12px 12px 12px 14px;
+  border-radius: 18px;
+  background: var(--brand-cream-soft);
+}
+.pc-cart-item-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.pc-cart-item-name {
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.25;
+  color: var(--brand-black);
+  overflow-wrap: anywhere;
+}
+.pc-cart-item-variant {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--pc-muted);
+}
+.pc-cart-remove {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 50%;
+  background: var(--brand-white);
+  color: var(--brand-red);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.pc-cart-remove:hover { background: var(--brand-red); color: var(--brand-white); }
+.pc-cart-item-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+.pc-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--brand-white);
+  box-shadow: 0 1px 2px rgba(40, 25, 5, 0.08);
+}
+.pc-stepper button {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 50%;
+  background: var(--brand-cream);
+  color: var(--brand-black);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.pc-stepper button:last-child { background: var(--brand-black); color: var(--brand-white); }
+.pc-stepper button:hover { background: var(--brand-yellow); color: var(--brand-black); }
+.pc-stepper span {
+  min-width: 26px;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 800;
+}
+.pc-cart-item-total {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--brand-black);
+}
+.pc-cart-remove:focus-visible,
+.pc-stepper button:focus-visible { outline: 3px solid var(--brand-red); outline-offset: 2px; }
+
+/* Nota por plato y observaciones del pedido */
+.pc-cart-note {
+  width: 100%;
+  min-width: 0;
+  margin-top: 10px;
+  padding: 8px 12px;
+  border: 1px dashed color-mix(in srgb, var(--brand-black) 25%, transparent);
+  border-radius: 12px;
+  background: var(--brand-white);
+  font-size: 16px; /* 16 px so iPhone doesn't zoom in */
+  color: var(--brand-black);
+}
+.pc-cart-note::placeholder { color: color-mix(in srgb, var(--brand-black) 45%, transparent); font-size: 14px; }
+.pc-cart-note:focus-visible,
+.pc-order-note:focus-visible { outline: 3px solid var(--brand-red); outline-offset: 2px; }
+.pc-order-note {
+  width: 100%;
+  min-height: 64px;
+  resize: vertical;
+  font-size: 16px;
+  font-family: inherit;
+}
+
+/* Informacion del local en negro */
+.pc-info {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px 22px;
+  border-radius: 28px;
+  background: var(--brand-black);
+  color: var(--brand-white);
+}
+.pc-info-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800 !important;
+  color: var(--brand-white);
+}
+.pc-info-title svg { color: var(--brand-yellow); }
+.pc-info-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.pc-info-ico {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(255, 202, 38, 0.16);
+  color: var(--brand-yellow);
+}
+.pc-info-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pc-info-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--brand-yellow);
+}
+.pc-info-value {
+  font-size: 14px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.9);
+}
+.pc-info-link { color: var(--brand-white); font-weight: 700; text-decoration: none; }
+.pc-info-link:hover { color: var(--brand-yellow); }
+.pc-info-muted { color: rgba(255, 255, 255, 0.6); }
+.pc-info-code {
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--brand-white);
+}
+.pc-info-qr {
+  margin-top: 10px;
+  padding: 8px;
+  border-radius: 14px;
+  background: var(--brand-white);
+  width: max-content;
+}
+.pc-info-status {
+  width: max-content;
+  margin: 2px 0 4px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+.pc-info-status.is-open { background: #1e8f4e; color: var(--brand-white); }
+.pc-info-status.is-closed { background: var(--brand-red); color: var(--brand-white); }
+.pc-info-ref {
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.08);
+}
+.pc-info-ref p {
+  margin: 4px 0 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.9);
+}
+.pc-info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 46px;
+  padding: 0 16px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+.pc-info-btn--yellow { border: none; background: var(--brand-yellow); color: var(--brand-black); }
+.pc-info-btn--yellow:hover { background: var(--brand-white); }
+.pc-info-btn--ghost {
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: transparent;
+  color: var(--brand-white);
+}
+.pc-info-btn--ghost:hover { border-color: var(--brand-yellow); color: var(--brand-yellow); }
+.pc-info-btn:focus-visible { outline: 3px solid var(--brand-white); outline-offset: 2px; }
+
+/* ---------- Banda "Visitanos": info del local + mapa, bajo el menu ---------- */
+.pc-visit {
+  max-width: 1200px;
+  margin: 0 auto 48px;
+  padding: 0 20px;
+}
+.pc-visit-inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 28px;
+  align-items: stretch;
+  padding: 32px;
+  border-radius: 32px;
+  background: var(--ge-peach);
+}
+/* Dentro de la banda durazno la informacion va en negro, con acentos rojos */
+.pc-visit .pc-info { color: var(--brand-black); }
+.pc-visit .pc-info-title { color: var(--brand-black); }
+.pc-visit .pc-info-title svg { color: var(--brand-red); }
+.pc-visit .pc-info-ico { background: var(--brand-white); color: var(--brand-red); }
+.pc-visit .pc-info-label { color: var(--brand-red); }
+.pc-visit .pc-info-value,
+.pc-visit .pc-info-ref p { color: var(--brand-black-80); }
+.pc-visit .pc-info-link { color: var(--brand-black); }
+.pc-visit .pc-info-link:hover { color: var(--brand-red); }
+.pc-visit .pc-info-muted { color: var(--brand-black-55); }
+.pc-visit .pc-info-code { background: var(--brand-white); color: var(--brand-black); }
+.pc-visit .pc-info-ref { background: color-mix(in srgb, var(--brand-white) 60%, transparent); }
+.pc-visit .pc-info-btn--yellow { border: 2px solid var(--brand-black); }
+.pc-visit .pc-info-btn--ghost { border-color: color-mix(in srgb, var(--brand-black) 30%, transparent); color: var(--brand-black); }
+.pc-visit .pc-info-btn--ghost:hover { border-color: var(--brand-red); color: var(--brand-red); }
+.pc-visit .pc-info-btn:focus-visible { outline-color: var(--brand-black); }
+/* Dentro de la banda la info ya no es tarjeta aparte */
+.pc-visit .pc-info {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+}
+.pc-visit .pc-info-title { font-size: clamp(22px, 2.4vw, 28px); letter-spacing: -0.03em; }
+.pc-visit .pc-map {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  box-shadow: none;
+  border-radius: 24px;
+}
+.pc-visit .pc-map iframe { flex: 1; min-height: 280px; height: auto; }
+
+/* Mapa en su propia tarjeta: de borde a borde y con pie blanco */
+.pc-map {
+  overflow: hidden;
+  border-radius: 28px;
+  background: var(--brand-white);
+  box-shadow: var(--pc-shadow);
+}
+.pc-map iframe {
+  display: block;
+  border: 0;
+}
+.pc-map-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+}
+.pc-map-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--brand-red);
+}
+.pc-map-address {
+  margin: 2px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--brand-black);
+}
+.pc-map-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: var(--brand-black);
+  color: var(--brand-white);
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+.pc-map-btn:hover { background: var(--brand-red); }
+.pc-map-btn:focus-visible { outline: 3px solid var(--brand-red); outline-offset: 2px; }
+
+/* Chef animado: se queda a la vista mientras se baja por el menu */
+.pc-chef {
+  position: sticky;
+  top: 140px;
+  overflow: hidden;
+  padding: 18px 22px 24px;
+  border-radius: 28px;
+  background: var(--ge-blush);
+  color: var(--brand-black);
+  text-align: center;
+}
+.pc-chef-art {
+  height: 230px;
+  margin-bottom: 6px;
+}
+.pc-chef-art svg { width: 100%; height: 100%; }
+.pc-chef-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+.pc-chef-text {
+  margin: 6px auto 0;
+  max-width: 260px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--brand-black-80);
+}
+.pc-chef .gl-ill-flip { animation: pc-flip 1.6s cubic-bezier(0.32, 0.72, 0, 1) infinite; }
+.pc-chef .gl-ill-steam path { animation: pc-steam 2.4s ease-in-out infinite; }
+.pc-chef .gl-ill-steam path:nth-child(2) { animation-delay: 0.5s; }
+.pc-chef .gl-ill-steam path:nth-child(3) { animation-delay: 1s; }
+.pc-chef .gl-ill-hat {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: pc-hat 3s ease-in-out infinite;
+}
+.pc-chef .gl-ill-flame path {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: pc-flame 0.45s ease-in-out infinite alternate;
+}
+.pc-chef .gl-ill-flame path:nth-child(2) { animation-delay: 0.15s; }
+.pc-chef .gl-ill-flame path:nth-child(3) { animation-delay: 0.3s; }
+@keyframes pc-flame {
+  from { transform: scaleY(0.82) scaleX(1.05); }
+  to { transform: scaleY(1.12) scaleX(0.94); }
+}
+.pc-chef .gl-ill-blink {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: pc-blink 4.2s ease-in-out infinite;
+}
+@keyframes pc-blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95% { transform: scaleY(0.1); }
+}
+@keyframes pc-flip {
+  0%, 100% { transform: translateY(0); }
+  45% { transform: translateY(-46px); }
+}
+@keyframes pc-steam {
+  0% { opacity: 0; transform: translateY(10px); }
+  40% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-26px); }
+}
+@keyframes pc-hat {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(3deg); }
+}
+
+/* ---------- Tablet / pantallas medianas ---------- */
+@media (max-width: 1024px) {
+  .pc-main { grid-template-columns: minmax(0, 1fr) !important; }
+  .pc-chef { display: none; }
+  .pc-visit-inner { grid-template-columns: minmax(0, 1fr); padding: 26px; }
+  .pc-visit .pc-map iframe { min-height: 240px; }
+  .pc-hero-cover { height: 260px; }
+}
+
+/* ---------- Celular ---------- */
+@media (max-width: 768px) {
+  .pc-hero { margin-top: 12px; padding: 0 16px; }
+  /* Foto y datos son una sola pieza: la foto se funde en negro y los datos siguen debajo */
+  .pc-hero-cover { height: 200px; border-radius: 28px 28px 0 0; }
+  .pc-hero-cover::after {
+    display: block;
+    inset: 0 16px auto;
+    height: 200px;
+    border-radius: 28px 28px 0 0;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0) 35%, rgba(0, 0, 0, 0.55) 70%, #000 100%);
+  }
+  /* En celular los datos van en una tarjeta negra montada sobre la foto,
+     como las apps de delivery: logo y nombre arriba, pastillas que se deslizan */
+  .pc-hero-body {
+    position: relative;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    align-items: center;
+    column-gap: 14px;
+    row-gap: 10px;
+    margin: 0;
+    padding: 0 16px 18px;
+    border-radius: 0 0 28px 28px;
+    background: #000;
+    color: var(--brand-white);
+  }
+  /* El logo sube un poco sobre la parte oscura de la foto */
+  .pc-hero-logo { margin-top: -30px; align-self: end; }
+  .pc-hero-name { align-self: end; }
+  .pc-hero-logo { width: 64px; height: 64px; padding: 5px; border-radius: 18px; box-shadow: none; }
+  .pc-hero-logo span { font-size: 26px; }
+  /* El contenido de la info se reparte en la grilla de la tarjeta */
+  .pc-hero-info { display: contents; }
+  .pc-hero-name {
+    grid-column: 2;
+    grid-row: 1;
+    font-size: clamp(20px, 6vw, 24px);
+    line-height: 1.1;
+    overflow-wrap: anywhere;
+  }
+  .pc-hero-desc {
+    grid-column: 1 / -1;
+    margin: 0;
+    font-size: 14px;
+    color: var(--brand-cream);
+    opacity: 0.85;
+  }
+  /* Todo a la vista sin deslizar: pastillas en varias lineas,
+     direccion completa en su propia linea y "Reservar mesa" a todo lo ancho */
+  .pc-hero-chips {
+    grid-column: 1 / -1;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 2px;
+  }
+  .pc-chip {
+    white-space: nowrap;
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--brand-white);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .pc-chip--address {
+    order: 10;
+    flex: 1 1 100%;
+    min-height: 0;
+    padding: 2px 0 0;
+    align-items: flex-start;
+    background: none;
+    white-space: normal;
+    line-height: 1.4;
+    font-size: 14px;
+    color: var(--brand-cream);
+  }
+  .pc-chip--address svg { flex: none; margin-top: 2px; color: var(--brand-yellow); }
+  .pc-chip--action {
+    order: 11;
+    flex: 1 1 100%;
+    justify-content: center;
+    min-height: 46px;
+    font-size: 15px;
+  }
+  .pc-chip--rating { background: var(--brand-yellow); color: var(--brand-black); }
+  .pc-chip--open { background: #1e8f4e; }
+  .pc-chip--closed { background: var(--brand-red); }
+  .pc-chip--action { background: var(--brand-yellow); color: var(--brand-black); }
+
+  .pc-main { margin-top: 20px !important; }
+  .pc-menu { gap: 0; }
+  .pc-page .cat-chips { top: 56px; margin: 0 -20px 12px; padding: 10px 20px; }
+  .pc-band { margin: 0 -20px; padding: 24px 20px 20px; border-radius: 0; }
+  .pc-dish {
+    grid-template-columns: minmax(0, 1fr) 96px;
+    gap: 14px;
+    padding: 14px;
+    align-items: start;
+    border-radius: 22px;
+  }
+  .pc-dish:hover { transform: none; }
+  .pc-dish-name { font-size: 16px; }
+  .pc-dish-desc {
+    font-size: 13px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .pc-dish-img { width: 96px; height: 96px; border-radius: 18px; }
+  .pc-visit { padding: 0; margin-bottom: 0; }
+  .pc-visit-inner { padding: 28px 20px; border-radius: 0; gap: 22px; }
+  .pc-map-foot { flex-wrap: wrap; }
+  .pc-map-btn { width: 100%; justify-content: center; }
+  .pc-info-value { overflow-wrap: anywhere; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pc-dish, .pc-chip--action, .pc-back { transition: none; }
+  .pc-chef .gl-ill-flip, .pc-chef .gl-ill-steam path, .pc-chef .gl-ill-hat,
+  .pc-chef .gl-ill-flame path, .pc-chef .gl-ill-blink { animation: none; }
+}

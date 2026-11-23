@@ -1,0 +1,48 @@
+/* =====================================================================
+   Aparecer al bajar, como en la plantilla de los jefes (Good Pair Days).
+   Lo activa utils/useReveal.ts poniendo la clase ge-motion; sin ella
+   (sin JavaScript o con "reducir movimiento") todo se ve quieto.
+   ===================================================================== */
+.ge-motion [data-reveal] {
+  opacity: 0;
+  transform: translate3d(0, 36px, 0);
+  transition:
+    opacity 0.8s cubic-bezier(0.32, 0.72, 0, 1),
+    transform 1s cubic-bezier(0.32, 0.72, 0, 1);
+  transition-delay: calc(var(--i, 0) * 90ms);
+}
+.ge-motion [data-reveal="left"] {
+  transform: translate3d(-64px, 0, 0) rotate(-3deg);
+}
+.ge-motion [data-reveal="right"] {
+  transform: translate3d(64px, 0, 0) rotate(3deg);
+}
+.ge-motion [data-reveal="pop"] {
+  transform: scale(0.4) rotate(-14deg);
+  transition-timing-function: cubic-bezier(0.32, 0.72, 0, 1), cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.ge-motion [data-reveal].is-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* Fondos suaves de la plantilla, hechos solo con los colores del manual */
+:root {
+  --ge-peach: color-mix(in srgb, var(--brand-orange) 26%, var(--brand-cream));
+  --ge-sun: color-mix(in srgb, var(--brand-yellow) 30%, var(--brand-white));
+  --ge-blush: color-mix(in srgb, var(--brand-red) 13%, var(--brand-white));
+}
+
+/* Trazo amarillo que se pinta debajo de una palabra del titulo */
+.ge-mark {
+  padding: 0 0.06em;
+  color: var(--brand-red);
+  background: linear-gradient(var(--brand-yellow), var(--brand-yellow)) no-repeat 0 88% / 100% 0.3em;
+}
+.ge-motion .ge-mark {
+  background-size: 0% 0.3em;
+  animation: ge-mark 0.8s 0.4s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+@keyframes ge-mark {
+  to { background-size: 100% 0.3em; }
+}

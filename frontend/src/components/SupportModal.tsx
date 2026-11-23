@@ -499,7 +499,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                         }}
                       >
                         <option value="CUSTOMER">Cliente</option>
-                        <option value="RESTAURANT">Restaurante / POS</option>
+                        <option value="RESTAURANT">Restaurante</option>
                         <option value="MOTORIZADO">Repartidor</option>
                       </select>
                     </div>

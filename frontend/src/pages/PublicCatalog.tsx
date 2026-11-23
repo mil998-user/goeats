@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { EmptyState } from "../components/EmptyState";
 import { useParams, useSearchParams, useNavigate, Link } from "react-router-dom";
 import { apiRequest } from "../utils/api";
-import { ShoppingCart, Wifi, MapPin, Phone, Utensils, Check, Plus, Minus, AlertCircle, Clock, X, ArrowLeft, BellRing, Receipt, HelpCircle } from "lucide-react";
+import { ShoppingCart, Wifi, MapPin, Phone, Utensils, Check, Plus, Minus, AlertCircle, Clock, X, ArrowLeft, BellRing, Receipt, HelpCircle, Trash2 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useSocket } from "../context/SocketContext";
 import { calculateShippingCost, getShippingDistanceKm } from "../utils/shipping";
@@ -15,8 +15,11 @@ import { StarAverage } from "../components/Stars";
 import { ReserveTable } from "../components/ReserveTable";
 import { WifiQR } from "../components/WifiQR";
 import { BrandLogo } from "../components/BrandLogo";
+import { ChefIllustration } from "../components/LandingIllustrations";
 import { Drawer } from "vaul";
 import { describeWeek, getOpenStatus, parseWeeklyHours } from "../utils/openingHours";
+import { useReveal } from "../utils/useReveal";
+import "../styles/catalog.css";
 
 // Pago con tarjeta apagado hasta tener proveedor (VITE_CARD_PAYMENTS=true lo enciende)
 const CARD_PAYMENTS_ENABLED = import.meta.env.VITE_CARD_PAYMENTS === "true";
@@ -153,6 +156,8 @@ export const PublicCatalog: React.FC = () => {
       .join(", ")
   );
   const [deliveryPhone, setDeliveryPhone] = useState(() => reorderPrefs?.phone || user?.phone || "");
+  // Note for the whole order; kitchen and comanda show it (bosses, 17 nov)
+  const [orderNote, setOrderNote] = useState("");
   const [deliveryLat, setDeliveryLat] = useState<number | null>(() =>
     reorderPrefs?.lat != null && reorderPrefs?.lng != null ? reorderPrefs.lat : user?.deliveryLatitude ?? null
   );
@@ -468,6 +473,15 @@ export const PublicCatalog: React.FC = () => {
     }
   };
 
+  const updateItemNote = (variantId: number, note: string) => {
+    setCart(cart.map((c) => (c.variantId === variantId ? { ...c, comments: note.slice(0, 120) } : c)));
+  };
+
+  // Quitar un producto del carrito de una sola vez
+  const removeFromCart = (variantId: number) => {
+    setCart(cart.filter((c) => c.variantId !== variantId));
+  };
+
   const getCartTotal = () => {
     return cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   };
@@ -482,8 +496,13 @@ export const PublicCatalog: React.FC = () => {
       return;
     }
 
-    if (!customerName) {
-      alert("Por favor ingresa tu nombre");
+    if (!customerName.trim()) {
+      alert(orderType === "TAKEOUT" ? "Escribe el nombre de quien va a retirar el pedido." : "Por favor ingresa tu nombre");
+      return;
+    }
+
+    if (orderType === "TAKEOUT" && !/^\+?\d[\d ()-]{6,19}$/.test(deliveryPhone.trim())) {
+      alert("Escribe un teléfono para avisarte cuando tu pedido esté listo.");
       return;
     }
 
@@ -514,16 +533,13 @@ export const PublicCatalog: React.FC = () => {
         type: orderType,
         tableId: orderType === "DINE_IN" ? parseInt(selectedTable, 10) : null,
         customerName,
-        // Distance, payment on delivery and the home reference only make sense for deliveries
-        comments: orderType === "DINE_IN"
-          ? "Pedido público web. En Mesa. Pago en caja."
-          : `Pedido público web. ${orderType === "DELIVERY" ? "A Domicilio" : "Recoger en local"}.${orderType === "DELIVERY" ? ` Distancia: ${shippingDistance.toFixed(1)} km.` : ""} Pago: ${paymentMethod === "CASH" ? (orderType === "DELIVERY" ? "Efectivo/Contraentrega" : "Efectivo") : paymentMethod === "CARD" ? "Tarjeta" : "Transferencia"}${orderType === "DELIVERY" && deliveryReference ? ` • Referencia: ${deliveryReference}` : ""}`,
+        comments: orderNote.trim() || null,
         deliveryAddress: orderType === "DELIVERY" 
           ? deliveryAddress
           : null,
         deliveryReference: orderType === "DELIVERY" ? deliveryReference : null,
         deliveryObservation: orderType === "DELIVERY" ? deliveryReference : null,
-        deliveryPhone: orderType === "DELIVERY" ? deliveryPhone : null,
+        deliveryPhone: orderType === "DELIVERY" || orderType === "TAKEOUT" ? deliveryPhone.trim() : null,
         deliveryLat: orderType === "DELIVERY" ? deliveryLat : null,
         deliveryLng: orderType === "DELIVERY" ? deliveryLng : null,
         items: cart.map((i) => ({
@@ -560,6 +576,10 @@ export const PublicCatalog: React.FC = () => {
     }
   };
 
+  // Las categorias y la informacion del local aparecen al bajar, como en la landing
+  const pageRef = useRef<HTMLDivElement>(null);
+  useReveal(pageRef, `${loading}-${categories.length}`);
+
   if (loading) {
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-primary)" }}>
@@ -587,11 +607,14 @@ export const PublicCatalog: React.FC = () => {
   // Contenido del carrito: en computadora va al costado, en celular dentro de la hoja deslizable
   const cartPanel = (
     <>
-          <div className="glass-card" style={{ padding: "25px" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px", borderBottom: "1px solid var(--border-light)", paddingBottom: "15px" }}>
+          <div className="glass-card pc-cart">
+            <div className="pc-cart-head">
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <ShoppingCart size={20} color="var(--accent-primary)" />
-                <h2 style={{ fontSize: "1.3rem" }}>Tu Carrito</h2>
+                <ShoppingCart size={20} />
+                <h2 className="pc-cart-title">Tu pedido</h2>
+                {cart.length > 0 && (
+                  <span className="pc-cart-count">{cart.reduce((sum, item) => sum + item.quantity, 0)}</span>
+                )}
               </div>
               <button
                 type="button"
@@ -641,25 +664,56 @@ export const PublicCatalog: React.FC = () => {
             ) : (
               <form onSubmit={handleCheckout}>
                 {/* Cart Items List */}
-                <div style={{ display: "flex", flexDirection: "column", gap: "15px", marginBottom: "25px", maxHeight: "250px", overflowY: "auto", paddingRight: "5px" }}>
+                <ul className="pc-cart-items">
                   {cart.map((item) => (
-                    <div key={item.variantId} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px", fontSize: "0.9rem" }}>
-                      <div>
-                        <div style={{ fontWeight: "bold" }}>{item.itemName}</div>
-                        <div style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>{item.name} - ${item.price.toFixed(2)}</div>
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <button type="button" onClick={() => updateQuantity(item.variantId, -1)} style={{ padding: "4px", background: "var(--bg-tertiary)", borderRadius: "4px", cursor: "pointer" }}>
-                          <Minus size={12} />
+                    <li key={item.variantId} className="pc-cart-item">
+                      <div className="pc-cart-item-top">
+                        <div style={{ minWidth: 0 }}>
+                          <div className="pc-cart-item-name">{item.itemName}</div>
+                          <div className="pc-cart-item-variant">{item.name} · ${item.price.toFixed(2)} c/u</div>
+                        </div>
+                        <button
+                          type="button"
+                          className="pc-cart-remove"
+                          onClick={() => removeFromCart(item.variantId)}
+                          aria-label={`Quitar ${item.itemName} ${item.name} del pedido`}
+                          title="Quitar del pedido"
+                        >
+                          <Trash2 size={16} />
                         </button>
-                        <span>{item.quantity}</span>
-                        <button type="button" onClick={() => updateQuantity(item.variantId, 1)} style={{ padding: "4px", background: "var(--bg-tertiary)", borderRadius: "4px", cursor: "pointer" }}>
-                          <Plus size={12} />
-                        </button>
                       </div>
-                    </div>
+                      <div className="pc-cart-item-bottom">
+                        <div className="pc-stepper" role="group" aria-label={`Cantidad de ${item.itemName}`}>
+                          <button
+                            type="button"
+                            onClick={() => updateQuantity(item.variantId, -1)}
+                            aria-label={item.quantity === 1 ? `Quitar ${item.itemName}` : `Uno menos de ${item.itemName}`}
+                          >
+                            {item.quantity === 1 ? <Trash2 size={14} /> : <Minus size={14} />}
+                          </button>
+                          <span aria-live="polite">{item.quantity}</span>
+                          <button
+                            type="button"
+                            onClick={() => updateQuantity(item.variantId, 1)}
+                            aria-label={`Uno más de ${item.itemName}`}
+                          >
+                            <Plus size={14} />
+                          </button>
+                        </div>
+                        <strong className="pc-cart-item-total">${(item.price * item.quantity).toFixed(2)}</strong>
+                      </div>
+                      <input
+                        type="text"
+                        className="pc-cart-note"
+                        maxLength={120}
+                        value={item.comments || ""}
+                        onChange={(e) => updateItemNote(item.variantId, e.target.value)}
+                        placeholder="Nota para cocina (opcional): sin cebolla, bien cocido…"
+                        aria-label={`Nota para cocina de ${item.itemName}`}
+                      />
+                    </li>
                   ))}
-                </div>
+                </ul>
                             {/* Totals */}
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px", borderTop: "1px dashed var(--border-light)", paddingTop: "15px", marginBottom: "20px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.95rem", color: "var(--text-secondary)" }}>
@@ -690,8 +744,8 @@ export const PublicCatalog: React.FC = () => {
 
                 {/* Checkout Fields */}
                 <div className="input-group">
-                  <label>Tu Nombre</label>
-                  <input type="text" className="input-field" required value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Ej: Juan Pérez" />
+                  <label htmlFor="pc-customer-name">{orderType === "TAKEOUT" ? "¿Quién retira el pedido?" : orderType === "DELIVERY" ? "¿Quién lo recibe?" : "Tu nombre"}</label>
+                  <input id="pc-customer-name" type="text" className="input-field" required maxLength={80} value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Ej: Juan Pérez" />
                 </div>
 
                 {/* Order Type Toggle */}
@@ -866,6 +920,26 @@ export const PublicCatalog: React.FC = () => {
                         </fieldset>
                       </>
                     )}
+
+                    {orderType === "TAKEOUT" && (
+                      <div className="input-group">
+                        <label htmlFor="pc-pickup-phone">Teléfono para avisarte</label>
+                        <input id="pc-pickup-phone" type="tel" inputMode="tel" className="input-field" required value={deliveryPhone} onChange={(e) => setDeliveryPhone(e.target.value)} placeholder="Ej: 0998765432" />
+                      </div>
+                    )}
+
+                    <div className="input-group">
+                      <label htmlFor="pc-order-note">Observaciones del pedido (opcional)</label>
+                      <textarea
+                        id="pc-order-note"
+                        className="input-field pc-order-note"
+                        rows={2}
+                        maxLength={180}
+                        value={orderNote}
+                        onChange={(e) => setOrderNote(e.target.value)}
+                        placeholder={orderType === "DINE_IN" ? "Ej: traer los platos juntos, una silla para bebé" : orderType === "TAKEOUT" ? "Ej: paso en 20 minutos, con cubiertos" : "Ej: tocar el timbre, sin cubiertos"}
+                      />
+                    </div>
 
                     {/* Payment Method Selector */}
                     {(orderType === "DELIVERY" || orderType === "TAKEOUT") && (
@@ -1097,333 +1171,169 @@ export const PublicCatalog: React.FC = () => {
             )}
           </div>
 
-          {/* Local Information Card (Address, Phone, WiFi, Hours, Reference, Map) */}
-          <div className="glass-card" style={{ padding: "22px", display: "flex", flexDirection: "column", gap: "14px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", borderBottom: "1px solid var(--border-light)", paddingBottom: "10px" }}>
-              <MapPin size={18} color="var(--accent-primary)" />
-              <h3 style={{ fontSize: "1.05rem", margin: 0, fontWeight: "700", color: "var(--text-primary)" }}>
-                Información del Local
-              </h3>
+          {/* Chef animado (como en la landing): acompana el menu mientras se baja */}
+          {!isMobile && (
+            <div className="pc-chef" aria-hidden="true">
+              <div className="pc-chef-art">
+                <ChefIllustration />
+              </div>
+              <p className="pc-chef-title">Hecho al momento</p>
+              <p className="pc-chef-text">Tu pedido se cocina cuando lo pides, no antes. Elige tranquilo.</p>
             </div>
-
-            {/* Physical Address */}
-            {restaurant.address && (
-              <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
-                <div style={{
-                  width: "28px",
-                  height: "28px",
-                  borderRadius: "8px",
-                  backgroundColor: "color-mix(in srgb, var(--brand-red) 10%, transparent)",
-                  color: "var(--accent-primary)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                  marginTop: "2px"
-                }}>
-                  <MapPin size={15} />
-                </div>
-                <div>
-                  <span style={{ fontSize: "13px", fontWeight: "700", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px", display: "block" }}>
-                    Dirección
-                  </span>
-                  <span style={{ fontSize: "13px", color: "var(--text-primary)", fontWeight: "500", lineHeight: 1.4 }}>
-                    {restaurant.address}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* Phone */}
-            {restaurant.phone && (
-              <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
-                <div style={{
-                  width: "28px",
-                  height: "28px",
-                  borderRadius: "8px",
-                  backgroundColor: "rgba(30, 143, 78, 0.1)",
-                  color: "var(--success)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                  marginTop: "2px"
-                }}>
-                  <Phone size={15} />
-                </div>
-                <div>
-                  <span style={{ fontSize: "13px", fontWeight: "700", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px", display: "block" }}>
-                    Teléfono / Contacto
-                  </span>
-                  <a
-                    href={`tel:${restaurant.phone}`}
-                    style={{ fontSize: "13px", color: "var(--accent-primary)", fontWeight: "600", textDecoration: "none" }}
-                  >
-                    {restaurant.phone}
-                  </a>
-                </div>
-              </div>
-            )}
-
-            {/* WiFi de Cortesía */}
-            {restaurant.wifiSsid && (
-              <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
-                <div style={{
-                  width: "28px",
-                  height: "28px",
-                  borderRadius: "8px",
-                  backgroundColor: "rgba(243, 232, 204, 0.6)",
-                  color: "#000000",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                  marginTop: "2px"
-                }}>
-                  <Wifi size={15} />
-                </div>
-                <div>
-                  <span style={{ fontSize: "13px", fontWeight: "700", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px", display: "block" }}>
-                    Wi-Fi de Cortesía
-                  </span>
-                  <span style={{ fontSize: "13px", color: "var(--text-primary)" }}>
-                    Red: <strong>{restaurant.wifiSsid}</strong>
-                    {restaurant.wifiPassword && (
-                      <span style={{ marginLeft: "6px", color: "var(--text-secondary)" }}>
-                        • Clave: <code style={{ backgroundColor: "var(--bg-tertiary)", padding: "2px 6px", borderRadius: "4px" }}>{restaurant.wifiPassword}</code>
-                      </span>
-                    )}
-                  </span>
-                  {restaurant.wifiPassword && (
-                    <div style={{ marginTop: "10px" }}>
-                      <WifiQR ssid={restaurant.wifiSsid} password={restaurant.wifiPassword} size={120} />
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Opening hours */}
-            {restaurant.openingHours && (
-              <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
-                <div style={{
-                  width: "28px",
-                  height: "28px",
-                  borderRadius: "8px",
-                  backgroundColor: "color-mix(in srgb, var(--brand-orange) 10%, transparent)",
-                  color: "var(--brand-orange)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                  marginTop: "2px"
-                }}>
-                  <Clock size={15} />
-                </div>
-                <div>
-                  <span style={{ fontSize: "13px", fontWeight: "700", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px", display: "block" }}>
-                    Horarios de Atención
-                  </span>
-                  {weeklyHours ? (
-                    <>
-                      <span
-                        style={{
-                          display: "inline-block",
-                          margin: "2px 0 4px",
-                          padding: "2px 10px",
-                          borderRadius: "999px",
-                          fontSize: "12px",
-                          fontWeight: 700,
-                          backgroundColor: openStatus?.isOpen ? "rgba(30, 143, 78, 0.12)" : "var(--brand-red-tint)",
-                          color: openStatus?.isOpen ? "#1e8f4e" : "var(--brand-red)",
-                        }}
-                      >
-                        {openStatus?.label}
-                      </span>
-                      {describeWeek(weeklyHours).map((line) => (
-                        <span key={line} style={{ fontSize: "13px", color: "var(--text-primary)", fontWeight: "500", display: "block" }}>
-                          {line}
-                        </span>
-                      ))}
-                    </>
-                  ) : (
-                    <span style={{ fontSize: "13px", color: "var(--text-primary)", fontWeight: "500" }}>
-                      {restaurant.openingHours}
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Reference */}
-            {restaurant.reference && (
-              <div style={{
-                padding: "10px 12px",
-                borderRadius: "10px",
-                backgroundColor: "var(--bg-tertiary)",
-                border: "1px solid var(--border-light)"
-              }}>
-                <span style={{ fontSize: "13px", fontWeight: "700", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px", display: "block", marginBottom: "3px" }}>
-                  Referencia de Ubicación
-                </span>
-                <p style={{ fontSize: "13px", margin: 0, color: "var(--text-primary)", lineHeight: 1.4 }}>
-                  {restaurant.reference}
-                </p>
-              </div>
-            )}
-
-            {/* Google Map Embedded */}
-            {(() => {
-              const hasCoords = Boolean(restaurant.mapLatitude && restaurant.mapLongitude);
-              // Las coordenadas son las que usa el reparto: mandan sobre el mapa pegado a mano
-              const embedUrl = hasCoords
-                ? `https://maps.google.com/maps?q=${restaurant.mapLatitude},${restaurant.mapLongitude}&z=16&output=embed`
-                : getMapEmbedUrl(restaurant.mapIframe);
-              const directMapUrl = restaurant.mapIframe && restaurant.mapIframe.startsWith("https://")
-                ? restaurant.mapIframe
-                : hasCoords
-                  ? `https://www.google.com/maps/search/?api=1&query=${restaurant.mapLatitude},${restaurant.mapLongitude}`
-                  : restaurant.address
-                    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(restaurant.address)}`
-                    : null;
-
-              if (!embedUrl && !hasCoords && !directMapUrl) return null;
-
-              return (
-                <div style={{ marginTop: "4px" }}>
-                  <span style={{ fontSize: "13px", fontWeight: "700", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px", display: "block", marginBottom: "8px" }}>
-                    Ubicación en el Mapa
-                  </span>
-
-                  {embedUrl ? (
-                    <iframe
-                      src={embedUrl}
-                      width="100%"
-                      height="190"
-                      style={{
-                        border: "1px solid var(--border-light)",
-                        borderRadius: "12px",
-                        display: "block",
-                        boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
-                      }}
-                      allowFullScreen
-                      loading="lazy"
-                      title="Ubicación del Local"
-                    />
-                  ) : hasCoords ? (
-                    <iframe
-                      src={`https://maps.google.com/maps?q=${restaurant.mapLatitude},${restaurant.mapLongitude}&z=16&output=embed`}
-                      width="100%"
-                      height="190"
-                      style={{
-                        border: "1px solid var(--border-light)",
-                        borderRadius: "12px",
-                        display: "block",
-                        boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
-                      }}
-                      allowFullScreen
-                      loading="lazy"
-                      title="Ubicación del Local"
-                    />
-                  ) : null}
-
-                  {directMapUrl && (
-                    <a
-                      href={directMapUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="secondary-btn"
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: "6px",
-                        width: "100%",
-                        padding: "8px 12px",
-                        fontSize: "13px",
-                        marginTop: "8px",
-                        textDecoration: "none",
-                        borderRadius: "8px"
-                      }}
-                    >
-                      <MapPin size={13} />
-                      Abrir en Google Maps
-                    </a>
-                  )}
-                </div>
-              );
-            })()}
-
-            {/* Soporte y Atención al Cliente Button */}
-            <div style={{ borderTop: "1px solid var(--border-light)", paddingTop: "14px", marginTop: "6px" }}>
-              <button
-                type="button"
-                onClick={() => setSupportModalOpen(true)}
-                style={{
-                  width: "100%",
-                  padding: "10px 14px",
-                  borderRadius: "10px",
-                  backgroundColor: "rgba(243, 232, 204, 0.48)",
-                  border: "1px solid rgba(243, 232, 204, 1.0)",
-                  color: "#000000",
-                  fontWeight: "600",
-                  fontSize: "13px",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "8px",
-                  transition: "all 0.2s"
-                }}
-              >
-                <HelpCircle size={16} />
-                ¿Necesitas Ayuda? Soporte GoEats
-              </button>
-            </div>
-          </div>
+          )}
     </>
   );
 
+  // Informacion del local y mapa: banda negra debajo del menu (web y celular)
+  const localInfo = (
+    <section className="pc-visit" aria-label="Información del local" data-reveal>
+      <div className="pc-visit-inner">
+              {/* Informacion del local en tarjeta negra: el mapa resalta */}
+              <div className="pc-info">
+                <h3 className="pc-info-title">
+                  <MapPin size={18} /> Información del local
+                </h3>
+
+                {restaurant.address && (
+                  <div className="pc-info-row">
+                    <span className="pc-info-ico"><MapPin size={16} /></span>
+                    <div className="pc-info-text">
+                      <span className="pc-info-label">Dirección</span>
+                      <span className="pc-info-value">{restaurant.address}</span>
+                    </div>
+                  </div>
+                )}
+
+                {restaurant.phone && (
+                  <div className="pc-info-row">
+                    <span className="pc-info-ico"><Phone size={16} /></span>
+                    <div className="pc-info-text">
+                      <span className="pc-info-label">Teléfono</span>
+                      <a className="pc-info-value pc-info-link" href={`tel:${restaurant.phone}`}>{restaurant.phone}</a>
+                    </div>
+                  </div>
+                )}
+
+                {restaurant.wifiSsid && (
+                  <div className="pc-info-row">
+                    <span className="pc-info-ico"><Wifi size={16} /></span>
+                    <div className="pc-info-text">
+                      <span className="pc-info-label">Wi-Fi de cortesía</span>
+                      <span className="pc-info-value">
+                        Red: <strong>{restaurant.wifiSsid}</strong>
+                        {restaurant.wifiPassword && (
+                          <span className="pc-info-muted"> • Clave: <code className="pc-info-code">{restaurant.wifiPassword}</code></span>
+                        )}
+                      </span>
+                      {restaurant.wifiPassword && (
+                        <div className="pc-info-qr">
+                          <WifiQR ssid={restaurant.wifiSsid} password={restaurant.wifiPassword} size={120} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {restaurant.openingHours && (
+                  <div className="pc-info-row">
+                    <span className="pc-info-ico"><Clock size={16} /></span>
+                    <div className="pc-info-text">
+                      <span className="pc-info-label">Horario de atención</span>
+                      {weeklyHours ? (
+                        <>
+                          <span className={`pc-info-status ${openStatus?.isOpen ? "is-open" : "is-closed"}`}>
+                            {openStatus?.label}
+                          </span>
+                          {describeWeek(weeklyHours).map((line) => (
+                            <span key={line} className="pc-info-value">{line}</span>
+                          ))}
+                        </>
+                      ) : (
+                        <span className="pc-info-value">{restaurant.openingHours}</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {restaurant.reference && (
+                  <div className="pc-info-ref">
+                    <span className="pc-info-label">Referencia</span>
+                    <p>{restaurant.reference}</p>
+                  </div>
+                )}
+
+
+                <button type="button" className="pc-info-btn pc-info-btn--ghost" onClick={() => setSupportModalOpen(true)}>
+                  <HelpCircle size={16} />
+                  ¿Necesitas ayuda? Soporte GoEats
+                </button>
+              </div>
+                {(() => {
+                  const hasCoords = Boolean(restaurant.mapLatitude && restaurant.mapLongitude);
+                  // Las coordenadas son las que usa el reparto: mandan sobre el mapa pegado a mano
+                  const embedUrl = hasCoords
+                    ? `https://maps.google.com/maps?q=${restaurant.mapLatitude},${restaurant.mapLongitude}&z=16&output=embed`
+                    : getMapEmbedUrl(restaurant.mapIframe);
+                  const directMapUrl = restaurant.mapIframe && restaurant.mapIframe.startsWith("https://")
+                    ? restaurant.mapIframe
+                    : hasCoords
+                      ? `https://www.google.com/maps/search/?api=1&query=${restaurant.mapLatitude},${restaurant.mapLongitude}`
+                      : restaurant.address
+                        ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(restaurant.address)}`
+                        : null;
+
+                  if (!embedUrl && !directMapUrl) return null;
+
+                  return (
+                    <div className="pc-map">
+                      {embedUrl && (
+                        <iframe
+                          src={embedUrl}
+                          width="100%"
+                          height="220"
+                          allowFullScreen
+                          loading="lazy"
+                          title="Ubicación del local"
+                        />
+                      )}
+                      <div className="pc-map-foot">
+                        <div style={{ minWidth: 0 }}>
+                          <span className="pc-map-label">Cómo llegar</span>
+                          {restaurant.address && <p className="pc-map-address">{restaurant.address}</p>}
+                        </div>
+                        {directMapUrl && (
+                          <a href={directMapUrl} target="_blank" rel="noopener noreferrer" className="pc-map-btn">
+                            <MapPin size={15} />
+                            Abrir mapa
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+      </div>
+    </section>
+  );
+
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-primary)" }}>
-      {/* Stick Header Navigation style UberEats */}
-      <nav style={{
+    <div className="pc-page" ref={pageRef} style={{ minHeight: "100vh" }}>
+      {/* Barra superior: crema translucida y al ancho del contenido */}
+      <nav className="pc-nav" style={{
         position: "sticky",
         top: 0,
-        backgroundColor: "#ffffff",
-        borderBottom: "1px solid var(--brand-cream)",
         zIndex: 1000,
-        padding: isMobile ? "10px 15px" : "15px 30px",
+        padding: isMobile ? "10px 16px" : "12px max(20px, calc((100% - 1200px) / 2))",
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
         marginBottom: "1px"
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: isMobile ? "10px" : "20px", flex: 1 }}>
-          <button 
+          <button
+            type="button"
+            className="pc-back"
             onClick={() => navigate("/restaurants")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              background: "none",
-              cursor: "pointer",
-              padding: isMobile ? "8px 10px" : "8px 14px",
-              borderRadius: "30px",
-              fontSize: "14px",
-              fontWeight: "600",
-              color: "var(--brand-black)",
-              border: "1px solid var(--brand-cream)",
-              transition: "all 0.2s ease",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "#f1f2f6";
-              e.currentTarget.style.borderColor = "#ced6e0";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "transparent";
-              e.currentTarget.style.borderColor = "var(--brand-cream)";
-            }}
+            aria-label="Volver a los restaurantes"
           >
             <ArrowLeft size={16} />
             {!isMobile && <span>Volver</span>}
@@ -1559,108 +1469,62 @@ export const PublicCatalog: React.FC = () => {
         </div>
       </nav>
 
-      {/* Restaurant Header Banner style UberEats */}
-      <div className="cat-hero" style={{
-        position: "relative",
-        height: "280px",
-        width: "100%",
-        backgroundImage: restaurant.coverImage 
-          ? `linear-gradient(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.6)), url("${restaurant.coverImage}")` 
-          : "linear-gradient(135deg, var(--brand-red), #ff6b81)",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        display: "flex",
-        alignItems: "flex-end",
-        padding: "30px 40px",
-        color: "#ffffff"
-      }}>
-        <div className="cat-hero-inner" style={{
-          maxWidth: "1200px",
-          width: "100%",
-          margin: "0 auto",
-          display: "flex",
-          alignItems: "center",
-          gap: "24px",
-          position: "relative",
-          zIndex: 2
-        }}>
-          {restaurant.logo ? (
-            <img 
-              className="cat-hero-logo"
-              src={restaurant.logo} 
-              alt={restaurant.name} 
-              onError={(e) => {
-                e.currentTarget.src = "/logos/prueba.svg";
-              }}
-              style={{ 
-                width: "90px", 
-                height: "90px", 
-                borderRadius: "16px", 
-                objectFit: "contain",
-                backgroundColor: "#ffffff",
-                padding: "6px",
-                border: "4px solid #ffffff",
-                boxShadow: "0 4px 14px rgba(0,0,0,0.2)"
-              }} 
-            />
-          ) : (
-            <div style={{ 
-              width: "90px", 
-              height: "90px", 
-              borderRadius: "var(--radius-md)", 
-              background: "#ffffff", 
-              color: "var(--accent-primary)",
-              display: "flex", 
-              alignItems: "center", 
-              justifyContent: "center", 
-              fontSize: "2rem", 
-              fontWeight: "bold",
-              boxShadow: "var(--shadow-md)",
-              border: "4px solid #ffffff"
-            }}>
-              {restaurant.name[0].toUpperCase()}
-            </div>
-          )}
-          
-          <div className="cat-hero-info" style={{ textShadow: "0 2px 4px rgba(0,0,0,0.5)", minWidth: 0 }}>
-            <h1 style={{ fontSize: "2.4rem", fontWeight: "800", margin: "0 0 5px 0", letterSpacing: "-0.5px", color: "#ffffff" }}>{restaurant.name}</h1>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", marginBottom: "6px" }}>
-              <span style={{ background: "rgba(255,255,255,0.92)", borderRadius: "20px", padding: "3px 10px", textShadow: "none" }}>
+      {/* Portada del restaurante: foto redondeada y datos del local */}
+      <header className="pc-hero">
+        <div
+          className="pc-hero-cover"
+          style={restaurant.coverImage ? { backgroundImage: `url("${restaurant.coverImage}")` } : undefined}
+        />
+        <div className="pc-hero-body">
+          <div className="pc-hero-logo">
+            {restaurant.logo ? (
+              <img
+                src={restaurant.logo}
+                alt={restaurant.name}
+                onError={(e) => {
+                  e.currentTarget.src = "/logos/prueba.svg";
+                }}
+              />
+            ) : (
+              <span>{restaurant.name[0].toUpperCase()}</span>
+            )}
+          </div>
+
+          <div className="pc-hero-info">
+            <h1 className="pc-hero-name">{restaurant.name}</h1>
+            {restaurant.description && <p className="pc-hero-desc">{restaurant.description}</p>}
+            <div className="pc-hero-chips">
+              <span className="pc-chip pc-chip--rating">
                 <StarAverage average={restaurant.ratingAverage} count={restaurant.ratingCount} />
               </span>
+              {openStatus && (
+                <span className={`pc-chip ${openStatus.isOpen ? "pc-chip--open" : "pc-chip--closed"}`}>
+                  <Clock size={14} /> {openStatus.isOpen ? "Abierto" : "Cerrado"}
+                </span>
+              )}
+              {restaurant.address && (
+                <span className="pc-chip pc-chip--address">
+                  <MapPin size={14} /> {restaurant.address}
+                </span>
+              )}
+              {restaurant.phone && (
+                <a className="pc-chip" href={`tel:${restaurant.phone}`}>
+                  <Phone size={14} /> {restaurant.phone}
+                </a>
+              )}
               {restaurant.reservationsEnabled && !activeTableId && (
                 <button
                   type="button"
+                  className="pc-chip pc-chip--action"
                   onClick={() => (isAuthenticated && user?.role === "CUSTOMER" ? setReserveOpen(true) : navigate(loginPath))}
-                  style={{ background: "#ffffff", color: "var(--brand-black)", border: "none", borderRadius: "20px", padding: "6px 14px", minHeight: "36px", fontWeight: 700, cursor: "pointer", textShadow: "none" }}
                 >
                   Reservar mesa
                 </button>
               )}
             </div>
-            {restaurant.description && (
-              <p style={{ fontSize: "1.1rem", fontStyle: "italic", margin: "0 0 10px 0", opacity: 0.9 }}>
-                {restaurant.description}
-              </p>
-            )}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "20px", fontSize: "0.95rem", opacity: 0.95 }}>
-              {restaurant.address && (
-                <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-                  <MapPin size={16} />
-                  <span>{restaurant.address} {restaurant.reference ? `(${restaurant.reference})` : ""}</span>
-                </div>
-              )}
-              {restaurant.phone && (
-                <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-                  <Phone size={16} />
-                  <span>{restaurant.phone}</span>
-                </div>
-              )}
-            </div>
           </div>
         </div>
-      </div>
-
+      </header>
       {/* Table-specific Info bar (SSID) if active */}
       {activeTableId && restaurant.wifiSsid && (
         <div style={{ backgroundColor: "#ffeef0", borderBottom: "1px solid #ffe2e5", padding: "10px 30px" }}>
@@ -1672,7 +1536,7 @@ export const PublicCatalog: React.FC = () => {
       )}
 
       {/* Main Grid */}
-      <div className="mobile-column-stack" style={{ maxWidth: "1200px", margin: "40px auto", padding: "0 20px", display: "grid", gridTemplateColumns: "1fr 380px", gap: "40px" }}>
+      <div className="mobile-column-stack pc-main" style={{ maxWidth: "1200px", margin: "28px auto 40px", padding: "0 20px", display: "grid", gridTemplateColumns: "minmax(0, 1fr) 380px", gap: "32px" }}>
         
         {/* Menu Catalog Section */}
         <main>
@@ -1909,7 +1773,7 @@ export const PublicCatalog: React.FC = () => {
               </div>
             )
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "40px" }}>
+            <div className="pc-menu">
               {/* Atajos a cada categoria de la carta */}
               {categories.length > 1 && (
                 <nav className="cat-chips" aria-label="Categorías de la carta">
@@ -1924,20 +1788,20 @@ export const PublicCatalog: React.FC = () => {
                   ))}
                 </nav>
               )}
-              {categories.map((cat) => (
-                <section key={cat.id} id={`cat-${cat.id}`} className="cat-section">
-                  <h2 className="brand-marker" style={{ fontSize: "1.6rem", paddingBottom: "4px", marginBottom: "20px" }}>{cat.name}</h2>
-                  {cat.description && <p style={{ color: "var(--text-secondary)", marginBottom: "20px", fontSize: "0.95rem" }}>{cat.description}</p>}
+              {categories.map((cat, catIndex) => (
+                <section key={cat.id} id={`cat-${cat.id}`} className={`cat-section pc-band pc-band--${["sun", "white", "peach", "blush"][catIndex % 4]}`} data-reveal>
+                  <h2 className="brand-marker pc-band-title">{cat.name}</h2>
+                  {cat.description && <p className="pc-band-desc">{cat.description}</p>}
 
-                  <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                  <div className="pc-dishes">
                     {cat.items.map((item) => (
-                      <div key={item.id} className="glass-card dish-card" style={{ padding: "20px", display: "grid", gridTemplateColumns: "1fr 140px", gap: "20px", alignItems: "center" }}>
-                        <div>
-                          <h3 style={{ fontSize: "1.2rem", marginBottom: "8px" }}>{item.name}</h3>
-                          {item.description && <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", marginBottom: "15px" }}>{item.description}</p>}
-                          
-                          {/* Variants presentation pricing selection */}
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+                      <article key={item.id} className="pc-dish">
+                        <div className="pc-dish-text">
+                          <h3 className="pc-dish-name">{item.name}</h3>
+                          {item.description && <p className="pc-dish-desc">{item.description}</p>}
+
+                          {/* Presentaciones y precios: cada una se agrega al pedido */}
+                          <div className="pc-dish-prices">
                             {item.variants.map((v) => (
                               <button key={v.id} className="price-pill" onClick={() => addToCart(v, item)} aria-label={`Agregar ${item.name} ${v.name} al pedido`}>
                                 <span className="price-pill-plus"><Plus size={14} color="#ffffff" strokeWidth={3} /></span>
@@ -1945,7 +1809,7 @@ export const PublicCatalog: React.FC = () => {
                                 {v.regularPrice && (
                                   <span data-testid="catalog-promo" style={{ fontSize: "0.85rem" }}>
                                     <s style={{ opacity: 0.7 }}>${v.regularPrice.toFixed(2)}</s>{" "}
-                                    <span style={{ background: "#d42518", color: "#ffffff", borderRadius: "6px", padding: "1px 6px", fontWeight: 700 }}>Promo</span>
+                                    <span className="pc-promo">Promo</span>
                                   </span>
                                 )}
                               </button>
@@ -1954,13 +1818,13 @@ export const PublicCatalog: React.FC = () => {
                         </div>
 
                         {item.image ? (
-                          <img className="dish-img" src={item.image} alt={item.name} loading="lazy" style={{ width: "100%", height: "100px", borderRadius: "var(--radius-md)", objectFit: "cover" }} />
+                          <img className="pc-dish-img" src={item.image} alt={item.name} loading="lazy" />
                         ) : (
-                          <div className="dish-img" style={{ width: "100%", height: "100px", borderRadius: "var(--radius-md)", background: "var(--bg-tertiary)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <Utensils size={24} color="#d42518" />
+                          <div className="pc-dish-img pc-dish-img--empty" aria-hidden="true">
+                            <Utensils size={28} />
                           </div>
                         )}
-                      </div>
+                      </article>
                     ))}
                   </div>
                 </section>
@@ -1984,12 +1848,14 @@ export const PublicCatalog: React.FC = () => {
             </Drawer.Portal>
           </Drawer.Root>
         ) : (
-          <aside className="mobile-cart-aside" style={{ display: "flex", flexDirection: "column", gap: "25px" }}>
+          <aside className="mobile-cart-aside pc-aside">
             {cartPanel}
           </aside>
         )}
 
       </div>
+
+      {localInfo}
 
       {/* FAQs Section - Solo se muestra si el dueño del restaurante configuró preguntas frecuentes */}
       {(() => {

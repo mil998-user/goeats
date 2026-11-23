@@ -1,9 +1,21 @@
-import React, { createContext, useCallback, useContext, useState, useEffect } from "react";
-import { SESSION_EXPIRED_EVENT, getBaseApiUrl } from "../utils/api";
+import React, { createContext, useCallback, useContext, useState, useEffect, useRef } from "react";
+import { SESSION_EXPIRED_EVENT, apiRequest, getBaseApiUrl } from "../utils/api";
+import { normalizeFoodPreferences } from "../utils/foodPreferences";
 
 // Seguridad: la sesion se cierra sola tras 1 hora sin usar la app, y el servidor la vence a las 8 horas
 const IDLE_LIMIT_MS = 60 * 60 * 1000;
 const LAST_ACTIVE_KEY = "goeats_last_active";
+// Gustos de comida elegidos en este navegador (con o sin sesion)
+const FOOD_PREFS_KEY = "goeats_food_preferences";
+
+function readLocalFoodPrefs(): string[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(FOOD_PREFS_KEY) || "[]");
+    return Array.isArray(parsed) ? normalizeFoodPreferences(parsed.filter((v) => typeof v === "string")) : [];
+  } catch {
+    return [];
+  }
+}
 
 // Fecha de vencimiento que trae el token (sin verificar firma; eso lo hace el servidor)
 function tokenExpiresAt(token: string): number | null {
@@ -31,6 +43,8 @@ function clearStoredSession() {
   localStorage.removeItem("goeats_token");
   localStorage.removeItem("goeats_user");
   localStorage.removeItem(LAST_ACTIVE_KEY);
+  // Los gustos de la cuenta no deben quedar para la siguiente persona del equipo
+  localStorage.removeItem(FOOD_PREFS_KEY);
   try {
     Object.keys(sessionStorage)
       .filter((key) => key.startsWith("goeats_cart_") || key.startsWith("goeats_reorder"))
@@ -169,6 +183,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return updated;
     });
   }, []);
+
+  // Si eligio gustos sin sesion y su cuenta aun no tiene, se guardan solos en la cuenta.
+  // Si la cuenta ya tiene gustos propios, se respetan y no se pisan.
+  const syncedPrefsFor = useRef<number | null>(null);
+  useEffect(() => {
+    if (!token || !user || user.role !== "CUSTOMER") return;
+    if (syncedPrefsFor.current === user.id) return;
+    syncedPrefsFor.current = user.id;
+
+    if (user.preferences && user.preferences.length > 0) return;
+    const localPrefs = readLocalFoodPrefs();
+    if (localPrefs.length === 0) return;
+
+    apiRequest("/auth/preferences", {
+      method: "POST",
+      body: JSON.stringify({ preferences: localPrefs }),
+    })
+      .then(() => updateUser({ preferences: localPrefs }))
+      .catch(() => {
+        // Si falla, se intenta otra vez en el proximo inicio de sesion
+        syncedPrefsFor.current = null;
+      });
+  }, [token, user, updateUser]);
 
   const isAuthenticated = !!token;
 

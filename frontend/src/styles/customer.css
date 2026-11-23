@@ -1,0 +1,74 @@
+/* =====================================================================
+   Panel del cliente (/customer/dashboard), 22 nov: estilo de la plantilla.
+   Saludo sobre durazno suave con el nombre subrayado en amarillo, titulos
+   gruesos con la letra del logo y cifras con iconos en circulos de color.
+   ===================================================================== */
+.cd-page h1,
+.cd-page h2,
+.cd-page h3,
+.cd-page h4 {
+  font-family: var(--brand-font-logo);
+  font-weight: 800 !important;
+  letter-spacing: -0.02em;
+}
+
+/* Saludo: bloque durazno con un circulo naranja y la boca en la esquina */
+.cd-page .customer-dashboard-header {
+  position: relative;
+  overflow: hidden;
+  padding: 28px 28px 30px;
+  border-radius: 28px;
+  background: var(--ge-peach);
+}
+.cd-page .customer-dashboard-header::after {
+  content: "";
+  position: absolute;
+  right: -40px;
+  bottom: -70px;
+  width: 170px;
+  height: 170px;
+  border-radius: 50%;
+  background: var(--brand-logo-black) center 34% / 46% no-repeat, var(--brand-orange);
+  pointer-events: none;
+}
+.cd-page .customer-dashboard-header > * {
+  position: relative;
+  z-index: 1;
+}
+.cd-page .customer-dashboard-header h1 {
+  font-size: clamp(28px, 5vw, 40px) !important;
+}
+.cd-page .customer-dashboard-header p {
+  color: var(--brand-black-80) !important;
+}
+/* El boton de gustos va a la izquierda del circulo naranja */
+.cd-page .customer-dashboard-pref-btn {
+  margin-right: clamp(0px, 10vw, 120px);
+}
+
+/* Cifras: icono en un circulo de color con el trazo negro del logo */
+.cd-stat-ico {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border: 3px solid var(--brand-black);
+  border-radius: 50%;
+}
+.cd-stat-ico.tone-red { background: var(--brand-red); color: var(--brand-white); }
+.cd-stat-ico.tone-yellow { background: var(--brand-yellow); color: var(--brand-black); }
+.cd-stat-ico.tone-black { background: var(--brand-black); color: var(--brand-yellow); }
+
+@media (max-width: 640px) {
+  .cd-page .customer-dashboard-header {
+    padding: 22px 20px 24px;
+  }
+  /* En celular el boton de gustos ocupa el ancho: el circulo se quita para no taparlo */
+  .cd-page .customer-dashboard-header::after {
+    display: none;
+  }
+  .cd-page .customer-dashboard-pref-btn {
+    margin-right: 0;
+  }
+}

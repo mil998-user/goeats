@@ -28,12 +28,16 @@ import {
   Flame,
   Fish,
   Coffee,
+  MapPin,
+  ArrowUp,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { FoodPreferencesModal } from "../components/FoodPreferencesModal";
 import { FOOD_PREFERENCE_CATEGORIES, normalizeFoodPreferences } from "../utils/foodPreferences";
 import { SupportModal } from "../components/SupportModal";
 import { systemIconForEmoji } from "../utils/systemIcons";
+import { useReveal } from "../utils/useReveal";
+import "../styles/restaurants.css";
 
 
 interface PublicRestaurant {
@@ -484,129 +488,161 @@ export const Aggregator: React.FC = () => {
     return userPreferences.some(prefId => matchesCategory(rest, prefId));
   });
 
+  // Para la caja de invitacion cuando aun no hay gustos elegidos
+  const topRatedRestaurants = [...restaurants]
+    .sort((a, b) => (parseFloat(b.rating) || 0) - (parseFloat(a.rating) || 0))
+    .slice(0, 8);
+
+  const FALLBACK_COVER = "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop&q=80";
+
+  // Encabezado de seccion: titulo de marca y, si hay carrusel, flechas
+  const renderSectionHead = (title: string, onScroll?: (direction: "left" | "right") => void) => (
+    <div className="gx-head">
+      <h2 className="brand-marker gx-title">{title}</h2>
+      {onScroll && (
+        <div className="gx-arrows">
+          <button type="button" className="gx-arrow" onClick={() => onScroll("left")} aria-label="Anterior">
+            <ChevronLeft size={18} />
+          </button>
+          <button type="button" className="gx-arrow" onClick={() => onScroll("right")} aria-label="Siguiente">
+            <ChevronRight size={18} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
+  // Tarjeta unica de restaurante para todas las secciones
+  const renderCard = (
+    rest: AugmentedRestaurant,
+    opts: {
+      keyPrefix: string;
+      slide?: boolean;
+      badge?: { text: string; tone: "yellow" | "red" | "black"; icon?: boolean };
+      stat?: React.ReactNode;
+      meta: string[];
+      showLogo?: boolean;
+    }
+  ) => {
+    const isFav = favorites.includes(rest.id);
+    return (
+      <Link
+        to={`/r/${rest.slug}`}
+        key={`${opts.keyPrefix}-${rest.id}`}
+        className={`gx-card${opts.slide ? " gx-card--slide" : ""}`}
+      >
+        <div className="gx-media">
+          <img
+            src={rest.coverImage}
+            alt=""
+            loading="lazy"
+            onError={(e) => { e.currentTarget.src = FALLBACK_COVER; }}
+          />
+          {opts.badge && (
+            <span className={`gx-badge gx-badge--${opts.badge.tone}`}>
+              {opts.badge.icon && <Sparkles size={12} />}
+              {opts.badge.text}
+            </span>
+          )}
+          {isAuthenticated && (
+            <button
+              type="button"
+              className={`gx-fav${isFav ? " is-on" : ""}`}
+              onClick={(e) => toggleFavorite(rest.id, e)}
+              aria-label={isFav ? "Quitar de favoritos" : "Agregar a favoritos"}
+            >
+              <Heart size={16} fill={isFav ? "currentColor" : "none"} />
+            </button>
+          )}
+        </div>
+
+        <div className="gx-body">
+          {opts.showLogo && (
+            <span className="gx-logo">
+              {rest.logo ? (
+                <img src={rest.logo} alt="" onError={(e) => { e.currentTarget.src = "/logos/prueba.svg"; }} />
+              ) : (
+                rest.name[0]?.toUpperCase()
+              )}
+            </span>
+          )}
+          <div className="gx-text">
+            <div className="gx-name-row">
+              <h3 className="gx-name">{rest.name}</h3>
+              {opts.stat ?? (
+                <span className="gx-stat">
+                  <Star size={12} fill="currentColor" />
+                  {rest.rating}
+                </span>
+              )}
+            </div>
+            <p className="gx-meta">{opts.meta.filter(Boolean).join(" • ")}</p>
+            <div className="gx-tags">
+              <OpenBadge hours={(rest as any).openingHours} />
+              {rest.specialLabel && <span className="gx-tag">{rest.specialLabel}</span>}
+            </div>
+          </div>
+        </div>
+      </Link>
+    );
+  };
+
   const renderRestaurantSection = (
     title: string,
     sectionRestaurants: AugmentedRestaurant[],
     keyPrefix: string,
-    badge: string
+    badge: string,
+    band: "white" | "peach" | "orange" | "blush" = "white"
   ) => (
-    <section aria-label={title}>
-      <h2 className="brand-marker" style={{ fontSize: "22px", fontWeight: 800, color: "#000000", margin: "0 0 18px" }}>
-        {title}
-      </h2>
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))",
-        gap: "18px",
-      }}>
-        {sectionRestaurants.map((restaurant) => (
-          <Link
-            to={`/r/${restaurant.slug}`}
-            key={`${keyPrefix}-${restaurant.id}`}
-            style={{
-              overflow: "hidden",
-              border: "1px solid #f3e8cc",
-              borderRadius: "16px",
-              color: "inherit",
-              textDecoration: "none",
-              background: "#fff",
-            }}
-          >
-            <div style={{ position: "relative", height: "150px", background: "#f7f0de" }}>
-              <img
-                src={restaurant.coverImage}
-                alt={restaurant.name}
-                onError={(e) => {
-                  e.currentTarget.src = "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop&q=80";
-                }}
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              />
-              <span style={{
-                position: "absolute",
-                top: "10px",
-                left: "10px",
-                padding: "5px 9px",
-                borderRadius: "999px",
-                background: "#ffca26",
-                color: "#000000",
-                fontSize: "13px",
-                fontWeight: 700,
-              }}>
-                {badge}
-              </span>
-              {isAuthenticated && (
-                <button
-                  type="button"
-                  aria-label={favorites.includes(restaurant.id) ? "Quitar de favoritos" : "Agregar a favoritos"}
-                  onClick={(e) => toggleFavorite(restaurant.id, e)}
-                  style={{
-                    position: "absolute",
-                    top: "9px",
-                    right: "9px",
-                    display: "grid",
-                    width: "34px",
-                    height: "34px",
-                    placeItems: "center",
-                    border: 0,
-                    borderRadius: "50%",
-                    background: "#fff",
-                    cursor: "pointer",
-                  }}
-                >
-                  <Heart size={16} fill={favorites.includes(restaurant.id) ? "#000000" : "none"} />
-                </button>
-              )}
-            </div>
-            <div style={{ padding: "12px 14px" }}>
-              <h3 style={{
-                margin: 0,
-                overflow: "hidden",
-                color: "#000000",
-                fontSize: "15px",
-                fontWeight: 700,
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}>
-                {restaurant.name}
-              </h3>
-
-                <OpenBadge hours={(restaurant as any).openingHours} />
-              <p style={{ margin: "5px 0 0", color: "#737373", fontSize: "13px" }}>
-                {restaurant.category}
-              </p>
-            </div>
-          </Link>
-        ))}
+    <section aria-label={title} className={`gx-band gx-band--${band}`} data-reveal>
+      {renderSectionHead(title)}
+      <div className="no-scrollbar gx-grid gx-grid--rail">
+        {sectionRestaurants.map((restaurant) => renderCard(restaurant, {
+          keyPrefix,
+          badge: { text: badge, tone: "yellow" },
+          meta: [restaurant.category, restaurant.deliveryTime],
+        }))}
       </div>
     </section>
   );
 
+  // Las secciones aparecen al bajar, como en la landing; se vuelven a buscar al cambiar la lista
+  const bodyRef = useRef<HTMLDivElement>(null);
+  useReveal(bodyRef, `${loading}-${filteredRestaurants.length}-${activeCategory}-${searchQuery}-${userPreferences.length}`);
+
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "#ffffff", paddingBottom: "60px" }}>
+    <div className="rx-page" style={{ minHeight: "100vh" }}>
       
       {/* Stick Header Navigation style UberEats */}
       <nav className="aggregator-navbar" style={{
         position: "sticky",
         top: 0,
-        backgroundColor: "#ffffff",
-        borderBottom: "1px solid #f3e8cc",
+        backgroundColor: "color-mix(in srgb, var(--brand-cream-soft) 88%, transparent)",
+        backdropFilter: "saturate(1.4) blur(14px)",
+        WebkitBackdropFilter: "saturate(1.4) blur(14px)",
+        borderBottom: "1px solid rgba(0, 0, 0, 0.06)",
         zIndex: 1000,
-        padding: "15px 30px",
+        // Mismo ancho que el contenido (1200px), asi logo y botones quedan alineados con las secciones
+        padding: "12px max(20px, calc((100% - 1200px) / 2))",
+        gap: "20px",
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center"
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "25px", flex: 1 }} className="aggregator-left-wrapper">
+        <div style={{ display: "flex", alignItems: "center", gap: "28px", flex: 1, minWidth: 0 }} className="aggregator-left-wrapper">
           <BrandLogo size={30} onClick={() => navigate("/restaurants")} />
 
           {/* Search bar inside header */}
           <div className="aggregator-search-bar" style={{
             display: "flex",
             alignItems: "center",
-            backgroundColor: "var(--brand-cream-mid)",
-            padding: "8px 15px",
-            borderRadius: "30px",
-            width: "350px",
+            backgroundColor: "var(--brand-white)",
+            boxShadow: "0 1px 2px rgba(40, 25, 5, 0.06), 0 4px 14px rgba(40, 25, 5, 0.06)",
+            padding: "0 18px",
+            height: "46px",
+            borderRadius: "999px",
+            flex: 1,
+            maxWidth: "480px",
             position: "relative"
           }}>
             <Search size={16} style={{ color: "#d42518", marginRight: "10px" }} />
@@ -617,7 +653,7 @@ export const Aggregator: React.FC = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{
                 width: "100%",
-                fontSize: "13px",
+                fontSize: "14px",
                 color: "#000000",
                 border: "none",
                 backgroundColor: "transparent",
@@ -953,7 +989,7 @@ export const Aggregator: React.FC = () => {
                         onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                       >
                         <Store size={16} color="#333333" />
-                        <span>Sistema POS</span>
+                        <span>Caja y comandas</span>
                       </Link>
                     )}
 
@@ -1365,7 +1401,7 @@ export const Aggregator: React.FC = () => {
       </nav>
 
       {/* Main Aggregator Body */}
-      <div id="goeats-restaurants" style={{ maxWidth: "1240px", margin: "0 auto", padding: "0 20px", scrollMarginTop: "90px" }}>
+      <div id="goeats-restaurants" ref={bodyRef} style={{ maxWidth: "1240px", margin: "0 auto", padding: "0 20px", scrollMarginTop: "90px" }}>
 
         {/* Banner de bienvenida con el amarillo de marca */}
         {!searchQuery.trim() && activeCategory === "all" && (
@@ -1373,77 +1409,38 @@ export const Aggregator: React.FC = () => {
             <div style={{ minWidth: 0 }}>
               <p className="brand-hero-eyebrow">GoEats Loja</p>
               <p className="brand-hero-title brand-accent-text">
-                {isAuthenticated && user?.name ? `¡Hola, ${user.name.split(" ")[0]}! ` : ""}¿Qué se te antoja hoy?
+                {isAuthenticated && user?.name ? `¡Hola, ${user.name.split(" ")[0]}! ` : ""}¿Qué se te antoja{" "}
+                <span className="ge-mark">hoy?</span>
               </p>
               <p className="brand-hero-text">Sabores locales, desde la cocina hasta tu puerta.</p>
             </div>
-            <img src="/brand/boca-negra.png" alt="" className="brand-hero-mouth" />
+            {/* Sello amarillo con la boca, como el del inicio */}
+            <span className="rx-hero-seal" aria-hidden="true">
+              <img src="/brand/boca-negra.png" alt="" className="brand-hero-mouth" />
+            </span>
           </div>
         )}
 
-        {/* Categories Bar Horizontal Slider with Navigation Arrows */}
-        <div style={{ position: "relative", margin: "10px 0" }}>
-          {/* Left Navigation Arrow */}
+        {/* Barra de categorias con flechas */}
+        <div className="cat-bar">
           {canScrollCategoriesLeft && (
-            <div style={{
-              position: "absolute",
-              left: "-12px",
-              top: "50%",
-              transform: "translateY(-50%)",
-              zIndex: 10,
-              display: "flex",
-              alignItems: "center"
-            }}>
-              <button
-                type="button"
-                onClick={() => scrollCategories("left")}
-                aria-label="Ver categorías anteriores"
-                style={{
-                  width: "38px",
-                  height: "38px",
-                  borderRadius: "50%",
-                  backgroundColor: "#ffffff",
-                  border: "1px solid #f3e8cc",
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                  color: "#000000",
-                  transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)"
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "scale(1.1)";
-                  e.currentTarget.style.boxShadow = "0 6px 16px rgba(0,0,0,0.18)";
-                  e.currentTarget.style.backgroundColor = "#fdf8ee";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "scale(1)";
-                  e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.12)";
-                  e.currentTarget.style.backgroundColor = "#ffffff";
-                }}
-              >
-                <ChevronLeft size={20} strokeWidth={2.5} />
-              </button>
-            </div>
+            <button
+              type="button"
+              className="gx-arrow cat-nav cat-nav--left"
+              onClick={() => scrollCategories("left")}
+              aria-label="Ver categorías anteriores"
+            >
+              <ChevronLeft size={20} strokeWidth={2.5} />
+            </button>
           )}
 
-          {/* Categories Slider Container */}
           <div
             ref={categoriesRef}
-            className="no-scrollbar"
+            className="no-scrollbar cat-track"
             onWheel={(e) => {
               if (e.deltaY !== 0 && categoriesRef.current) {
                 categoriesRef.current.scrollLeft += e.deltaY * 0.7;
               }
-            }}
-            style={{
-              display: "flex",
-              gap: "16px",
-              overflowX: "auto",
-              padding: "16px 8px 12px 8px",
-              scrollBehavior: "smooth",
-              WebkitOverflowScrolling: "touch"
             }}
           >
             {activeCategoriesList.map((cat) => {
@@ -1454,119 +1451,43 @@ export const Aggregator: React.FC = () => {
                   key={cat.id}
                   type="button"
                   aria-pressed={isSelected}
-                  className="agg-cat"
+                  className={`cat-chip${isSelected ? " is-on" : ""}`}
                   onClick={() => {
                     setActiveCategory(cat.id);
                     setActiveSubcategory(null);
                   }}
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: "8px",
-                  width: cat.id === "all" ? "82px" : "150px",
-                  flexShrink: 0,
-                  cursor: "pointer",
-                  background: "none",
-                  border: "none",
-                  transition: "transform 0.15s ease",
-                  padding: "4px"
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.05)"}
-                onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
-              >
-                <div style={{
-                  width: "60px",
-                  height: "60px",
-                  borderRadius: "50%",
-                  backgroundColor: isSelected ? "#ffca26" : "var(--brand-cream-mid)",
-                  border: isSelected ? "2px solid #000000" : "2px solid transparent",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  transition: "all 0.2s ease"
-                }}>
-                  <CategoryIcon size={25} strokeWidth={1.8} color={isSelected ? "#000000" : "#d42518"} />
-                </div>
-                <span style={{
-                  fontSize: "13px",
-                  fontWeight: isSelected ? "700" : "500",
-                  color: isSelected ? "#000000" : "#000000",
-                  lineHeight: 1.3,
-                  textAlign: "center",
-                  whiteSpace: "normal"
-                }}>
-                  {cat.name}
-                </span>
+                >
+                  <span className="cat-ico">
+                    <CategoryIcon size={26} strokeWidth={1.8} />
+                  </span>
+                  <span className="cat-name">{cat.name}</span>
                 </button>
               );
             })}
           </div>
 
-          {/* Right Navigation Arrow */}
           {canScrollCategoriesRight && (
-            <div style={{
-              position: "absolute",
-              right: "-12px",
-              top: "50%",
-              transform: "translateY(-50%)",
-              zIndex: 10,
-              display: "flex",
-              alignItems: "center"
-            }}>
-              <button
-                type="button"
-                onClick={() => scrollCategories("right")}
-                aria-label="Ver más categorías"
-                style={{
-                  width: "38px",
-                  height: "38px",
-                  borderRadius: "50%",
-                  backgroundColor: "#ffffff",
-                  border: "1px solid #f3e8cc",
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                  color: "#000000",
-                  transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)"
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "scale(1.1)";
-                  e.currentTarget.style.boxShadow = "0 6px 16px rgba(0,0,0,0.18)";
-                  e.currentTarget.style.backgroundColor = "#fdf8ee";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "scale(1)";
-                  e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.12)";
-                  e.currentTarget.style.backgroundColor = "#ffffff";
-                }}
-              >
-                <ChevronRight size={20} strokeWidth={2.5} />
-              </button>
-            </div>
+            <button
+              type="button"
+              className="gx-arrow cat-nav cat-nav--right"
+              onClick={() => scrollCategories("right")}
+              aria-label="Ver más categorías"
+            >
+              <ChevronRight size={20} strokeWidth={2.5} />
+            </button>
           )}
         </div>
 
         {selectedMainCategory && availableSubcategories.length > 0 && (
           <div
             aria-label={`Subcategorías de ${selectedMainCategory.name}`}
-            style={{ display: "flex", flexWrap: "wrap", gap: "8px", margin: "4px 0 22px" }}
+            className="sub-bar"
           >
             <button
               type="button"
+              className={`sub-chip${activeSubcategory === null ? " is-on" : ""}`}
               onClick={() => setActiveSubcategory(null)}
               aria-pressed={activeSubcategory === null}
-              style={{
-                padding: "8px 14px",
-                border: `1px solid ${activeSubcategory === null ? "#000000" : "#f3e8cc"}`,
-                borderRadius: "999px",
-                color: activeSubcategory === null ? "#000000" : "#737373",
-                background: activeSubcategory === null ? "#f7f0de" : "#ffffff",
-                fontSize: "13px",
-                fontWeight: 600,
-              }}
             >
               Todas
             </button>
@@ -1576,18 +1497,9 @@ export const Aggregator: React.FC = () => {
                 <button
                   key={subcategory.id}
                   type="button"
+                  className={`sub-chip${isSelected ? " is-on" : ""}`}
                   onClick={() => setActiveSubcategory(isSelected ? null : subcategory.id)}
                   aria-pressed={isSelected}
-                  style={{
-                    padding: "8px 14px",
-                    border: `1px solid ${isSelected ? "#ffca26" : "#f3e8cc"}`,
-                    borderRadius: "999px",
-                    color: isSelected ? "#000000" : "#595959",
-                    background: isSelected ? "#ffca26" : "#ffffff",
-                    minHeight: "40px",
-                    fontSize: "13px",
-                    fontWeight: 600,
-                  }}
                 >
                   {subcategory.name}
                 </button>
@@ -1598,216 +1510,114 @@ export const Aggregator: React.FC = () => {
 
         {/* Loading State */}
         {loading ? (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(320px, 100%), 1fr))", gap: "30px", marginTop: "20px" }}>
+          <div className="gx-grid" style={{ marginTop: "20px" }}>
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                <div className="skeleton" style={{ width: "100%", height: "180px", borderRadius: "16px" }} />
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <div className="skeleton" style={{ width: "60%", height: "20px" }} />
-                  <div className="skeleton" style={{ width: "15%", height: "20px" }} />
-                </div>
-                <div className="skeleton" style={{ width: "40%", height: "14px" }} />
+              <div key={i} className="gx-skel">
+                <div className="skeleton" style={{ width: "100%", height: "170px", borderRadius: "22px" }} />
+                <div className="skeleton" style={{ width: "60%", height: "18px", borderRadius: "999px" }} />
+                <div className="skeleton" style={{ width: "40%", height: "14px", borderRadius: "999px" }} />
               </div>
             ))}
           </div>
         ) : error ? (
-          <div style={{ padding: "40px", textAlign: "center", color: "#000000", border: "1px solid #f3e8cc", borderRadius: "12px", marginTop: "20px" }}>
-            <p data-testid="marketplace-error" style={{ fontSize: "16px" }}>{error}</p>
+          <div className="gx-state">
+            <p data-testid="marketplace-error" className="gx-state-text">{error}</p>
           </div>
         ) : filteredRestaurants.length === 0 ? (
-          <div style={{ padding: "60px 40px", textAlign: "center", color: "#737373", border: "1px dashed #f3e8cc", borderRadius: "16px", marginTop: "20px" }}>
-            <Compass size={40} style={{ color: "#f3e8cc", marginBottom: "15px" }} />
-            <h3 style={{ fontSize: "16px", color: "#000000", margin: "0 0 5px 0" }}>No se encontraron restaurantes</h3>
-            <p style={{ fontSize: "13px", margin: 0 }}>Intenta removiendo filtros o buscando un término diferente.</p>
+          <div className="gx-state">
+            <span className="gx-state-ico"><Compass size={30} /></span>
+            <h3 className="gx-state-title">No encontramos restaurantes</h3>
+            <p className="gx-state-text">Prueba con otra categoría o busca otra palabra.</p>
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "50px" }}>
+          <div className="gx-sections">
             
             {/* SECTION 0: Recomendados para ti (Sistema de Preferencias Gastronómicas) */}
             {activeCategory === "all" && !searchQuery && (
               userPreferences.length > 0 && recommendedRestaurants.length > 0 ? (
-                <div style={{
-                  backgroundColor: "rgba(0, 0, 0, 0.02)",
-                  borderRadius: "24px",
-                  padding: "24px 20px",
-                  border: "1px solid rgba(0, 0, 0, 0.12)",
-                }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "18px", flexWrap: "wrap", gap: "10px" }}>
-                    <div>
-                      <div style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        fontSize: "13px",
-                        fontWeight: 700,
-                        color: "#000000",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.5px",
-                        marginBottom: "4px"
-                      }}>
-                        <Sparkles size={14} /> Recomendaciones Personalizadas
+                <section className="rec-box" data-reveal>
+                  <div className="rec-head">
+                    <div style={{ minWidth: 0 }}>
+                      <div className="rec-eyebrow">
+                        <Sparkles size={14} /> Hecho para ti
                       </div>
-                      <h2 className="brand-marker" style={{ fontSize: "22px", fontWeight: "800", color: "#000000", margin: 0 }}>
-                        Recomendados para ti según tus gustos
-                      </h2>
-                      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "8px" }}>
+                      <h2 className="rec-title">Recomendados según tus gustos</h2>
+                      <div className="rec-chips">
                         {userPreferences.map((prefId) => {
                           const cat = FOOD_PREFERENCE_CATEGORIES.find(c => c.id === prefId);
                           if (!cat) return null;
                           const CategoryIcon = cat.icon;
                           return (
-                            <span key={prefId} style={{
-                              fontSize: "13px",
-                              backgroundColor: "#ffffff",
-                              border: "1px solid #f3e8cc",
-                              color: "#000000",
-                              padding: "2px 8px",
-                              borderRadius: "12px",
-                              fontWeight: 600,
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "5px",
-                            }}>
-                              <CategoryIcon size={13} /> {cat.name}
+                            <span key={prefId} className="rec-chip">
+                              <CategoryIcon size={14} /> {cat.name}
                             </span>
                           );
                         })}
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => setPreferencesModalOpen(true)}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                        fontSize: "13px",
-                        color: "#000000",
-                        fontWeight: "700",
-                        cursor: "pointer",
-                        background: "#ffffff",
-                        border: "1px solid rgba(0, 0, 0, 0.3)",
-                        borderRadius: "20px",
-                        padding: "6px 14px",
-                        boxShadow: "0 2px 5px rgba(0, 0, 0, 0.08)",
-                      }}
-                    >
-                      <SlidersHorizontal size={13} />
+                    <button type="button" className="rec-change" onClick={() => setPreferencesModalOpen(true)}>
+                      <SlidersHorizontal size={15} />
                       Cambiar gustos
                     </button>
                   </div>
 
-                  <div className="no-scrollbar" style={{
-                    display: "flex",
-                    gap: "20px",
-                    overflowX: "auto",
-                    paddingBottom: "10px",
-                    scrollBehavior: "smooth"
-                  }}>
-                    {recommendedRestaurants.map((rest) => (
-                      <Link
-                        to={`/r/${rest.slug}`}
-                        key={`rec-${rest.id}`}
-                        style={{
-                          width: "300px",
-                          flexShrink: 0,
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: "10px",
-                          position: "relative",
-                          textDecoration: "none"
-                        }}
-                      >
-                        <div style={{
-                          position: "relative",
-                          width: "100%",
-                          height: "165px",
-                          borderRadius: "16px",
-                          overflow: "hidden",
-                          backgroundColor: "#f7f0de"
-                        }}>
-                          <img
-                            src={rest.coverImage}
-                            alt={rest.name}
-                            onError={(e) => {
-                              e.currentTarget.src = "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop&q=80";
-                            }}
-                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                          />
-                          
-                          <div style={{
-                            position: "absolute",
-                            top: "12px",
-                            left: "12px",
-                            backgroundColor: "rgba(15, 23, 42, 0.85)",
-                            backdropFilter: "blur(4px)",
-                            color: "#ffffff",
-                            padding: "4px 9px",
-                            borderRadius: "20px",
-                            fontSize: "13px",
-                            fontWeight: 700,
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "4px"
-                          }}>
-                            <Sparkles size={11} color="#333333" /> Recomendado
-                          </div>
-
-                          {isAuthenticated && (
-                            <button
-                              onClick={(e) => toggleFavorite(rest.id, e)}
-                              style={{
-                                position: "absolute",
-                                top: "12px",
-                                right: "12px",
-                                width: "32px",
-                                height: "32px",
-                                borderRadius: "50%",
-                                backgroundColor: "rgba(255, 255, 255, 0.9)",
-                                border: "none",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                cursor: "pointer",
-                                color: favorites.includes(rest.id) ? "#000000" : "#737373"
-                              }}
-                            >
-                              <Heart size={16} fill={favorites.includes(rest.id) ? "#000000" : "none"} />
-                            </button>
-                          )}
-                        </div>
-
-                        <div>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                            <h3 style={{ fontSize: "16px", fontWeight: "700", color: "#000000", margin: 0 }}>
-                              {rest.name}
-                            </h3>
-
-                              <OpenBadge hours={(rest as any).openingHours} />
-                            <div style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "3px",
-                              fontSize: "13px",
-                              fontWeight: "700",
-                              backgroundColor: "#f7f0de",
-                              padding: "2px 6px",
-                              borderRadius: "6px"
-                            }}>
-                              <Star size={12} fill="#000000" color="#000000" />
-                              <span>{rest.rating}</span>
-                            </div>
-                          </div>
-                          <p style={{ fontSize: "13px", color: "#737373", margin: "4px 0 0 0" }}>
-                            {rest.category} • {rest.deliveryTime} • {rest.deliveryCost}
-                          </p>
-                        </div>
-                      </Link>
-                    ))}
+                  <div className="no-scrollbar gx-scroll">
+                    {recommendedRestaurants.map((rest) => renderCard(rest, {
+                      keyPrefix: "rec",
+                      slide: true,
+                      badge: { text: "Recomendado", tone: "yellow", icon: true },
+                      meta: [rest.category, rest.deliveryTime, rest.deliveryCost],
+                    }))}
                   </div>
-                </div>
+                </section>
               ) : (
-                null
+                /* Sin gustos (o sin sesion): invitacion amarilla con los mejor calificados */
+                <section className="rec-box" data-reveal>
+                  <div className="rec-head">
+                    <div style={{ minWidth: 0 }}>
+                      <div className="rec-eyebrow">
+                        <Sparkles size={14} /> Hecho para ti
+                      </div>
+                      <h2 className="rec-title">Cuéntanos qué se te antoja</h2>
+                      <p className="rec-lead">Elige tus comidas favoritas y te mostramos primero los restaurantes que van contigo.</p>
+                      <div className="rec-chips">
+                        {FOOD_PREFERENCE_CATEGORIES.map((cat) => {
+                          const CategoryIcon = cat.icon;
+                          return (
+                            <button
+                              key={cat.id}
+                              type="button"
+                              className="rec-chip rec-chip--btn"
+                              onClick={() => setPreferencesModalOpen(true)}
+                            >
+                              <CategoryIcon size={14} /> {cat.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <button type="button" className="rec-change" onClick={() => setPreferencesModalOpen(true)}>
+                      <SlidersHorizontal size={15} />
+                      Elegir mis gustos
+                    </button>
+                  </div>
+
+                  {topRatedRestaurants.length > 0 && (
+                    <>
+                      <p className="rec-sub">Mientras tanto, los mejor calificados</p>
+                      <div className="no-scrollbar gx-scroll">
+                        {topRatedRestaurants.map((rest) => renderCard(rest, {
+                          keyPrefix: "top",
+                          slide: true,
+                          badge: { text: "Mejor calificado", tone: "black" },
+                          meta: [rest.category, rest.deliveryTime, rest.deliveryCost],
+                        }))}
+                      </div>
+                    </>
+                  )}
+                </section>
               )
             )}
 
@@ -1816,659 +1626,115 @@ export const Aggregator: React.FC = () => {
 
             {/* SECTION 1: Most ordered this week */}
             {activeCategory === "all" && !searchQuery && filteredRestaurants.length > 0 && (
-              <div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px" }}>
-                  <h2 className="brand-marker" style={{ fontSize: "22px", fontWeight: "800", color: "#000000", margin: 0 }}>
-                    Lo más pedido esta semana
-                  </h2>
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <span style={{ fontSize: "13px", color: "#737373", fontWeight: "600", cursor: "pointer" }}>Ver todos</span>
-                    <div style={{ display: "flex", gap: "6px" }}>
-                      <button
-                        type="button"
-                        onClick={() => scrollPopular("left")}
-                        aria-label="Anterior"
-                        style={{
-                          width: "32px",
-                          height: "32px",
-                          borderRadius: "50%",
-                          backgroundColor: "#f7f0de",
-                          border: "none",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          cursor: "pointer",
-                          color: "#333333",
-                          transition: "all 0.15s ease"
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f3e8cc"}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#f7f0de"}
-                      >
-                        <ChevronLeft size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => scrollPopular("right")}
-                        aria-label="Siguiente"
-                        style={{
-                          width: "32px",
-                          height: "32px",
-                          borderRadius: "50%",
-                          backgroundColor: "#f7f0de",
-                          border: "none",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          cursor: "pointer",
-                          color: "#333333",
-                          transition: "all 0.15s ease"
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f3e8cc"}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#f7f0de"}
-                      >
-                        <ChevronRight size={16} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
+              <section className="gx-band gx-band--blush" data-reveal>
+                {renderSectionHead("Lo más pedido esta semana", weeklyTopRestaurants.length > 0 ? scrollPopular : undefined)}
                 {weeklyTopRestaurants.length > 0 ? (
-                  <div
-                    ref={popularRef}
-                    className="no-scrollbar"
-                    style={{
-                      display: "flex",
-                      gap: "20px",
-                      overflowX: "auto",
-                      paddingBottom: "10px",
-                      scrollBehavior: "smooth"
-                    }}
-                  >
-                    {weeklyTopRestaurants.map((rest) => (
-                    <Link
-                      to={`/r/${rest.slug}`}
-                      key={`weekly-${rest.id}`}
-                      style={{
-                        width: "320px",
-                        flexShrink: 0,
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "10px",
-                        position: "relative"
-                      }}
-                    >
-                      {/* Cover Image Container */}
-                      <div style={{
-                        position: "relative",
-                        width: "100%",
-                        height: "170px",
-                        borderRadius: "16px",
-                        overflow: "hidden",
-                        backgroundColor: "#f7f0de"
-                      }}>
-                        <img
-                          src={rest.coverImage}
-                          alt={rest.name}
-                          onError={(e) => {
-                            e.currentTarget.src = "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop&q=80";
-                          }}
-                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                        />
-                        
-                        {/* Red Promo overlay badge */}
-                        {rest.promoText && (
-                          <div style={{
-                            position: "absolute",
-                            top: "15px",
-                            left: "0px",
-                            backgroundColor: "#000000",
-                            color: "#ffffff",
-                            padding: "4px 10px",
-                            fontSize: "13px",
-                            fontWeight: "700",
-                            borderTopRightRadius: "4px",
-                            borderBottomRightRadius: "4px",
-                            boxShadow: "0 2px 5px rgba(0,0,0,0.1)"
-                          }}>
-                            {rest.promoText}
-                          </div>
-                        )}
-
-                        {/* Heart Button */}
-                        {isAuthenticated && (
-                          <button
-                            onClick={(e) => toggleFavorite(rest.id, e)}
-                            style={{
-                              position: "absolute",
-                              top: "15px",
-                              right: "15px",
-                              width: "34px",
-                              height: "34px",
-                              borderRadius: "50%",
-                              backgroundColor: "rgba(255, 255, 255, 0.9)",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              border: "none",
-                              cursor: "pointer",
-                              boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
-                              transition: "transform 0.15s ease"
-                            }}
-                          >
-                            <Heart
-                              size={16}
-                              fill={favorites.includes(rest.id) ? "#000000" : "none"}
-                              color={favorites.includes(rest.id) ? "#000000" : "#737373"}
-                            />
-                          </button>
-                        )}
-                      </div>
-
-                      {/* Content block */}
-                      <div>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0, flex: 1 }}>
-                            {rest.logo && (
-                              <img
-                                src={rest.logo}
-                                alt={rest.name}
-                                onError={(e) => {
-                                  e.currentTarget.src = "/logos/prueba.svg";
-                                }}
-                                style={{
-                                  width: "26px",
-                                  height: "26px",
-                                  borderRadius: "6px",
-                                  objectFit: "contain",
-                                  backgroundColor: "#ffffff",
-                                  padding: "2px",
-                                  boxShadow: "0 1px 3px rgba(0,0,0,0.12)",
-                                  flexShrink: 0
-                                }}
-                              />
-                            )}
-                            <h3 style={{ fontSize: "15px", fontWeight: "700", color: "#000000", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                              {rest.name}
-                            </h3>
-
-                              <OpenBadge hours={(rest as any).openingHours} />
-                          </div>
-                          <div style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "4px",
-                            backgroundColor: "#f7f0de",
-                            padding: "4px 8px",
-                            borderRadius: "999px",
-                            fontSize: "13px",
-                            fontWeight: "700",
-                            flexShrink: 0,
-                            marginLeft: "8px"
-                          }}>
-                            <span>{rest.ordersThisWeek} pedidos</span>
-                          </div>
-                        </div>
-                        <div style={{ fontSize: "13px", color: "#737373", marginTop: "3px" }}>
-                          {rest.category}
-                        </div>
-                      </div>
-                    </Link>
-                    ))}
+                  <div ref={popularRef} className="no-scrollbar gx-scroll">
+                    {weeklyTopRestaurants.map((rest, index) => renderCard(rest, {
+                      keyPrefix: "weekly",
+                      slide: true,
+                      badge: index < 3 ? { text: `#${index + 1} de la semana`, tone: "black" } : undefined,
+                      stat: <span className="gx-stat">{rest.ordersThisWeek} pedidos</span>,
+                      meta: [rest.category, rest.deliveryTime],
+                      showLogo: true,
+                    }))}
                   </div>
                 ) : (
-                  <p style={{ margin: 0, padding: "18px 20px", borderRadius: "12px", backgroundColor: "#fdf8ee", color: "#737373", fontSize: "14px" }}>
-                    Aún no hay pedidos registrados esta semana.
-                  </p>
+                  <div className="gx-soon">
+                    <img src="/brand/boca-roja.png" alt="" className="gx-soon-mouth" />
+                    <div style={{ minWidth: 0 }}>
+                      <span className="gx-soon-eyebrow">Muy pronto</span>
+                      <p className="gx-soon-title">Aquí verás lo que Loja más pide</p>
+                      <p className="gx-soon-text">
+                        Cada semana armamos el top con los restaurantes que más pedidos reciben.
+                        Haz tu pedido y ayuda a tu favorito a llegar al #1.
+                      </p>
+                    </div>
+                  </div>
                 )}
-              </div>
+              </section>
             )}
 
             {activeCategory === "all" && !searchQuery && samePriceRestaurants.length > 0 &&
-              renderRestaurantSection("Mismo precio que en el local", samePriceRestaurants, "same-price", "Precio del local")}
+              renderRestaurantSection("Mismo precio que en el local", samePriceRestaurants, "same-price", "Precio del local", "peach")}
 
             {/* SECTION 2: Restaurant offers */}
             {activeCategory === "all" && !searchQuery && offerRestaurants.length > 0 && (
-              <div id="popular-offers">
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "18px" }}>
-                  <h2 className="brand-marker" style={{ fontSize: "22px", fontWeight: "800", color: "#000000", margin: 0 }}>
-                    Ofertas de restaurantes
-                  </h2>
-                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <span style={{ fontSize: "13px", color: "#737373", fontWeight: "600", cursor: "pointer" }}>Ver todos</span>
-                    <div style={{ display: "flex", gap: "6px" }}>
-                      <button
-                        type="button"
-                        onClick={() => scrollOffers("left")}
-                        aria-label="Anterior"
-                        style={{
-                          width: "32px",
-                          height: "32px",
-                          borderRadius: "50%",
-                          backgroundColor: "#f7f0de",
-                          border: "none",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          cursor: "pointer",
-                          color: "#333333",
-                          transition: "all 0.15s ease"
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f3e8cc"}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#f7f0de"}
-                      >
-                        <ChevronLeft size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => scrollOffers("right")}
-                        aria-label="Siguiente"
-                        style={{
-                          width: "32px",
-                          height: "32px",
-                          borderRadius: "50%",
-                          backgroundColor: "#f7f0de",
-                          border: "none",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          cursor: "pointer",
-                          color: "#333333",
-                          transition: "all 0.15s ease"
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f3e8cc"}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#f7f0de"}
-                      >
-                        <ChevronRight size={16} />
-                      </button>
-                    </div>
-                  </div>
+              <section id="popular-offers" className="gx-band gx-band--orange" data-reveal>
+                {renderSectionHead("Ofertas de restaurantes", scrollOffers)}
+                <div ref={offersRef} className="no-scrollbar gx-scroll">
+                  {offerRestaurants.map((rest) => renderCard(rest, {
+                    keyPrefix: "offer",
+                    slide: true,
+                    badge: rest.promoText ? { text: rest.promoText, tone: "red" } : undefined,
+                    meta: [rest.reviews, rest.deliveryTime, rest.deliveryCost],
+                    showLogo: true,
+                  }))}
                 </div>
-
-                <div
-                  ref={offersRef}
-                  className="no-scrollbar"
-                  style={{
-                    display: "flex",
-                    gap: "20px",
-                    overflowX: "auto",
-                    paddingBottom: "10px",
-                    scrollBehavior: "smooth"
-                  }}
-                >
-                  {offerRestaurants.map((rest) => (
-                    <Link
-                      to={`/r/${rest.slug}`}
-                      key={`offer-${rest.id}`}
-                      style={{
-                        width: "320px",
-                        flexShrink: 0,
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "10px",
-                        position: "relative"
-                      }}
-                    >
-                      {/* Cover Image */}
-                      <div style={{
-                        position: "relative",
-                        width: "100%",
-                        height: "170px",
-                        borderRadius: "16px",
-                        overflow: "hidden",
-                        backgroundColor: "#f7f0de"
-                      }}>
-                        <img
-                          src={rest.coverImage}
-                          alt={rest.name}
-                          onError={(e) => {
-                            e.currentTarget.src = "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop&q=80";
-                          }}
-                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                        />
-                        
-                        {/* Red Promo overlay badge */}
-                        <div style={{
-                          position: "absolute",
-                          top: "15px",
-                          left: "0px",
-                          backgroundColor: "#000000",
-                          color: "#ffffff",
-                          padding: "4px 10px",
-                          fontSize: "13px",
-                          fontWeight: "700",
-                          borderTopRightRadius: "4px",
-                          borderBottomRightRadius: "4px",
-                          boxShadow: "0 2px 5px rgba(0,0,0,0.1)"
-                        }}>
-                          {rest.promoText}
-                        </div>
-
-                        {/* Heart Button */}
-                        {isAuthenticated && (
-                          <button
-                            onClick={(e) => toggleFavorite(rest.id, e)}
-                            style={{
-                              position: "absolute",
-                              top: "15px",
-                              right: "15px",
-                              width: "34px",
-                              height: "34px",
-                              borderRadius: "50%",
-                              backgroundColor: "rgba(255, 255, 255, 0.9)",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              border: "none",
-                              cursor: "pointer",
-                              boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
-                              transition: "transform 0.15s ease"
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.transform = "scale(1.08)"}
-                            onMouseLeave={(e) => e.currentTarget.style.transform = "scale(1)"}
-                          >
-                            <Heart
-                              size={16}
-                              fill={favorites.includes(rest.id) ? "#000000" : "none"}
-                              color={favorites.includes(rest.id) ? "#000000" : "#737373"}
-                            />
-                          </button>
-                        )}
-                      </div>
-
-                      {/* Content block */}
-                      <div>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0, flex: 1 }}>
-                            {rest.logo && (
-                              <img
-                                src={rest.logo}
-                                alt={rest.name}
-                                onError={(e) => {
-                                  e.currentTarget.src = "/logos/prueba.svg";
-                                }}
-                                style={{
-                                  width: "26px",
-                                  height: "26px",
-                                  borderRadius: "6px",
-                                  objectFit: "contain",
-                                  backgroundColor: "#ffffff",
-                                  padding: "2px",
-                                  boxShadow: "0 1px 3px rgba(0,0,0,0.12)",
-                                  flexShrink: 0
-                                }}
-                              />
-                            )}
-                            <h3 style={{ fontSize: "15px", fontWeight: "700", color: "#000000", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                              {rest.name}
-                            </h3>
-
-                              <OpenBadge hours={(rest as any).openingHours} />
-                          </div>
-                          <div style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "2px",
-                            backgroundColor: "#f7f0de",
-                            padding: "3px 6px",
-                            borderRadius: "12px",
-                            fontSize: "13px",
-                            fontWeight: "700",
-                            flexShrink: 0,
-                            marginLeft: "8px"
-                          }}>
-                            <Star size={12} fill="#000000" color="#000000" />
-                            <span>{rest.rating}</span>
-                          </div>
-                        </div>
-                        <div style={{ display: "flex", gap: "5px", fontSize: "13px", color: "#737373", marginTop: "3px", alignItems: "center" }}>
-                          <span>{rest.reviews}</span>
-                          <span>•</span>
-                          <span>{rest.deliveryTime}</span>
-                        </div>
-                        <div style={{ fontSize: "13px", color: "#737373", marginTop: "2px" }}>
-                          {rest.deliveryCost}
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </div>
+              </section>
             )}
 
             {/* SECTION 3: Grid General de Opciones */}
-            <div>
-              <h2 className="brand-marker" style={{ fontSize: "22px", fontWeight: "800", color: "#000000", marginBottom: "18px" }}>
-                {activeCategory === "all" && !searchQuery ? "Todos los restaurantes" : "Resultados de búsqueda"}
-              </h2>
-
-              <div style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(min(350px, 100%), 1fr))",
-                gap: "30px"
-              }}>
-                {filteredRestaurants.map((rest) => (
-                  <Link
-                    to={`/r/${rest.slug}`}
-                    key={`grid-${rest.id}`}
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "12px",
-                      position: "relative"
-                    }}
-                  >
-                    {/* Cover image card */}
-                    <div style={{
-                      position: "relative",
-                      width: "100%",
-                      height: "190px",
-                      borderRadius: "16px",
-                      overflow: "hidden",
-                      backgroundColor: "#f7f0de"
-                    }}>
-                      <img
-                        src={rest.coverImage}
-                        alt={rest.name}
-                        onError={(e) => {
-                          e.currentTarget.src = "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop&q=80";
-                        }}
-                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                      />
-                      
-                      {/* Red Promo overlay badge */}
-                      {rest.promoText && (
-                        <div style={{
-                          position: "absolute",
-                          top: "15px",
-                          left: "0px",
-                          backgroundColor: "#000000",
-                          color: "#ffffff",
-                          padding: "4px 12px",
-                          fontSize: "13px",
-                          fontWeight: "700",
-                          borderTopRightRadius: "4px",
-                          borderBottomRightRadius: "4px",
-                          boxShadow: "0 2px 5px rgba(0,0,0,0.1)"
-                        }}>
-                          {rest.promoText}
-                        </div>
-                      )}
-
-                      {/* Favorite Button */}
-                      {isAuthenticated && (
-                        <button
-                          onClick={(e) => toggleFavorite(rest.id, e)}
-                          style={{
-                            position: "absolute",
-                            top: "15px",
-                            right: "15px",
-                            width: "36px",
-                            height: "36px",
-                            borderRadius: "50%",
-                            backgroundColor: "rgba(255, 255, 255, 0.9)",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            border: "none",
-                            cursor: "pointer",
-                            boxShadow: "0 2px 6px rgba(0,0,0,0.1)"
-                          }}
-                        >
-                          <Heart
-                            size={16}
-                            fill={favorites.includes(rest.id) ? "#000000" : "none"}
-                            color={favorites.includes(rest.id) ? "#000000" : "#737373"}
-                          />
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Meta info card */}
-                    <div style={{ display: "flex", gap: "15px", alignItems: "flex-start" }}>
-                      {/* Official Brand Logo */}
-                      {rest.logo ? (
-                        <div style={{
-                          width: "48px",
-                          height: "48px",
-                          borderRadius: "10px",
-                          overflow: "hidden",
-                          backgroundColor: "#ffffff",
-                          flexShrink: 0,
-                          boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-                          border: "1px solid #edf2f7",
-                          padding: "4px",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center"
-                        }}>
-                          <img
-                            src={rest.logo}
-                            alt={rest.name}
-                            onError={(e) => {
-                              e.currentTarget.src = "/logos/prueba.svg";
-                            }}
-                            style={{ width: "100%", height: "100%", objectFit: "contain" }}
-                          />
-                        </div>
-                      ) : (
-                        <div style={{
-                          width: "48px",
-                          height: "48px",
-                          borderRadius: "10px",
-                          backgroundColor: "#f7f0de",
-                          flexShrink: 0,
-                          border: "1px solid #f3e8cc",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontSize: "18px",
-                          fontWeight: "bold",
-                          color: "#000000"
-                        }}>
-                          {rest.name[0].toUpperCase()}
-                        </div>
-                      )}
-
-                      {/* Details block */}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <h3 style={{ fontSize: "16px", fontWeight: "700", color: "#000000", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {rest.name}
-                          </h3>
-
-                            <OpenBadge hours={(rest as any).openingHours} />
-                          <div style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "2px",
-                            backgroundColor: "#f7f0de",
-                            padding: "3px 8px",
-                            borderRadius: "12px",
-                            fontSize: "13px",
-                            fontWeight: "700",
-                            flexShrink: 0,
-                            marginLeft: "8px"
-                          }}>
-                            <Star size={12} fill="#000000" color="#000000" />
-                            <span>{rest.rating}</span>
-                          </div>
-                        </div>
-
-                        <div style={{ display: "flex", gap: "5px", fontSize: "13px", color: "#737373", marginTop: "3px", alignItems: "center" }}>
-                          <span>{rest.category}</span>
-                          <span>•</span>
-                          <span>{rest.deliveryTime}</span>
-                          <span>•</span>
-                          <span>{rest.reviews}</span>
-                        </div>
-
-                        <div style={{ fontSize: "13px", color: "#737373", marginTop: "3px", display: "flex", alignItems: "center", gap: "6px" }}>
-                          <span>{rest.deliveryCost}</span>
-                          {rest.specialLabel && (
-                            <>
-                              <span>•</span>
-                              <span style={{
-                                backgroundColor: "#f7f0de",
-                                color: "#000000",
-                                padding: "2px 6px",
-                                borderRadius: "4px",
-                                fontWeight: "600",
-                                fontSize: "13px"
-                              }}>{rest.specialLabel}</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
+            <section className="gx-band gx-band--white" data-reveal>
+              {renderSectionHead(activeCategory === "all" && !searchQuery ? "Todos los restaurantes" : "Resultados de búsqueda")}
+              <div className="gx-grid">
+                {filteredRestaurants.map((rest) => renderCard(rest, {
+                  keyPrefix: "grid",
+                  badge: rest.promoText ? { text: rest.promoText, tone: "red" } : undefined,
+                  meta: [rest.category, rest.deliveryTime, rest.deliveryCost],
+                  showLogo: true,
+                }))}
               </div>
-            </div>
+            </section>
 
           </div>
         )}
 
       </div>
 
-      {/* Styled Footer */}
-      <footer style={{
-        marginTop: "100px",
-        borderTop: "1px solid #f3e8cc",
-        padding: "40px 20px",
-        textAlign: "center",
-        backgroundColor: "#fdf8ee"
-      }}>
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "8px", marginBottom: "15px" }}>
-          <Utensils size={24} color="#000000" />
-          <strong style={{ fontSize: "18px", color: "#000000" }}>GoEats Marketplace</strong>
-        </div>
-        <p style={{ color: "#737373", fontSize: "13px", margin: "0 0 10px 0" }}>
-          &copy; {new Date().getFullYear()} GoEats Platform. Todos los derechos reservados.
-        </p>
-        <div style={{ display: "flex", justifyContent: "center", gap: "20px", fontSize: "13px" }}>
-          <Link to="/login?role=restaurant&mode=register" style={{ color: "#000000", fontWeight: "600", textDecoration: "underline" }}>
-            Inscribir Establecimiento
-          </Link>
-          <span style={{ color: "#f3e8cc" }}>|</span>
-          <Link to="/login" style={{ color: "#737373", textDecoration: "underline" }}>
-            Panel de Control POS
-          </Link>
-          <span style={{ color: "#f3e8cc" }}>|</span>
-          <button
-            onClick={() => setSupportModalOpen(true)}
-            style={{
-              background: "none",
-              border: "none",
-              color: "#000000",
-              fontWeight: "600",
-              textDecoration: "underline",
-              cursor: "pointer",
-              fontSize: "13px",
-              padding: 0
-            }}
-          >
-            Centro de Ayuda & Soporte
-          </button>
+      {/* Pie con la marca, igual de estilo que el de la landing */}
+      <footer className="rx-footer">
+        <div className="rx-footer-inner">
+          <div className="rx-footer-top">
+            <div className="rx-footer-brand">
+              <BrandLogo size={30} />
+              <p>Comida de los restaurantes de Loja, a domicilio o para retirar en el local.</p>
+              <span className="rx-footer-chip">
+                <MapPin size={14} /> Loja, Ecuador
+              </span>
+            </div>
+
+            <nav className="rx-footer-cols" aria-label="Enlaces del sitio">
+              <div>
+                <h3>Para clientes</h3>
+                <button type="button" onClick={() => setPreferencesModalOpen(true)}>Cambiar mis gustos</button>
+                <Link to="/plus">GoEats Plus</Link>
+                {!isAuthenticated && <Link to="/login?role=customer&mode=register">Crear mi cuenta</Link>}
+                {!isAuthenticated && <Link to="/login">Iniciar sesión</Link>}
+              </div>
+              <div>
+                <h3>Para negocios</h3>
+                <Link to="/login?role=restaurant&mode=register">Registrar mi restaurante</Link>
+                <Link to="/login?role=driver&mode=register">Quiero repartir</Link>
+                <Link to="/login">Panel del restaurante</Link>
+              </div>
+              <div>
+                <h3>GoEats</h3>
+                <Link to="/">Cómo funciona</Link>
+                <button type="button" onClick={() => setSupportModalOpen(true)}>Ayuda y soporte</button>
+              </div>
+            </nav>
+          </div>
+
+          <div className="rx-footer-bottom">
+            <p>
+              © {new Date().getFullYear()} GoEats · Hecho en Loja con
+              <img src="/brand/boca-roja.png" alt="cariño" />
+            </p>
+            <button type="button" className="rx-footer-up" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
+              Volver arriba <ArrowUp size={16} />
+            </button>
+          </div>
         </div>
       </footer>
 
