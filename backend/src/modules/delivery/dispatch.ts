@@ -8,10 +8,11 @@ import { getShippingDistanceKm } from "../../utils/shipping";
 export const LOCATION_FRESH_MS = 10 * 60 * 1000;
 const WATCH_EVERY_MS = 30 * 1000;
 export const ADMIN_ROOM = "admins";
+// Minutes a ready order is only for the nearby drivers before it opens to all (bosses, 17 nov)
+export const DISPATCH_WAIT_MIN = 1;
 
 interface DispatchRate {
   dispatchRadiusKm: number;
-  dispatchWaitMin: number;
 }
 
 interface DispatchOrder {
@@ -27,9 +28,9 @@ interface DispatchDriver {
 }
 
 // When a ready order stops being only for the nearby drivers
-export function getOpenToAllAt(order: DispatchOrder, rate: DispatchRate) {
+export function getOpenToAllAt(order: DispatchOrder) {
   const readyAt = order.readyAt ?? order.updatedAt;
-  return new Date(readyAt.getTime() + Math.max(0, rate.dispatchWaitMin) * 60 * 1000);
+  return new Date(readyAt.getTime() + DISPATCH_WAIT_MIN * 60 * 1000);
 }
 
 // Distance from the driver to the restaurant, or null without a recent location
@@ -43,7 +44,7 @@ export function getDriverDistanceKm(order: DispatchOrder, driver: DispatchDriver
 // First the drivers inside the radius see the order; once the wait is over, everyone does.
 // A restaurant without a map location can't be measured, so its orders are open to all at once
 export function getDispatchView(order: DispatchOrder, driver: DispatchDriver, rate: DispatchRate, now = new Date()) {
-  const openToAllAt = getOpenToAllAt(order, rate);
+  const openToAllAt = getOpenToAllAt(order);
   const openToAll = now.getTime() >= openToAllAt.getTime();
   const hasRestaurantLocation = order.restaurant?.mapLatitude != null && order.restaurant?.mapLongitude != null;
   const distanceKm = getDriverDistanceKm(order, driver, now);
@@ -59,9 +60,7 @@ export function getDispatchView(order: DispatchOrder, driver: DispatchDriver, ra
 
 // Ready deliveries that nobody took within the wait: the administrator gets one alert per order
 export async function alertUnassignedDeliveries(io: Server | undefined, now = new Date()) {
-  const rate = await prisma.deliveryRate.findFirst({ where: { isActive: true } });
-  const waitMin = rate?.dispatchWaitMin ?? 3;
-  const limit = new Date(now.getTime() - waitMin * 60 * 1000);
+  const limit = new Date(now.getTime() - DISPATCH_WAIT_MIN * 60 * 1000);
 
   const waiting = await prisma.order.findMany({
     where: {
@@ -86,7 +85,7 @@ export async function alertUnassignedDeliveries(io: Server | undefined, now = ne
       orderId: order.id,
       restaurantName: order.restaurant.name,
       readyAt: order.readyAt,
-      message: `Nadie tomó el pedido #${order.id} de ${order.restaurant.name} en ${waitMin} min.`,
+      message: `Nadie tomó el pedido #${order.id} de ${order.restaurant.name} en ${DISPATCH_WAIT_MIN} min.`,
     });
   }
   return waiting.length;

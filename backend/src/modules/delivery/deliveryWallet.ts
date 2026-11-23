@@ -1,35 +1,24 @@
 import { Prisma } from "@prisma/client";
 import { getTakeCommissionDescription } from "../../utils/orderRules";
 
-// PREPAID: the driver needs balance to pay the take commission.
-// DEBT_LIMIT: the driver may go negative down to their maxDebtLimit.
-export const BALANCE_RULES = ["PREPAID", "DEBT_LIMIT"] as const;
-export type BalanceRule = (typeof BALANCE_RULES)[number];
-
-export function isBalanceRule(value: unknown): value is BalanceRule {
-  return typeof value === "string" && (BALANCE_RULES as readonly string[]).includes(value);
-}
-
-export function readBalanceRule(value: unknown): BalanceRule {
-  return isBalanceRule(value) ? value : "PREPAID";
-}
+// The driver wallet never goes below $0 (bosses, 17 nov).
+// To take an order the balance must already cover everything that order will deduct:
+// the take commission and, on cash orders, the GoEats share of the cash the driver collects.
 
 const round2 = (value: number) => Math.round(value * 100) / 100;
 
-// Lowest balance the driver may keep after paying the take commission
-export function getMinimumBalanceAfterTake(rule: BalanceRule, maxDebtLimit: number) {
-  return rule === "DEBT_LIMIT" ? -Math.abs(maxDebtLimit) : 0;
+// Cash the driver keeps on a cash order that belongs to GoEats. It is deducted on delivery
+export function getCashHoldback(total: number, providerPay: number, driverEarnings: number) {
+  return Math.max(0, round2(total - providerPay - driverEarnings));
 }
 
-export function canPayTakeCommission(balance: number, cost: number, rule: BalanceRule, maxDebtLimit: number) {
-  return round2(balance - cost) >= getMinimumBalanceAfterTake(rule, maxDebtLimit);
+export function canCoverOrder(balance: number, required: number) {
+  return round2(balance - required) >= 0;
 }
 
-export function getInsufficientBalanceMessage(rule: BalanceRule, cost: number, maxDebtLimit: number) {
-  if (rule === "DEBT_LIMIT") {
-    return `Llegaste a tu límite de deuda de $${Math.abs(maxDebtLimit).toFixed(2)}. Haz un abono a GoEats para volver a tomar pedidos.`;
-  }
-  return `Saldo insuficiente en tu billetera. Necesitas al menos $${cost.toFixed(2)} para tomar este pedido. Por favor recarga.`;
+export function getInsufficientBalanceMessage(required: number, balance: number) {
+  const missing = Math.max(0.01, round2(required - balance));
+  return `Saldo insuficiente: necesitas $${required.toFixed(2)} de saldo para tomar este pedido. Recarga $${missing.toFixed(2)} para seguir tomando pedidos.`;
 }
 
 // Gives back the take commission this driver still has paid for the order.

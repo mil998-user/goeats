@@ -1,17 +1,11 @@
 import { Request, Response, NextFunction } from "express";
 import { prisma } from "../../config/database";
-import { OrderStatus, Role } from "@prisma/client";
+import { OrderStatus, Prisma, Role } from "@prisma/client";
 import { NotificationService } from "../notifications/notification.service";
 import { parseAmount } from "../../utils/validation";
 import { AttemptLimiter, sendTooManyAttempts } from "../../utils/rateLimit";
 import { getTakeCommissionDescription, hideDeliveryPin } from "../../utils/orderRules";
-import {
-  canPayTakeCommission,
-  getInsufficientBalanceMessage,
-  getMinimumBalanceAfterTake,
-  isBalanceRule,
-  readBalanceRule,
-} from "./deliveryWallet";
+import { canCoverOrder, getCashHoldback, getInsufficientBalanceMessage } from "./deliveryWallet";
 import { calculateShippingCost, getShippingDistanceKm } from "../../utils/shipping";
 import { readReason } from "./deliveryIncidents.controller";
 import { getDriverAverages } from "../ratings/ratings.controller";
@@ -21,7 +15,27 @@ import { notifyDeliveryBoard, notifyWallet } from "../../config/realtime";
 const MAX_PIN_ATTEMPTS = 5;
 const pinAttempts = new AttemptLimiter(MAX_PIN_ATTEMPTS, 15 * 60 * 1000);
 
-class InsufficientBalanceError extends Error {}
+class InsufficientBalanceError extends Error {
+  constructor(public required: number, public balance: number) {
+    super("insufficient balance");
+  }
+}
+
+type Db = Prisma.TransactionClient | typeof prisma;
+
+// GoEats share of the cash the driver will collect on cash orders still on the way.
+// It is deducted on delivery, so the balance has to keep it covered
+async function getPendingCashHoldback(db: Db, driverId: number) {
+  const active = await db.order.findMany({
+    where: {
+      deliveryDriverId: driverId,
+      status: OrderStatus.DELIVERING,
+      OR: [{ paymentMethodString: "CASH" }, { paymentMethodString: null }],
+    },
+    select: { total: true, providerPayAmount: true, driverEarnings: true },
+  });
+  return round2(active.reduce((sum, o) => sum + getCashHoldback(o.total, o.providerPayAmount ?? 0, o.driverEarnings ?? 0), 0));
+}
 
 
 const round2 = (value: number) => Math.round(value * 100) / 100;
@@ -208,15 +222,6 @@ export async function takeOrder(req: Request, res: Response, next: NextFunction)
     const isPlusOrder = isPlusDelivery(order);
     const isCashOrder = (order.paymentMethodString || "CASH") === "CASH";
 
-    // Antifraude: Si el balance de deuda acumulado excede el límite (default $50.00), no permitir pedidos en efectivo
-    const maxDebtAllowed = driver.maxDebtLimit ?? 50.0;
-    if (isCashOrder && driver.walletBalance <= -maxDebtAllowed) {
-      return res.status(400).json({
-        success: false,
-        message: `Has alcanzado tu límite máximo de deuda permitido (-$${maxDebtAllowed.toFixed(2)}). Por favor recarga o realiza un abono a GoEats para volver a tomar pedidos en efectivo.`,
-      });
-    }
-
     // Load active delivery rate configuration
     const rate = await getActiveDeliveryRate();
 
@@ -224,25 +229,17 @@ export async function takeOrder(req: Request, res: Response, next: NextFunction)
     if (!getDispatchView(order, driver, rate).visible) {
       return res.status(403).json({
         success: false,
-        message: `Este pedido es primero para los motorizados a ${rate.dispatchRadiusKm} km del local. Se abre para todos en unos minutos.`,
-      });
-    }
-
-    const balanceRule = readBalanceRule(rate.balanceRule);
-    const insufficientBalanceMessage = getInsufficientBalanceMessage(balanceRule, rate.costPerOrder, maxDebtAllowed);
-    // Lowest balance allowed before the charge, so the check below and the charge use the same limit
-    const minimumBeforeCharge = rate.costPerOrder + getMinimumBalanceAfterTake(balanceRule, maxDebtAllowed);
-
-    // Check wallet balance ONLY if not GoEats Plus order
-    if (!isPlusOrder && !canPayTakeCommission(driver.walletBalance, rate.costPerOrder, balanceRule, maxDebtAllowed)) {
-      return res.status(400).json({
-        success: false,
-        message: insufficientBalanceMessage,
+        message: `Este pedido es primero para los motorizados a ${rate.dispatchRadiusKm} km del local. Se abre para todos en menos de un minuto.`,
       });
     }
 
     // Calculate Zaymi breakdown
     const { appCommission, providerPay, driverEarnings } = getDeliveryPayout(order, rate, isPlusOrder);
+
+    // The wallet never goes negative: the balance must cover the take commission (not on Plus),
+    // the GoEats share of this order's cash, and that of the cash orders already on the way
+    const takeCost = isPlusOrder ? 0 : rate.costPerOrder;
+    const orderHoldback = isCashOrder ? getCashHoldback(order.total, providerPay, driverEarnings) : 0;
 
     // Execute wallet deduction and order assignment in transaction
     // Both writes only apply if the order is still free and the balance still covers it
@@ -250,6 +247,10 @@ export async function takeOrder(req: Request, res: Response, next: NextFunction)
       // Lock the driver first: assigning the order reads the driver row for the foreign key,
       // and two takes at once by the same driver ended in a database deadlock (error 500)
       await tx.$queryRaw`SELECT id FROM User WHERE id = ${userId} FOR UPDATE`;
+
+      const current = await tx.user.findUnique({ where: { id: userId }, select: { walletBalance: true } });
+      const required = round2(takeCost + orderHoldback + (await getPendingCashHoldback(tx, userId)));
+      if (!canCoverOrder(current?.walletBalance ?? 0, required)) throw new InsufficientBalanceError(required, current?.walletBalance ?? 0);
 
       const claimed = await tx.order.updateMany({
         where: { id: orderId, type: "DELIVERY", status: OrderStatus.READY, deliveryDriverId: null },
@@ -264,16 +265,15 @@ export async function takeOrder(req: Request, res: Response, next: NextFunction)
       if (claimed.count === 0) return null;
 
       if (!isPlusOrder) {
-        // Deduct take commission from wallet
-        const charged = await tx.user.updateMany({
-          where: { id: userId, walletBalance: { gte: minimumBeforeCharge - 0.000001 } },
+        // Deduct take commission from wallet. The driver row is locked, so the balance read above still holds
+        await tx.user.update({
+          where: { id: userId },
           data: {
             walletBalance: {
               decrement: rate.costPerOrder,
             },
           },
         });
-        if (charged.count === 0) throw new InsufficientBalanceError();
 
         // Log transaction
         await tx.walletTransaction.create({
@@ -288,12 +288,12 @@ export async function takeOrder(req: Request, res: Response, next: NextFunction)
 
       return tx.order.findUnique({ where: { id: orderId } });
     }).catch((error) => {
-      if (error instanceof InsufficientBalanceError) return undefined;
+      if (error instanceof InsufficientBalanceError) return error;
       throw error;
     });
 
-    if (updatedOrder === undefined) {
-      return res.status(400).json({ success: false, message: insufficientBalanceMessage });
+    if (updatedOrder instanceof InsufficientBalanceError) {
+      return res.status(400).json({ success: false, message: getInsufficientBalanceMessage(updatedOrder.required, updatedOrder.balance) });
     }
     if (!updatedOrder) {
       return res.status(404).json({ success: false, message: "El pedido ya no está disponible o ya fue tomado" });
@@ -640,25 +640,23 @@ export async function getDriverWalletHistory(req: Request, res: Response, next: 
 
     const driver = await prisma.user.findUnique({
       where: { id: userId },
-      select: { walletBalance: true, maxDebtLimit: true },
+      select: { walletBalance: true },
     });
 
     const balance = driver?.walletBalance || 0;
-    const maxDebt = driver?.maxDebtLimit ?? 50.0;
-    const isDebtLocked = balance <= -maxDebt;
     const rate = await getActiveDeliveryRate();
-    const balanceRule = readBalanceRule(rate.balanceRule);
-    const canTakeOrders = canPayTakeCommission(balance, rate.costPerOrder, balanceRule, maxDebt);
+    // Cash of orders on the way that belongs to GoEats: part of the balance is already spoken for
+    const reserved = await getPendingCashHoldback(prisma, userId);
+    const required = round2(rate.costPerOrder + reserved);
+    const canTakeOrders = canCoverOrder(balance, required);
 
     return res.status(200).json({
       success: true,
       walletBalance: balance,
-      maxDebtLimit: maxDebt,
-      isDebtLocked,
-      balanceRule,
+      reservedBalance: reserved,
       costPerOrder: rate.costPerOrder,
       canTakeOrders,
-      blockedMessage: canTakeOrders ? null : getInsufficientBalanceMessage(balanceRule, rate.costPerOrder, maxDebt),
+      blockedMessage: canTakeOrders ? null : getInsufficientBalanceMessage(required, balance),
       transactions,
     });
   } catch (error) {
@@ -814,10 +812,10 @@ export async function getDeliveryRates(req: Request, res: Response, next: NextFu
 // 10. Update/Save delivery rates configuration
 export async function saveDeliveryRate(req: Request, res: Response, next: NextFunction) {
   try {
-    const { id, name, basePrice, pricePerKm, costPerOrder, plusDriverBonus, isActive, balanceRule, dispatchRadiusKm, dispatchWaitMin } = req.body;
+    const { id, name, basePrice, pricePerKm, costPerOrder, plusDriverBonus, isActive, dispatchRadiusKm } = req.body;
 
-    // Radius and wait of the nearest-driver offer, while the bosses confirm the final values
-    const dispatch: { dispatchRadiusKm?: number; dispatchWaitMin?: number } = {};
+    // Radius of the nearest-driver offer. The wait is fixed at 1 minute (DISPATCH_WAIT_MIN)
+    const dispatch: { dispatchRadiusKm?: number } = {};
     if (dispatchRadiusKm !== undefined) {
       const radius = Number(dispatchRadiusKm);
       if (!Number.isFinite(radius) || radius < 0.5 || radius > 50) {
@@ -825,18 +823,6 @@ export async function saveDeliveryRate(req: Request, res: Response, next: NextFu
       }
       dispatch.dispatchRadiusKm = Math.round(radius * 10) / 10;
     }
-    if (dispatchWaitMin !== undefined) {
-      const wait = Number(dispatchWaitMin);
-      if (!Number.isInteger(wait) || wait < 0 || wait > 30) {
-        return res.status(400).json({ success: false, message: "El tiempo de espera debe ser de 0 a 30 minutos" });
-      }
-      dispatch.dispatchWaitMin = wait;
-    }
-
-    if (balanceRule !== undefined && !isBalanceRule(balanceRule)) {
-      return res.status(400).json({ success: false, message: "La regla de saldo debe ser PREPAID o DEBT_LIMIT" });
-    }
-
     if (!name || basePrice === undefined || pricePerKm === undefined || costPerOrder === undefined) {
       return res.status(400).json({ success: false, message: "All fields are required" });
     }
@@ -861,7 +847,7 @@ export async function saveDeliveryRate(req: Request, res: Response, next: NextFu
           pricePerKm: parsedPricePerKm,
           costPerOrder: parsedCostPerOrder,
           plusDriverBonus: bonusVal,
-          ...(balanceRule !== undefined ? { balanceRule } : {}),
+          balanceRule: "PREPAID",
           ...dispatch,
           isActive: isActive !== undefined ? !!isActive : true,
         },
@@ -875,7 +861,7 @@ export async function saveDeliveryRate(req: Request, res: Response, next: NextFu
           pricePerKm: parsedPricePerKm,
           costPerOrder: parsedCostPerOrder,
           plusDriverBonus: bonusVal,
-          ...(balanceRule !== undefined ? { balanceRule } : {}),
+          balanceRule: "PREPAID",
           ...dispatch,
           isActive: isActive !== undefined ? !!isActive : true,
         },

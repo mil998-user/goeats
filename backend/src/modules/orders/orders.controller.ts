@@ -1,4 +1,5 @@
 import { getEffectivePrice } from "../../utils/promotions";
+import { claimOrderKey, DUPLICATE_ORDER_MESSAGE, itemsSignature, releaseOrderKey } from "../../utils/orderDedup";
 import { Request, Response, NextFunction } from "express";
 import { prisma } from "../../config/database";
 import { OrderType, OrderStatus, OrderItemStatus, Prisma, Role } from "@prisma/client";
@@ -8,21 +9,8 @@ import { canEditOrder, getCancelError, getStatusChangeError, hideDeliveryPin, is
 import { refundTakeCommission } from "../delivery/deliveryWallet";
 import { OPEN_TABLE_STATUSES, releaseTable, resolveOrderTable } from "../../utils/tables";
 import { notifyDeliveryBoard } from "../../config/realtime";
+import { readItemComments, readOrderNote, splitTakeAway } from "../../utils/takeAway";
 
-
-// Pedidos recién enviados, para no guardar dos veces el mismo si se pulsa doble o la red reintenta.
-// Vive en memoria: sirve con un solo servidor encendido
-const DUPLICATE_WINDOW_MS = 8000;
-const recentOrderKeys = new Map<string, number>();
-
-function claimOrderKey(key: string, now = Date.now()) {
-  for (const [savedKey, at] of recentOrderKeys) {
-    if (now - at > DUPLICATE_WINDOW_MS) recentOrderKeys.delete(savedKey);
-  }
-  if (recentOrderKeys.has(key)) return false;
-  recentOrderKeys.set(key, now);
-  return true;
-}
 
 export async function createOrder(req: Request, res: Response, next: NextFunction) {
   let orderKey: string | null = null;
@@ -44,24 +32,28 @@ export async function createOrder(req: Request, res: Response, next: NextFunctio
       return res.status(400).json({ success: false, message: "Invalid order type" });
     }
 
+    // The waiter only serves tables: take-away and delivery are for the cashier (bosses, 17 nov)
+    if (req.user?.role === Role.MOZO && (type !== OrderType.DINE_IN || !tableId)) {
+      return res.status(403).json({ success: false, message: "El mesero solo toma pedidos de mesa. Elige una mesa." });
+    }
+
     const costEnvio = type === OrderType.DELIVERY ? parseAmount(shippingCost ?? 0, { allowZero: true }) : 0;
     if (costEnvio === null) {
       return res.status(400).json({ success: false, message: "Costo de envío no válido" });
     }
 
-    const itemsSignature = items
-      .map((item: any) => `${parseInt(item.variantId, 10)}x${parseFloat(item.quantity)}`)
-      .sort()
-      .join(",");
-    const candidateKey = [restaurantId, userId, type, tableId ?? "-", String(customerName).trim().toLowerCase(), itemsSignature].join("|");
+    const candidateKey = [restaurantId, userId, type, tableId ?? "-", String(customerName).trim().toLowerCase(), itemsSignature(items)].join("|");
     if (!claimOrderKey(candidateKey)) {
-      return res.status(409).json({ success: false, message: "Este pedido ya se envió hace un momento. Revisa la lista antes de enviarlo otra vez." });
+      return res.status(409).json({ success: false, message: DUPLICATE_ORDER_MESSAGE });
     }
     orderKey = candidateKey;
 
     // Restaurants that charge first leave table orders waiting for the register
     const settings = await prisma.restaurant.findUnique({ where: { id: restaurantId }, select: { payBeforeEating: true } });
     const startStatus = type === OrderType.DINE_IN && settings?.payBeforeEating ? OrderStatus.PENDING : OrderStatus.PREPARING;
+
+    // Only the cashier or owner can send part of a table order as take-away
+    const canTakeAway = type === OrderType.DINE_IN && req.user?.role !== Role.MOZO;
 
     // Run transaction
     const order = await prisma.$transaction(async (tx) => {
@@ -94,7 +86,7 @@ export async function createOrder(req: Request, res: Response, next: NextFunctio
           variantId,
           quantity,
           price,
-          comments: item.comments || null,
+          comments: readItemComments(item, canTakeAway),
           status: OrderItemStatus.PENDING,
         });
       }
@@ -124,7 +116,7 @@ export async function createOrder(req: Request, res: Response, next: NextFunctio
           tableId: orderTableId,
           mozoId: userId,
           customerName,
-          comments,
+          comments: readOrderNote(comments),
           shippingCost: costEnvio,
           total: calculatedTotal + costEnvio,
           deliveryAddress: type === OrderType.DELIVERY 
@@ -133,7 +125,7 @@ export async function createOrder(req: Request, res: Response, next: NextFunctio
           deliveryObservation: type === OrderType.DELIVERY 
             ? (deliveryReference || deliveryObservation || null)
             : null,
-          deliveryPhone: type === OrderType.DELIVERY ? deliveryPhone : null,
+          deliveryPhone: type === OrderType.DELIVERY || type === OrderType.TAKEOUT ? (typeof deliveryPhone === "string" && deliveryPhone.trim() ? deliveryPhone.trim().slice(0, 20) : null) : null,
           restaurantId,
           items: {
             create: orderItemsData,
@@ -168,7 +160,7 @@ export async function createOrder(req: Request, res: Response, next: NextFunctio
     return res.status(201).json({ success: true, message: "Order created successfully", order: hideDeliveryPin(order) });
   } catch (error: any) {
     // Si el pedido no se guardó, se puede volver a intentar de inmediato
-    if (orderKey) recentOrderKeys.delete(orderKey);
+    releaseOrderKey(orderKey);
     return res.status(400).json({ success: false, message: error.message || "Failed to create order" });
   }
 }
@@ -628,6 +620,8 @@ export async function updateOrder(req: Request, res: Response, next: NextFunctio
       return res.status(409).json({ success: false, message: "Este pedido ya no se puede modificar" });
     }
 
+    const canTakeAway = existingOrder.type === OrderType.DINE_IN && req.user?.role !== Role.MOZO;
+
     const updatedOrder = await prisma.$transaction(async (tx) => {
       // 1. Delete existing items
       await tx.orderItem.deleteMany({
@@ -660,7 +654,10 @@ export async function updateOrder(req: Request, res: Response, next: NextFunctio
         }
 
         // A dish that didn't change keeps its price, its kitchen progress and who prepared it
-        const comments = item.comments || null;
+        // The waiter keeps a take-away dish the cashier already marked; he just can't mark new ones
+        const wantsTakeAway = item.takeAway === true || splitTakeAway(item.comments).takeAway;
+        const hadTakeAway = previousItems.some((previous) => previous.variantId === variantId && splitTakeAway(previous.comments).takeAway);
+        const comments = readItemComments(item, canTakeAway || (wantsTakeAway && hadTakeAway));
         const sameIndex = previousItems.findIndex(
           (previous) => previous.variantId === variantId && previous.quantity === quantity && previous.comments === comments
         );
@@ -693,7 +690,7 @@ export async function updateOrder(req: Request, res: Response, next: NextFunctio
           status: existingOrder.status === OrderStatus.READY && !allReady ? OrderStatus.PREPARING : existingOrder.status,
           customerName: customerName || existingOrder.customerName,
           mozoId: existingOrder.mozoId ?? (req.user?.role === Role.MOZO ? req.user.userId : undefined),
-          comments: comments !== undefined ? comments : existingOrder.comments,
+          comments: comments !== undefined ? readOrderNote(comments) : existingOrder.comments,
           total: calculatedTotal + costEnvio,
           items: {
             create: orderItemsData,

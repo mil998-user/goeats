@@ -1,7 +1,8 @@
 import { getEffectivePrice, isPromoActive, toSaleVariant } from "../../utils/promotions";
+import { claimOrderKey, DUPLICATE_ORDER_MESSAGE, itemsSignature, releaseOrderKey } from "../../utils/orderDedup";
 import { Request, Response, NextFunction } from "express";
 import { prisma } from "../../config/database";
-import { OrderType, OrderStatus, OrderItemStatus, RestaurantStatus } from "@prisma/client";
+import { OrderType, OrderStatus, OrderItemStatus, Prisma, RestaurantStatus } from "@prisma/client";
 
 // Only approved, active restaurants are visible to the public (marketplace, catalog, QR)
 const PUBLIC_RESTAURANT = { isActive: true, status: { in: [RestaurantStatus.APPROVED, RestaurantStatus.ACTIVE] } };
@@ -17,6 +18,7 @@ import { resolveOrderTable } from "../../utils/tables";
 import { canEncryptSecrets, encryptSecret } from "../../utils/secrets";
 import { buildMapIframe, getMapEmbedUrl, isGoogleMapsLink } from "../../utils/maps";
 import { getOpenStatus, normalizeOpeningHours, parseWeeklyHours } from "../../utils/openingHours";
+import { readItemComments, readOrderNote } from "../../utils/takeAway";
 import { notifyDeliveryBoard } from "../../config/realtime";
 
 const MAX_MAP_REDIRECTS = 5;
@@ -493,6 +495,7 @@ export async function getPublicRestaurantList(req: Request, res: Response, next:
 }
 
 export async function createPublicOrder(req: Request, res: Response, next: NextFunction) {
+  let orderKey: string | null = null;
   try {
     const { slug } = req.params;
     const { 
@@ -545,6 +548,15 @@ export async function createPublicOrder(req: Request, res: Response, next: NextF
     if (typeEnum === OrderType.DELIVERY && (!deliveryAddress || !deliveryPhone)) {
       return res.status(400).json({ success: false, message: "Delivery address and phone are required" });
     }
+
+    // Take-away: the restaurant needs who picks it up and a phone to call (bosses, 17 nov)
+    const phoneText = typeof deliveryPhone === "string" ? deliveryPhone.trim() : "";
+    if (typeEnum === OrderType.TAKEOUT && !/^\+?\d[\d ()-]{6,19}$/.test(phoneText)) {
+      return res.status(400).json({ success: false, message: "Escribe un teléfono para avisarte cuando tu pedido esté listo." });
+    }
+
+    // Order note written by the customer; kitchen and comanda show it
+    const orderNote = readOrderNote(comments);
 
     const parsedDeliveryLat = typeEnum === OrderType.DELIVERY && deliveryLat != null ? Number(deliveryLat) : null;
     const parsedDeliveryLng = typeEnum === OrderType.DELIVERY && deliveryLng != null ? Number(deliveryLng) : null;
@@ -625,6 +637,13 @@ export async function createPublicOrder(req: Request, res: Response, next: NextF
       }
     }
 
+    // The same order sent twice in a row (double tap or a network retry) is saved only once
+    const candidateKey = ["public", restaurant.id, customerId ?? req.ip ?? "-", typeEnum, tableId ?? "-", String(customerName).trim().toLowerCase(), itemsSignature(items)].join("|");
+    if (!claimOrderKey(candidateKey)) {
+      return res.status(409).json({ success: false, message: DUPLICATE_ORDER_MESSAGE });
+    }
+    orderKey = candidateKey;
+
     // The server decides the shipping price, the browser only shows it
     let costEnvio = 0;
     if (typeEnum === OrderType.DELIVERY && !isPlusClient) {
@@ -668,7 +687,8 @@ export async function createPublicOrder(req: Request, res: Response, next: NextF
           variantId,
           quantity,
           price,
-          comments: item.comments || null,
+          // Customers can't mark take-away dishes; only the cashier can
+          comments: readItemComments(item, false),
           status: OrderItemStatus.PENDING,
         });
       }
@@ -701,7 +721,7 @@ export async function createPublicOrder(req: Request, res: Response, next: NextF
           mozoId: null, // public order has no waiter
           customerId: customerId, // link to customer if authenticated
           customerName,
-          comments,
+          comments: orderNote,
           shippingCost: costEnvio,
           total: calculatedTotal + costEnvio,
           tipAmount: tip,
@@ -711,7 +731,7 @@ export async function createPublicOrder(req: Request, res: Response, next: NextF
           deliveryObservation: typeEnum === OrderType.DELIVERY 
             ? (deliveryReference || deliveryObservation || null)
             : null,
-          deliveryPhone: typeEnum === OrderType.DELIVERY ? deliveryPhone : null,
+          deliveryPhone: typeEnum === OrderType.DELIVERY ? deliveryPhone : typeEnum === OrderType.TAKEOUT ? phoneText : null,
           deliveryLat: parsedDeliveryLat,
           deliveryLng: parsedDeliveryLng,
           deliveryPin: generatedPin,
@@ -784,6 +804,16 @@ export async function createPublicOrder(req: Request, res: Response, next: NextF
 
     return res.status(201).json({ success: true, message: "Public order created successfully", order });
   } catch (error: any) {
+    releaseOrderKey(orderKey);
+    // Database errors carry table names and file paths: the customer only gets a plain message
+    const isDatabaseError =
+      error instanceof Prisma.PrismaClientKnownRequestError ||
+      error instanceof Prisma.PrismaClientValidationError ||
+      error instanceof Prisma.PrismaClientUnknownRequestError;
+    if (isDatabaseError) {
+      console.error("[Public order] database error:", error.message);
+      return res.status(400).json({ success: false, message: "No pudimos guardar tu pedido. Revisa los datos e inténtalo otra vez." });
+    }
     return res.status(400).json({ success: false, message: error.message || "Failed to create order" });
   }
 }
