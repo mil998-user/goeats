@@ -489,6 +489,355 @@ SISTEMA ACTUAL (Single-Tenant)          SISTEMA NUEVO (Multi-Tenant SaaS)
 
 ## 📝 Historial de Cambios
 
+### v0.7.34 — 2026-11-22 (Landing pulida para celular)
+Revisión pantalla por pantalla a 390 y 320 px, comparada con la versión de celular de la plantilla.
+- **Cabecera:** el botón "Pedir ahora" también se ve en celular, en una línea; en pantallas de 360 px o menos dice "Pedir".
+- **Menú del celular:**
+  - abre a pantalla completa en coral, con los enlaces grandes en mayúsculas separados por líneas negras;
+  - abajo van "Ver restaurantes" y "o crea tu cuenta gratis";
+  - tocar un enlace cierra el menú.
+- **Cómo funciona:** el número va al lado del dibujo y el texto debajo. Cada paso ocupa la mitad del alto.
+- **Seguimiento en vivo:**
+  - los puntos se veían enormes, porque la regla general de botones táctiles los llevaba a 40 px;
+  - ahora el botón conserva la zona de toque y el punto se dibuja adentro, chico;
+  - la foto de arriba es más baja.
+- **Collage:** el título y el botón van arriba de las fotos, en lugar de taparlas.
+- **Restaurantes y repartidores:** primero el texto y después el dibujo, más chico. En el panel de muestra cada fila entra en una línea.
+- **Botones de la landing:** rectangulares y en mayúsculas, como los de la plantilla, con los colores de la marca.
+- **Pie:** los títulos de las columnas pasan a negro, porque el rojo sobre coral casi no se leía. El botón final es negro, como el del inicio.
+- Margen lateral de 20 px en celular. El carrusel de locales y los beneficios corren de borde a borde sin pasarse.
+- Probado: 74 de 74 en la landing, 14 de ellas nuevas para celular (puntos, pasos, collage, bloques de negocio, botón de la cabecera y menú a 390 y 320 px).
+
+### v0.7.33 — 2026-11-22 (Inicio de la landing igual que la plantilla)
+El usuario revisó en su pantalla (1920 px) y el inicio no se parecía a la plantilla. Además, el titular se partía palabra por palabra y el texto se salía por arriba.
+- **Inicio como la plantilla:**
+  - un solo campo coral de borde a borde, hecho con el naranja 55% y el crema del manual, sin la pantalla partida;
+  - la cabecera es del mismo coral arriba del todo;
+  - el titular va grande y negro a la derecha, con un solo botón negro y rectangular "Ver restaurantes" y el enlace "o crea tu cuenta gratis".
+- **Escena propia** en lugar de la foto de producto de la plantilla (`HeroScene` en `LandingIllustrations.tsx`). Es la caja de GoEats abierta, con "La comida de Loja" en la tapa, hamburguesa, papas y bebida, más la bolsa de papel con la boca y dos tickets ("Tu pedido" y "En camino").
+  - Usa las sombras planas y el trazo negro de nuestras ilustraciones.
+  - Sale por la esquina de abajo a la izquierda, como la caja de la plantilla.
+  - La comida sube y baja y la tapa se mece.
+- **Arreglos:**
+  - el titular se mide con el ancho de su columna (`container-type` y `cqi`) y sus líneas no se parten, así que siempre son 3 líneas enteras;
+  - el inicio tiene alto mínimo de la pantalla, pero crece si hace falta, así que nada se sale.
+- **Más como la plantilla:**
+  - títulos de sección en mayúsculas gruesas;
+  - la cinta va en blanco con frases grandes en mayúsculas, como las citas de prensa, con la boca roja, naranja o negra;
+  - el botón "Pedir ahora" de la cabecera es negro y rectangular, y el pie va en coral.
+- Se quitaron del inicio la foto del plato, el sello que giraba y la etiqueta del local.
+- La landing no muestra la barra de desplazamiento del navegador. Su fondo crema se veía como una raya junto al coral. Se sigue bajando con la rueda, el teclado o el dedo, y las demás pantallas conservan su barra.
+- Probado: 60 de 60 en la landing, con el titular revisado en 7 anchos (de 320 a 1920 px).
+
+### v0.7.32 — 2026-11-22 (Estilo de la plantilla en las pantallas del cliente)
+El estilo de la landing (v0.7.31) pasa a las pantallas que ve el cliente. Ningún bloque grande queda de un solo color fuerte: se usan fondos suaves de la paleta y los colores fuertes solo como acentos.
+- **Compartido:**
+  - `utils/useReveal.ts` y `styles/motion.css`: las secciones aparecen al bajar, ahora también en la landing.
+  - Fondos suaves `--ge-peach`, `--ge-sun` y `--ge-blush`, más la clase `ge-mark`: palabra en rojo con trazo amarillo debajo.
+  - Con "reducir movimiento" o sin JavaScript, todo se ve quieto.
+- **Restaurantes (`Aggregator.tsx`, `restaurants.css`):**
+  - la banda de bienvenida pasa de roja a durazno, con "hoy?" subrayado en amarillo y un sello amarillo con la boca;
+  - "Hecho para ti" pasa de amarillo entero a amarillo suave, con el botón "Elegir mis gustos" en rojo;
+  - las bandas cambian de color: nuevos en blanco, lo más pedido en rosa (antes negra), mismo precio en durazno, ofertas en naranja suave y todos en blanco.
+- **Carta del restaurante (`PublicCatalog.tsx`, `catalog.css`):**
+  - cada categoría lleva un fondo suave distinto: amarillo suave, blanco, durazno o rosa, en vez de amarillo, crema, naranja y rojo;
+  - el chef pasa de rojo a rosa;
+  - "Información del local" pasa de negro a durazno, con texto negro y acentos rojos.
+- **Ingreso (`Auth.tsx`, `auth.css`):** el panel de marca pasa de amarillo a durazno, con "un solo lugar." subrayado y un sello amarillo sobre el dibujo.
+- **Plus (`PlusPromo.tsx`, `plus.css`):**
+  - inicio en durazno con un ticket "Envío a domicilio $0.00", un sello que se mueve y el botón "Ver los planes";
+  - beneficios en tarjetas con iconos en círculos de color;
+  - títulos con la letra gruesa del logo;
+  - se quitó "SaaS Platform" del pie y "Planes Flexibles para Todos" pasa a "Elige tu plan".
+- **Panel del cliente (`CustomerDashboard.tsx`, `customer.css`):**
+  - saludo "Hola, (nombre)" sobre durazno;
+  - títulos gruesos;
+  - las cifras con iconos en círculos rojo, amarillo y negro;
+  - textos más simples.
+- Probado en la copia aislada: 46 de 46 en las pantallas del cliente (web, celular, reducir movimiento y 4 anchos) y 55 de 55 en la landing. Además se repitieron las pruebas anteriores de todo el sistema.
+
+### v0.7.31 — 2026-11-22 (Landing con el estilo y las animaciones de la plantilla)
+Se tomó como referencia la plantilla de los jefes (Good Pair Days): fondos suaves que cambian en cada sección, titulares grandes, fotos de borde a borde y movimiento al bajar. Pedido del usuario: nada de bloques grandes de un solo color, todo con la paleta del manual.
+- **Colores:** ya no hay secciones enteras en rojo, naranja o amarillo. Cada sección tiene un fondo suave distinto hecho con los colores del manual: durazno (naranja con crema), sol (amarillo con blanco), rosa (rojo con blanco), crema y blanco. Los colores fuertes quedan como acentos: números, iconos, botones, sellos y la cinta.
+- **Cabecera:** arriba es alta, del color del inicio y con el logo un poco más grande; al bajar se achica a 64 px, queda blanca y lleva sombra.
+- **Inicio:**
+  - fondo durazno con la foto real de un plato a la derecha, de borde a borde, que entra como una cortina y se acerca despacio;
+  - el titular sube línea por línea y "a tu puerta." se pinta con un trazo amarillo debajo;
+  - un sello redondo amarillo que gira ("Hecho en Loja • A tu puerta") con la boca del logo al centro;
+  - el botón principal pasa a rojo. En celular, el titular va arriba y la foto asoma abajo, de borde a borde.
+- **Cinta:** negra, con frases en crema y la boca de un color distinto en cada frase.
+- **Locales:** como el bloque de reseñas de la plantilla. A la izquierda el número real de restaurantes, grande y en rojo, con la boca al lado; a la derecha el carrusel, que corre hasta el borde de la pantalla.
+- **Beneficios:** sobre blanco, cada icono en un círculo de distinto color con borde negro. En celular se deslizan de lado, uno por vez, con una barra que muestra el avance.
+- **Nueva sección "Sigue tu pedido paso a paso":** foto real de un local a un lado y, al otro, un celular que muestra los 4 pasos reales del pedido (Recibido, Preparando, En camino, Entregado), cada uno con su color.
+  - Pasa solo cada 3,2 segundos, solo mientras se ve en pantalla; se detiene al pasar el mouse o al enfocarlo.
+  - Tiene flechas, puntos y botón de pausa.
+  - Sin fotos de los locales sale el dibujo del motorizado.
+- **Para restaurantes:** texto sobre rosa suave con iconos en círculos rojos y botón rojo. **Para repartidores:** texto en negro con iconos amarillos y el dibujo sobre durazno.
+- **Aparecer al bajar:** títulos, pasos, tarjetas y fotos aparecen al llegar a ellos. El dibujo de cada paso entra por su lado y el número salta. Los botones mueven su flecha al pasar el mouse.
+- **Reducir movimiento:** si el usuario lo pide en su equipo, todo se ve quieto desde el inicio: el sello no gira, la cinta queda fija, el celular no avanza solo y no sale su botón de pausa. Sin JavaScript también se ve todo.
+- Sin dependencias nuevas: solo CSS y React. Archivos: `components/LandingExperience.tsx`, `styles/landing.css`, `styles/landing-sections.css`.
+- Probado en la copia aislada: 55 de 55. Se revisaron la página en web y celular, el movimiento, las secciones, la página sin locales y 6 anchos, de 320 a 1600 px, sin scroll de lado ni errores.
+
+### v0.7.30 — 2026-11-20 (Textos simples para el público de 40 años o más)
+Mejoras B1 a B4 del análisis de punta a punta. El jefe pidió "todo muy simple".
+- **Admin (`SuperAdmin.tsx`):**
+  - "Panel de SuperAdministrador" pasa a "Administración de GoEats".
+  - Se quitó "SaaS GoEats — Gestión Centralizada…".
+  - "slug" pasa a "enlace", "Planes SaaS" a "Pagos de recargas y de Plus" y "Wallet" a "saldo".
+- **Motorizado (`DeliveryDashboard.tsx`):**
+  - "Saldo Wallet" pasa a "Tu saldo" y "SOS / Soporte en Ruta" a "Necesito ayuda".
+  - Las pestañas quedan cortas: Pedidos, Mis Entregas, Billetera y Recargar.
+- **Caja (`POS.tsx`):**
+  - "Apertura de Caja Obligatoria… sesión de caja registradora… menú POS" pasa a "Abre la caja para empezar. Escribe con cuánto dinero en efectivo empiezas. Al cerrar, la caja te dirá si cuadra."
+  - El campo dice "¿Con cuánto dinero empiezas?" y el botón "Abrir caja".
+- **Ajustes (`Settings.tsx`):**
+  - El logo se ve como imagen y ya no como la ruta del archivo. El cuadro de texto queda solo para pegar un enlace https.
+  - En celular la barra de guardar muestra solo el botón "Guardar cambios", así que tapa menos el formulario.
+  - "CONTADO (Aplica egreso directo de Caja POS)" pasa a "Contado (sale de la caja)".
+- "Sistema POS" en la lista de restaurantes pasa a "Caja y comandas". "Restaurante / POS" en soporte pasa a "Restaurante".
+- Probado en la copia aislada: se repitieron todas las pruebas, 345 de 345, y se revisaron las capturas de celular.
+
+### v0.7.29 — 2026-11-20 (Prueba de punta a punta y pedidos duplicados del cliente)
+- **Prueba de punta a punta de todo el sistema**, por rol, en la copia aislada. Cubrió registros, restaurante nuevo, cliente a domicilio, cocina, motorizado, mesa, caja, para llevar, QR, reservas, inventario, Plus, admin, reportes y seguridad entre restaurantes.
+  - Funciones: 91 de 91.
+  - Pantallas: 26 pantallas de los 8 roles, en celular y en web (52 de 52), sin errores, sin textos rotos y sin scroll de lado.
+  - El análisis y las mejoras propuestas están en el registro de prácticas del día (`analisis-e2e-y-mejoras.md`).
+- **Arreglo: pedidos duplicados desde la carta del cliente.** Si el cliente pulsaba dos veces o la red reintentaba, se guardaban dos pedidos iguales. Ahora la carta pública rechaza el mismo pedido enviado otra vez en menos de 8 segundos: mismo cliente (o misma conexión si no inició sesión), mismo tipo, misma mesa, mismo nombre y mismos platos.
+  - El control quedó en `backend/src/utils/orderDedup.ts` y lo usan la caja (`POST /orders`) y la carta pública (`createPublicOrder`).
+  - Si el pedido falla al guardarse, se puede reenviar de inmediato.
+- **Encontrado y sin cambiar**, porque necesita decisión o migración:
+  - los tickets de soporte no se guardan en la base;
+  - los correos de soporte están fijos en el código;
+  - la pantalla de notificaciones del admin escribe claves en el `.env`.
+
+### v0.7.28 — 2026-11-20 (Landing completa con la plantilla de los jefes)
+Partes 9.2 a 9.10 del plan. Archivos:
+- `LandingExperience.tsx`;
+- `LandingIllustrations.tsx`, con el dibujo nuevo `CustomerIllustration`;
+- `styles/landing-sections.css`, nuevo;
+- `styles/landing.css`.
+
+Son bloques de color de borde a borde, uno tras otro: rojo, amarillo, crema, naranja, amarillo, negro, rojo y crema, negro y crema, y el pie.
+- **9.2 Cinta:** una franja amarilla con frases propias:
+  - "Paga en efectivo o con transferencia";
+  - "Sigue tu pedido en vivo";
+  - "Retira en el local";
+  - "Restaurantes de Loja".
+
+  Lleva la boca de la marca entre frases. Se mueve sola y se detiene al pasar el mouse o con su botón de pausa.
+
+  Con "reducir movimiento" queda quieta y centrada. El lector de pantalla lee cada frase una sola vez.
+- **9.3 Cómo funciona:** Elige, Pide y Recibe en zigzag. Cada paso tiene un número grande en amarillo, naranja y rojo, con borde negro como los dibujos.
+  - Elige lleva el dibujo nuevo de una persona comiendo, Pide el del chef y Recibe el del motorizado.
+  - En celular cada paso queda en una columna: número, dibujo y texto.
+- **9.4 Restaurantes de Loja:** franja naranja con todos los locales reales en un carrusel.
+  - Se mueve con flechas o deslizando, no solo.
+  - Cada tarjeta abre la carta del local.
+  - Lleva el botón "Ver todos".
+  - Sin locales, la franja no sale.
+
+  Ocupa el lugar de las columnas que estaban en el inicio.
+- **9.5 Beneficios:** grid de 6 con íconos y sin cajas, sobre amarillo: envío $0 con Plus, pago en efectivo, retiro en el local, seguimiento en vivo, direcciones guardadas y repetir un pedido.
+  - 3 columnas en web, 2 en tablet y 1 en celular.
+  - Botón "Ver el plan Plus".
+  - Se quitó el mosaico anterior, con las promociones y la cuenta.
+- **9.6 Collage:** hasta 6 fotos de portada de los locales, sin repetir la del inicio, con "Un antojo para cada momento." encima. El título va sobre bloques rojos, así que se lee sobre cualquier foto.
+  - Con menos de 3 fotos no sale.
+- **9.7 Para restaurantes:** bloque partido. A un lado, el chef con el panel "Pedidos de hoy" sobre crema; al otro, un bloque rojo con el texto y "Registrar mi restaurante" (`/login?role=restaurant&mode=register`).
+  - Se cambió "Comanda impresa con tu logo" por "Pantalla de cocina con tiempos", porque la comanda ya no lleva logo (v0.7.24).
+- **9.8 Para repartidores:** igual pero al revés, con el texto en negro y el motorizado. El botón es "Quiero repartir" (`/login?role=driver&mode=register`).
+- **9.9 Pie:**
+  - Se quitaron las esquinas redondeadas, que dejaban ver blanco.
+  - Se agregaron enlaces a "Locales" y "Para repartidores".
+  - La cabecera ahora es blanca opaca, porque los bloques de color se veían a través.
+- **Menú:** Cómo funciona, Locales, Beneficios y Para negocios.
+- **9.10 Revisión final** en 320, 375, 768, 1024, 1440 y 1600 px:
+  - no hay scroll de lado y nada se sale;
+  - todos los enlaces y botones muestran el foco con teclado;
+  - con "reducir movimiento" nada se mueve sin parar.
+- Del CSS viejo se quitaron las reglas de las secciones reemplazadas: columnas, mosaico, burbujas, pasos y bandas anteriores.
+- Probado en la copia aislada: 44 comprobaciones de la landing y 25 del inicio. Se repitieron todas las anteriores: 133 de 133.
+- Al probar salió que, con "reducir movimiento", las frases quietas de la cinta se salían por el costado en celular. Ahora bajan de línea.
+
+### v0.7.27 — 2026-11-20 (Landing: nuevo inicio)
+Primera parte de la landing nueva, con la plantilla de los jefes (plan 9.1). `LandingExperience.tsx` y `styles/landing.css`.
+- **Bloque rojo de borde a borde** con el titular en blanco: "La comida de Loja, a tu puerta.", con "a tu puerta." en amarillo y la "o" con la boca crema de la marca.
+- Debajo van el botón amarillo "Ver restaurantes" y el enlace "Crear mi cuenta".
+- **Un plato real al otro lado.** Es la foto de portada de un local, recortada en círculo con borde crema como un plato. En web sale un poco por el borde derecho.
+- Encima lleva una etiqueta con el logo y el nombre del local que abre su carta.
+- **Sin fotos de los locales**, el plato muestra la boca de la marca.
+- **En celular**, el plato va arriba y el texto debajo, y todo entra sin bajar. Se oculta la etiqueta "Loja, Ecuador".
+- **Teclado:** el foco se ve en amarillo sobre el rojo.
+- **Movimiento:** el plato entra girando un poco al cargar, y queda quieto con "reducir movimiento".
+- Las columnas de restaurantes que se movían en el inicio se quitaron. Los locales vuelven en su propia franja en 9.4; sus estilos `.gl-cols` y `.gl-rcard` siguen en el CSS para eso.
+- Probado en la copia aislada: 25 comprobaciones.
+  - Completo sin bajar en 1440×900 y 390×844.
+  - Sin scroll de lado en 320, 375, 768, 1024 y 1600 px.
+  - El foco se ve, la etiqueta abre la carta y sin fotos sale la boca.
+  - Se repitieron todas las anteriores: 133 de 133.
+
+### v0.7.26 — 2026-11-20 (Seguimiento visual del cliente)
+Pedido de los jefes del 17 de noviembre (plan 9.11.7). Nuevo `frontend/src/components/OrderTracker.tsx` y estilos en `frontend/src/styles/tracking.css`.
+- **Menos texto, más visual.** Arriba va un ícono grande del paso actual, una frase corta ("Están preparando tu pedido") y el tiempo en una etiqueta negra y amarilla ("Llega en ~18 min").
+- **Cuatro pasos con íconos sobre una barra que se llena:**
+  - a domicilio: Recibido, Preparando, En camino, Entregado;
+  - para llevar: Recibido, Preparando, Listo, Retirado;
+  - en mesa: Recibido, Preparando, Listo, Servido.
+- **El tiempo se calcula así:**
+  - en cocina, con la misma regla de la pantalla de cocina, que se movió a `utils/kitchenTime.ts`;
+  - a domicilio se suma el viaje, a unos 3,2 minutos por km;
+  - en camino, con la distancia que le falta al motorizado.
+- **En camino:** la barra avanza con el motorizado y el tiempo baja solo. Dice quién lo lleva ("Carlos lo lleva").
+- **Pedido listo a domicilio:** marca "En camino" con "Buscando motorizado".
+- **El mapa solo sale cuando el motorizado va en camino.** Antes salía desde que se hacía el pedido.
+- **La tarjeta de cada pedido activo** en "Mis Pedidos" lleva la versión pequeña, en lugar de la etiqueta de estado. Los pedidos entregados o cancelados siguen con su etiqueta.
+- Todo cambia en tiempo real con los avisos que ya existían, sin recargar.
+- **Se quitó texto:**
+  - las descripciones de cada paso;
+  - el título "Ruta y Ubicación en Tiempo Real" y su etiqueta;
+  - "Instrucciones: Acércate al local", que repetía lo de para llevar.
+  - El botón ahora dice "Cerrar".
+- **Mapa:** la etiqueta flotante (km, minutos y GPS) va en una sola línea y ya no tapa el botón de centrar en celular.
+- Probado en la copia aislada: 17 comprobaciones.
+  - Estados en tiempo real, barra y tiempo que cambian cuando avanza el motorizado, mapa solo en camino y entregado con la barra llena.
+  - Celular de 320 y 390 px y web.
+  - Se repitieron todas las anteriores: 116 de 116.
+
+### v0.7.25 — 2026-11-20 (Simulador de entregas)
+Para probar el reparto sin salir a la calle (plan 9.12). `frontend/src/components/RouteMap.tsx`.
+- **Botón "Simular recorrido"** en el mapa del pedido en camino del motorizado. El motorizado recorre solo la ruta por calles, del local a la casa del cliente, en unos 60 segundos (40 puntos, uno cada 1,5 s).
+- Cada punto se manda al servidor por la ruta normal de ubicación (`POST /api/delivery/location`). Por eso el cliente ve moverse al motorizado en su seguimiento, igual que con el GPS real. No hay rutas nuevas en el servidor.
+- Mientras simula:
+  - dice "Prueba: en camino al cliente (N%)";
+  - el botón pasa a "Detener simulación";
+  - el GPS real del equipo no mueve al motorizado.
+- Al llegar dice que pida el PIN. La entrega sigue necesitando el PIN, como en la vida real.
+- **Solo para pruebas:** aparece con `npm run dev`, o en una versión publicada si se arma con `VITE_DELIVERY_SIMULATOR=true` (anotado en `frontend/.env.example`). En la versión final normal no existe; se revisó que el botón no queda en el código armado.
+- Reemplaza al botón anterior "Probar Avance GPS (+20%)", que avanzaba en línea recta y a mano.
+- De paso, en celular los botones Google Maps y Waze del mapa ya no se cortan por la derecha.
+- Probado en la copia aislada: 17 comprobaciones (motorizado en celular, cliente en web, detener, llegada a 6 m de la casa, entrega con PIN). Se repitieron todas las anteriores: 99 de 99.
+
+### v0.7.24 — 2026-11-20 (Comanda solo con lo necesario)
+Pedido de los jefes del 17 de noviembre (plan 9.11.2).
+- **Una sola comanda** para Pedidos, Caja y Mesas, en `frontend/src/utils/comanda.ts` (`buildComandaHtml`, `comandaFromOrder`, `printComanda`). Antes cada pantalla tenía su propio formato.
+- **Lleva solo:**
+  - el tipo de servicio en grande ("MESA 3", "PARA LLEVAR · nombre" o "DOMICILIO · nombre");
+  - el número de pedido;
+  - la fecha y la hora;
+  - los platos en letra grande (cantidad a 24 px, nombre a 20 px), con su nota y "PARA LLEVAR" si va dentro de una mesa;
+  - la observación del pedido.
+- **Se quitó:** el logo, el RUC, la dirección, el teléfono, los precios, el total, "No válido como factura" y "Gracias por su preferencia".
+- **Mesas:** el botón "Imprimir Comanda / Pre-cuenta" pasa a "Imprimir comanda" y ya no lleva precios ni total. El cobro sigue saliendo de Caja.
+- Entra en papel de 80 mm y de 58 mm sin cortarse. Tiene fondo blanco aunque el navegador esté en modo oscuro.
+- `utils/comandaHeader.ts` quedó sin uso; no se borró.
+- Probado en la copia aislada: 9 comprobaciones (las tres pantallas imprimen el mismo formato, sin precios ni RUC, en 80 y 58 mm). Se repitieron todas las anteriores: 90 de 90.
+
+### v0.7.23 — 2026-11-20 (Cocina: una sola pantalla simple)
+Pedido de los jefes del 17 de noviembre (plan 9.11.6). `frontend/src/pages/Kitchen.tsx` y estilos `.kds-*` en `index.css`.
+- **Una sola pantalla con una tarjeta por pedido.** Primero van los que faltan preparar, del más antiguo al más nuevo; los ya listos pasan al final hasta entregarse.
+- **Cada tarjeta muestra:**
+  - el tipo grande: PARA SERVIR (negro), PARA LLEVAR (naranja) o DOMICILIO (rojo);
+  - la mesa o el nombre, y el número de pedido;
+  - la observación en amarillo;
+  - los platos con su cantidad grande, la nota y PARA LLEVAR si es un plato para llevar dentro de una mesa.
+- **Tiempo aproximado:** 10 min por pedido más 2 por cada plato extra, hasta 30 (`estimateMinutes`). Se cuenta desde el plato más antiguo que falta, así lo agregado después a una mesa tiene su propio tiempo.
+  - Muestra "Listo en ~X min" y se actualiza cada 15 s.
+  - La tarjeta va en verde; en naranja cuando faltan 3 min o menos; en rojo con "Atrasado N min" cuando se pasa.
+  - La regla está escrita en la pantalla. Cuando el menú tenga tiempo por plato, se cambia solo ahí.
+- **Se quitaron:**
+  - las pestañas "Todos / Cocina / Bar", que estaban escritas fijas en el código y no salían de la base;
+  - la barra de porcentaje.
+
+  El historial queda en un botón. "Llamar al mesero" solo sale en pedidos de mesa, y para llevar dice "Entregado al cliente".
+- Probado en la copia aislada: 18 comprobaciones (orden, tipo, tiempo, colores, listo, historial, celular sin desborde). Se repitieron todas las anteriores: 72 de 72.
+
+### v0.7.22 — 2026-11-20 (Mesero: primero la mesa)
+Pedido de los jefes del 17 de noviembre (plan 9.11.3).
+- **Mesero:**
+  - al entrar ve "¿Qué mesa vas a atender?" con sus mesas en botones grandes;
+  - toca una y se abre la carta de esa mesa, con su cuenta si ya estaba ocupada;
+  - sin mesa no puede abrir la carta;
+  - al enviar a cocina vuelve a las mesas.
+- **Botones de mesa** (también en caja): rejilla de botones de al menos 104 px de alto, con el número grande, las personas y "Libre" u "Ocupada". En celular van en 2 columnas. Clases `.pos-table-grid` y `.pos-table-btn`.
+- **El mesero ya no ve Mesa / Llevar.** El servidor también le rechaza los pedidos para llevar, a domicilio o de mesa sin mesa (403, `orders.controller.ts`). Caja y dueño siguen igual.
+- Probado en la copia aislada: 14 comprobaciones (API, mesero en celular de punta a punta y mesas de caja en web). Se repitieron las pruebas de 9.11.1, 9.11.4 y 9.11.5: 58 de 58.
+
+### v0.7.21 — 2026-11-20 (Observaciones y datos según el tipo de pedido)
+Pedido de los jefes del 17 de noviembre (plan 9.11.5).
+- **Carrito del cliente:**
+  - cada plato tiene "Nota para cocina" (hasta 150 letras);
+  - hay un cuadro "Observaciones del pedido" (hasta 180 letras), con ejemplos que cambian según el tipo.
+- **Datos según el tipo:**
+  - mesa: elige la mesa;
+  - para llevar: "¿Quién retira el pedido?" y "Teléfono para avisarte" (obligatorio; el servidor lo valida);
+  - domicilio: "¿Quién lo recibe?", dirección y teléfono, como antes.
+- **Caja:** cuadro "Observaciones del pedido". Para llevar pide quién retira (no deja "Varios") y un teléfono opcional. Domicilio no se envía sin dirección y teléfono. La nota por plato tiene límite.
+- **La observación del pedido ahora es solo lo que escribe la persona.** Antes el sistema guardaba ahí "Pedido público web, distancia, forma de pago…" y cocina lo mostraba como "Obs". La forma de pago y el tipo ya tienen su propio campo. El teléfono de para llevar se guarda en `deliveryPhone`.
+- **Arreglos que salieron al probar:**
+  - la columna de observaciones admite 191 letras: una nota más larga hacía fallar el pedido, y ahora se corta (`ORDER_NOTE_MAX`, `ITEM_NOTE_MAX` en `backend/src/utils/takeAway.ts`);
+  - ese fallo devolvía al cliente el error interno de la base, con la ruta del archivo; ahora el pedido público responde con un mensaje simple y el detalle va solo al registro del servidor;
+  - en cocina, una nota larga sin espacios se salía de la tarjeta; ahora baja de línea.
+- Probado en la copia aislada: 15 comprobaciones por API y en pantalla. El cliente arma en el celular un pedido para llevar con nota por plato y observación, lo envía y cocina lo muestra.
+
+**Entorno de prueba aislado (para no tocar la base compartida):** MySQL 9.4 en el puerto 3310 con la base `goeats_t20`, servidor en el 5001 con su propio `.env` (sin correo y sin la base compartida) y web compilada en el 5174. Se rearma desde cero antes de cada prueba. Está en la carpeta temporal de Claude, fuera del repositorio.
+
+### v0.7.20 — 2026-11-20 (Caja: platos para llevar en un pedido de mesa)
+Pedido de los jefes del 17 de noviembre (plan 9.11.4).
+- **Caja:** con una mesa elegida aparece el selector "Para la mesa / Para llevar". En "Para llevar", los platos que se agregan van marcados así. Cada plato del carrito tiene un botón para pasarlo de la mesa a para llevar y al revés. Un mismo plato puede estar dos veces: una para comer ahí y otra para llevar.
+- **Cocina:** los platos ya enviados conservan su estado. Lo nuevo entra como pendiente, así que a cocina solo llega lo agregado, con la etiqueta naranja "PARA LLEVAR". La cuenta de la mesa suma todo.
+- **Cómo se guarda:** sin columna nueva en la base. La marca va al inicio de la observación del plato (`PARA LLEVAR` o `PARA LLEVAR · nota`). La regla está en `backend/src/utils/takeAway.ts` y en `frontend/src/utils/takeAway.ts`. Así sale también en la comanda, en el historial y en los reportes, sin migración.
+- **Quién puede:**
+  - solo caja y dueño, y solo en pedidos de mesa;
+  - el mesero no ve la opción y el servidor no le deja marcar platos nuevos, pero si edita la mesa se respetan los que marcó caja;
+  - en los pedidos del cliente por QR o por la web, la marca se quita.
+- Probado en la copia aislada: por API (pedido de mesa, plato listo que no vuelve a cocina, mesero, cliente por QR) y en pantalla (caja, cocina, mesero en celular). Al probarlo se vio que el cajero no tenía la carta en caja: ahora "Para llevar" le abre la carta con la misma mesa y "Para la mesa" lo devuelve a las mesas.
+
+### v0.7.19 — 2026-11-20 (Motorizado: 1 minuto de espera y cartera sin negativos)
+Pedido de los jefes del 17 de noviembre (plan 9.11.1).
+- **Espera fija de 1 minuto:** un pedido listo se ofrece 1 minuto solo a los motorizados cercanos y después a todos. La alerta al admin sale al mismo minuto. Antes la espera la elegía el admin (3 min por defecto); el campo se quitó del panel y el valor está en `DISPATCH_WAIT_MIN` (`backend/src/modules/delivery/dispatch.ts`). La columna `dispatchWaitMin` sigue en la base pero ya no se usa.
+- **La cartera nunca baja de $0:** se quitó la regla "con límite de deuda" (`DEBT_LIMIT`, hasta -$50). Al tomar un pedido, el saldo debe cubrir:
+  - la comisión por tomarlo (no en Plus);
+  - la parte de GoEats del efectivo de ese pedido, que se descuenta al entregarlo;
+  - la de los pedidos en efectivo que ya lleva en camino.
+
+  La revisión se hace con el motorizado bloqueado en la transacción, así dos tomas a la vez no pueden dejarlo en negativo. Al guardar una tarifa se graba siempre `PREPAID`. Archivos: `deliveryWallet.ts`, `delivery.controller.ts`.
+- **Billetera del motorizado:** muestra "Tu saldo" sin signo menos. Avisa cuánto está apartado para el efectivo en camino y, sin saldo, dice cuánto necesita. Si un motorizado quedó en negativo con la regla anterior, ve "$0.00" y cuánto tiene pendiente con GoEats; no puede tomar pedidos hasta recargar. Los saldos que ya estaban en negativo no se tocaron en la base.
+- Probado en la copia aislada: 30 comprobaciones por API (espera de 1 minuto, cartera justa, dos pedidos a la vez, entrega, tarifa) y en pantalla (billetera del motorizado, saldo negativo de antes, tarifa del admin). El aviso de saldo dice cuánto recargar.
+
+### v0.7.18 — 2026-11-17 (Pantalla de pedir /restaurants)
+- Titulos de seccion (`.brand-marker`): se quito la raya amarilla de subrayado; ahora van en peso 800 con una pastilla amarilla a la izquierda, como la landing.
+- Caja "Recomendados segun tus gustos": fondo crema sin borde gris, eyebrow rojo, gustos en pastillas blancas, boton "Cambiar gustos" negro (rojo al pasar), tarjetas blancas con sombra de la landing, sello "Recomendado" amarillo, favorito rojo y deslizamiento por tarjeta en celular. Estilos en clases `.rec-*` de `index.css`. El fondo crema sale 20px a cada lado para que el contenido quede alineado con "Nuevos restaurantes" (en celular va de borde a borde).
+- Una sola tarjeta de restaurante (`renderCard`) para todas las secciones: blanca, radio 24px, sombra de la landing, foto con zoom suave, sello de color (amarillo nuevo/recomendado, rojo oferta, negro top 3 de la semana), favorito rojo, logo, calificacion en pastilla amarilla y estado abierto/cerrado.
+- Encabezados de seccion con flechas redondas (`renderSectionHead`); se quito el texto "Ver todos" porque no hacia nada.
+- Categorias en cuadros redondeados crema con icono rojo; la elegida pasa a amarillo. Subcategorias en pastillas (negra la elegida).
+- Banner, estados de carga, vacio y error con la marca.
+- Modal "Tus gustos" (`FoodPreferencesModal`): cabecera amarilla con la boca del logo, tarjetas blancas (amarillo suave al elegir), boton rojo "Guardar mis gustos", se cierra con Escape o tocando fuera; en celular sube como hoja desde abajo.
+- Celular: secciones cortas y carruseles se deslizan por tarjeta, sin flechas; categorias mas compactas.
+- Pie nuevo igual al de la landing: crema amarillento con esquinas redondeadas, logo, "Loja, Ecuador", columnas Para clientes / Para negocios / GoEats (con "Cambiar mis gustos" y "Ayuda y soporte" que abren sus ventanas), y boton negro "Volver arriba". En celular las columnas van de a dos y el pie llega hasta la barra inferior sin franja blanca.
+- Menos blanco (inspirado en Buy Me a Coffee y el kit de delivery): fondo de la pagina crema suave, barra superior crema translucida con buscador blanco, banner rojo con circulo naranja y boca crema, iconos de categoria blancos sobre crema, caja de recomendados amarilla con la boca del logo de fondo y seccion de ofertas en banda naranja suave. Lo blanco queda solo para tarjetas.
+- Sin gustos elegidos (o sin sesion) ahora sale la caja amarilla "Cuéntanos qué se te antoja": pastillas de categorias y boton "Elegir mis gustos" que abren el modal, y debajo un carrusel con los 8 mejor calificados. Antes ese espacio quedaba vacio.
+- Gustos sin sesion: se guardan en el navegador (`goeats_food_preferences`). Al iniciar sesion un cliente cuya cuenta no tiene gustos, se guardan solos en su cuenta (`POST /auth/preferences`, en `AuthContext`). Si la cuenta ya tiene gustos, se respetan. Al cerrar sesion se borran del navegador para que la siguiente persona del equipo no herede los gustos de otra.
+- Cada seccion va en su banda de color: "Nuevos restaurantes" y "Todos los restaurantes" en crema, "Lo más pedido esta semana" en negro (titulo blanco, flechas que se ponen amarillas), "Mismo precio que en el local" en rojo suave y ofertas en naranja suave. En celular las bandas van de borde a borde y pegadas, como bloques de color.
+- Si aun no hay top de la semana, sale el mensaje "Muy pronto · Aquí verás lo que Loja más pide" con la boca amarilla, en vez de "Aún no hay pedidos registrados".
+- Barra superior: ya no ocupa todo el ancho de pantallas grandes; usa el mismo ancho que el contenido (1200px), asi el logo y "Iniciar Sesión" quedan alineados con el banner. Buscador mas grande (46px, crece hasta 480px) con aro amarillo al escribir. En celular la barra tambien es crema.
+- Categorias en web: se reparten todo el ancho (sin hueco despues de "Postres, Heladerías y Cafeterías") y los nombres largos ya se leen completos. En celular siguen deslizandose.
+- Estilos en `src/styles/restaurants.css` y `src/styles/preferences.css`.
+
+### Carta de un restaurante (/r/:slug) — 2026-11-17
+- Fondo crema y barra superior crema translucida al ancho del contenido; boton "Volver" en pastilla blanca.
+- Portada redondeada (32px) con degradado; logo grande en cuadro blanco, nombre en 800, descripcion y pastillas: calificacion, abierto/cerrado (nuevo), direccion, telefono (se puede llamar) y "Reservar mesa" en amarillo. En celular la foto va arriba y los datos debajo en negro sobre crema, con el logo montado sobre la foto.
+- Cada categoria del menu va en su banda de color (amarillo, crema, naranja suave, rojo suave, y se repite). Platos en tarjetas blancas con sombra de la landing, nombre en 800 y foto de 132px (96px en celular).
+- Carrito "Tu pedido" con cabecera amarilla y contador negro de productos.
+- Informacion del local en tarjeta negra: etiquetas amarillas, mapa con marco amarillo, boton amarillo "Abrir en Google Maps" y boton de soporte con borde.
+- El mapa salio de la tarjeta negra: ahora tiene su propia tarjeta blanca, mapa de borde a borde y pie con "Cómo llegar", la direccion y boton negro "Abrir mapa".
+- Columna derecha en web: debajo va una tarjeta roja con el chef animado de la landing ("Hecho al momento") que se queda a la vista mientras se baja por el menu, para que no quede vacio. En celular no se muestra.
+- Informacion del local y mapa ya no van en la columna del carrito: ahora son una banda negra debajo del menu (`localInfo`, clase `pc-visit`), con los datos a la izquierda y el mapa grande a la derecha. En celular esa banda se ve en la pagina (antes solo se veia dentro de la hoja del carrito). La columna derecha queda con el carrito y el chef.
+- Se adapta a todos los anchos: hasta 1024px va en una sola columna (carrito debajo del menu, sin chef) y la pagina tiene `overflow-x: clip` para que nada la empuje hacia los lados. Revisado sin desbordes en 320, 360, 820 y 1500px.
+- Carrito mas claro: cada producto en su recuadro con nombre, presentacion y precio por unidad, boton rojo de basurero para quitarlo de una vez (`removeFromCart`), contador redondo (− cantidad +; con 1 el "−" se vuelve basurero) y subtotal del producto.
+- Portada en celular: foto y datos son una sola pieza; la foto se funde en negro hacia abajo y los datos siguen debajo sin cortes (logo que sube sobre la parte oscura, nombre y descripcion). Todo se ve sin deslizar: calificacion, abierto/cerrado y telefono en pastillas que bajan de linea si no caben, la direccion completa en su propia linea con icono amarillo y "Reservar mesa" como boton amarillo a todo lo ancho.
+- Chef redibujado con mas detalle (`ChefIllustration` en `LandingIllustrations.tsx`, se usa en la carta y en la landing): cejas, ojos con brillo, bigote, sonrisa, pañuelo rojo, filipina cruzada con sombra y botones, gorro con pliegues, hornilla con fuego bajo la sarten, comida variada saltando (camaron, tomate, hoja, pimiento) y tabla con tomate y cuchillo en el meson. Animaciones nuevas: el fuego titila (`gl-ill-flame`) y el chef parpadea (`gl-ill-blink`); se apagan con "reducir movimiento".
+- Estilos en `src/styles/catalog.css`. Clases nuevas `pc-*` en `PublicCatalog.tsx`.
+
 ### v0.7.17 — 2026-11-16 (Sesión, marca, landing e ingreso)
 - ✅ **Límite de sesión.** Todas las sesiones duran 8 horas; al cerrar sesión el token queda anulado en el servidor; en el navegador la sesión se cierra tras 1 hora sin uso.
 - ✅ **Colores de marca** en las pantallas internas y nueva landing (detalle en `docs/MANUAL_DE_MARCA_FRONTEND.md`).

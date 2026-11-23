@@ -118,6 +118,28 @@ No cargar la pantalla de negro ni de amarillo. Base blanca y crema; rojo para la
 - Beneficios (ajuste): el ticket "Envio a domicilio $0.00" ya no va inclinado.
 - Pie (ajuste): en el celular el copyright y el boton "Volver arriba" van centrados.
 
+## Landing con el estilo de la plantilla (22/11)
+
+Referencia: la plantilla de los jefes (Good Pair Days). Regla del usuario: nada de bloques grandes de un solo color.
+
+- Fondos suaves por sección, todos mezclados desde la paleta (`styles/landing.css`):
+  - `--gl-peach`: naranja 26% con crema;
+  - `--gl-sun`: amarillo 30% con blanco;
+  - `--gl-blush`: rojo 13% con blanco.
+- Rojo, naranja, amarillo y negro solo como acentos: números, iconos, botones, sellos y la cinta negra.
+- Inicio (cambio del 22/11, igual que la plantilla):
+  - un solo campo coral, `--gl-coral` (naranja 55% con crema), que también usan la cabecera y el pie;
+  - la escena dibujada de la caja de GoEats abierta, en la esquina de abajo a la izquierda;
+  - el titular negro a la derecha y un botón negro rectangular.
+- Títulos de sección en mayúsculas gruesas. Cinta blanca con frases en mayúsculas.
+- Botones de la landing (22/11): rectangulares, con 3 px de esquina y texto en mayúsculas, como los de la plantilla. Los colores son los del manual: negro como principal, y amarillo o rojo según el fondo. Las demás pantallas siguen con botones en pastilla.
+- Celular: el menú es de pantalla completa en coral, con enlaces grandes y "Ver restaurantes" abajo.
+- Movimiento: la cabecera se achica al bajar y las secciones aparecen al llegar a ellas. El celular de "Sigue tu pedido" pasa por los 4 estados con sus colores. Todo queda quieto con "reducir movimiento".
+- El mismo estilo se usa en restaurantes, la carta, el ingreso, Plus y el panel del cliente.
+  - Las variables compartidas están en `styles/motion.css`: `--ge-peach`, `--ge-sun`, `--ge-blush` y `.ge-mark`.
+  - Para que algo aparezca al bajar: `data-reveal` y el hook `utils/useReveal.ts`.
+  - Regla: ningún bloque grande de rojo, naranja, amarillo o negro entero.
+
 ## Ingreso y registro (16/11)
 
 - Una sola pantalla para todos los roles. Web: panel amarillo con "Pide, cocina y reparte en un solo lugar" y la ilustracion del repartidor en tarjeta blanca; a la derecha la tarjeta blanca del formulario. Celular: sin panel, formulario a pantalla completa sobre blanco con el logo arriba.
