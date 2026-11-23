@@ -4,6 +4,7 @@ import "leaflet/dist/leaflet.css";
 import { Navigation, ExternalLink, Compass, RefreshCw, Radio } from "lucide-react";
 import { systemIconForEmoji } from "../utils/systemIcons";
 import { escapeHtml } from "../utils/html";
+import { SIMULATOR_ENABLED, SIM_STEPS, SIM_TICK_MS, resamplePath, setDeliverySimulationRunning } from "../utils/deliverySimulator";
 
 
 interface RouteMapProps {
@@ -53,6 +54,12 @@ export const RouteMap: React.FC<RouteMapProps> = ({
   const mapInstanceRef = useRef<L.Map | null>(null);
   const driverMarkerRef = useRef<L.Marker | null>(null);
   const mainRouteLineRef = useRef<L.Polyline | null>(null);
+  const routeCoordsRef = useRef<[number, number][]>([]);
+  const simTimerRef = useRef<number | null>(null);
+  const simRunningRef = useRef(false);
+  const onUpdateRef = useRef(onDriverLocationUpdate);
+  const [simState, setSimState] = useState<"IDLE" | "RUNNING" | "ARRIVED">("IDLE");
+  const [simProgress, setSimProgress] = useState(0);
 
   const restL = restaurantLat || DEFAULT_LAT;
   const restG = restaurantLng || DEFAULT_LNG;
@@ -137,12 +144,26 @@ export const RouteMap: React.FC<RouteMapProps> = ({
     };
   };
 
+  // Latest callback for the simulator timer
+  useEffect(() => {
+    onUpdateRef.current = onDriverLocationUpdate;
+  }, [onDriverLocationUpdate]);
+
+  const stopSimulation = useCallback((arrived = false) => {
+    if (simTimerRef.current != null) window.clearInterval(simTimerRef.current);
+    simTimerRef.current = null;
+    simRunningRef.current = false;
+    setDeliverySimulationRunning(false);
+    setSimState(arrived ? "ARRIVED" : "IDLE");
+  }, []);
+
   // Manual GPS refresh for Driver view
   const handleManualGpsRefresh = useCallback(() => {
     if (!navigator.geolocation) {
       alert("Tu navegador no soporta geolocalización GPS.");
       return;
     }
+    stopSimulation();
     setGpsStatus("UPDATING");
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -180,22 +201,15 @@ export const RouteMap: React.FC<RouteMapProps> = ({
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
-  }, [delivL, delivG, driverName, onDriverLocationUpdate]);
+  }, [delivL, delivG, driverName, onDriverLocationUpdate, stopSimulation]);
 
-  // Simulation step helper (useful for testing or demo without moving in real vehicle)
-  const handleSimulateAdvance = useCallback(() => {
-    const originLat = currentGps?.lat ?? restL;
-    const originLng = currentGps?.lng ?? restG;
-
-    // Advance 15% towards customer delivery destination
-    const nextLat = originLat + (delivL - originLat) * 0.2;
-    const nextLng = originLng + (delivG - originLng) * 0.2;
-
-    setCurrentGps({ lat: nextLat, lng: nextLng });
+  // Delivery simulator (9.12): moves the driver along the street route, from the restaurant to the
+  // customer, and sends each point like the real GPS, so the customer sees it live
+  const moveDriverTo = useCallback((lat: number, lng: number) => {
+    setCurrentGps({ lat, lng });
     setGpsStatus("ACTIVE");
-
     if (driverMarkerRef.current) {
-      driverMarkerRef.current.setLatLng([nextLat, nextLng]);
+      driverMarkerRef.current.setLatLng([lat, lng]);
       driverMarkerRef.current.setOpacity(1);
     } else if (mapInstanceRef.current) {
       const driverIcon = L.divIcon({
@@ -203,18 +217,41 @@ export const RouteMap: React.FC<RouteMapProps> = ({
         html: createDriverMarkerHtml(driverName, isDriverView),
         iconSize: [0, 0],
       });
-      const marker = L.marker([nextLat, nextLng], { icon: driverIcon, zIndexOffset: 1000 }).addTo(mapInstanceRef.current);
-      driverMarkerRef.current = marker;
+      driverMarkerRef.current = L.marker([lat, lng], { icon: driverIcon, zIndexOffset: 1000 }).addTo(mapInstanceRef.current);
     }
-
-    const remDist = calculateHaversine(nextLat, nextLng, delivL, delivG);
+    const remDist = calculateHaversine(lat, lng, delivL, delivG);
     setDistanceKm(remDist);
     setEtaMinutes(Math.max(1, Math.round(remDist * 3.2 + 1)));
+    onUpdateRef.current?.(lat, lng);
+  }, [delivL, delivG, driverName, isDriverView]);
 
-    if (onDriverLocationUpdate) {
-      onDriverLocationUpdate(nextLat, nextLng);
-    }
-  }, [currentGps, restL, restG, delivL, delivG, driverName, isDriverView, onDriverLocationUpdate]);
+  const startSimulation = useCallback(() => {
+    if (simRunningRef.current) return;
+    const route = routeCoordsRef.current.length >= 2 ? routeCoordsRef.current : ([[restL, restG], [delivL, delivG]] as [number, number][]);
+    const points = resamplePath(route, SIM_STEPS);
+    let index = 0;
+    simRunningRef.current = true;
+    setDeliverySimulationRunning(true);
+    setSimState("RUNNING");
+    setSimProgress(0);
+    const tick = () => {
+      const point = points[index];
+      if (!point || !simRunningRef.current) return;
+      moveDriverTo(point[0], point[1]);
+      setSimProgress(Math.round((index / (points.length - 1 || 1)) * 100));
+      index++;
+      if (index >= points.length) stopSimulation(true);
+    };
+    tick();
+    simTimerRef.current = window.setInterval(tick, SIM_TICK_MS);
+  }, [restL, restG, delivL, delivG, moveDriverTo, stopSimulation]);
+
+  // Stop the simulator when the map closes
+  useEffect(() => () => {
+    if (simTimerRef.current != null) window.clearInterval(simTimerRef.current);
+    if (simRunningRef.current) setDeliverySimulationRunning(false);
+    simRunningRef.current = false;
+  }, []);
 
   // Reactive Effect: Update Driver Marker whenever driverLat/driverLng props change (e.g. for customer)
   useEffect(() => {
@@ -253,7 +290,8 @@ export const RouteMap: React.FC<RouteMapProps> = ({
 
       const watchId = navigator.geolocation.watchPosition(
         (pos) => {
-          if (!isMounted) return;
+          // While simulating, the real GPS doesn't move the driver
+          if (!isMounted || simRunningRef.current) return;
           const { latitude, longitude } = pos.coords;
           setGpsStatus("ACTIVE");
           setCurrentGps({ lat: latitude, lng: longitude });
@@ -377,6 +415,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
         if (mapInstanceRef.current !== map) return;
 
         mainRoute.setLatLngs(routeData.coordinates);
+        routeCoordsRef.current = routeData.coordinates;
         setDistanceKm(routeData.distanceKm);
         setEtaMinutes(routeData.durationMin);
 
@@ -500,6 +539,9 @@ export const RouteMap: React.FC<RouteMapProps> = ({
           boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
           fontSize: "13px",
           fontWeight: "700",
+          whiteSpace: "nowrap",
+          maxWidth: "calc(100% - 66px)",
+          overflow: "hidden",
           pointerEvents: "none"
         }}>
           <span>{systemIconForEmoji("🛵")}</span>
@@ -591,18 +633,24 @@ export const RouteMap: React.FC<RouteMapProps> = ({
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: "8px",
           fontSize: "13px",
           color: "var(--text-secondary)"
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0 }}>
             <span style={{
               width: "8px",
               height: "8px",
               borderRadius: "50%",
-              backgroundColor: gpsStatus === "ACTIVE" ? "#1e8f4e" : gpsStatus === "ERROR" ? "#d42518" : "#f86015"
+              backgroundColor: simState !== "IDLE" || gpsStatus === "ACTIVE" ? "#1e8f4e" : gpsStatus === "ERROR" ? "#d42518" : "#f86015"
             }}></span>
             <span>
-              {gpsStatus === "ACTIVE"
+              {simState === "RUNNING"
+                ? `Prueba: en camino al cliente (${simProgress}%)`
+                : simState === "ARRIVED"
+                ? "Prueba: llegaste donde el cliente. Pide el PIN para entregar."
+                : gpsStatus === "ACTIVE"
                 ? `GPS Activo (${currentGps?.lat.toFixed(4)}, ${currentGps?.lng.toFixed(4)})`
                 : gpsStatus === "UPDATING"
                 ? "Buscando satélites GPS..."
@@ -610,24 +658,16 @@ export const RouteMap: React.FC<RouteMapProps> = ({
             </span>
           </div>
 
-{import.meta.env.DEV && (
-          <button
-            type="button"
-            onClick={handleSimulateAdvance}
-            title="Simular avance hacia el cliente"
-            style={{
-              backgroundColor: "rgba(255, 255, 255, 0.08)",
-              border: "1px solid rgba(255, 255, 255, 0.15)",
-              color: "#ffffff",
-              padding: "3px 8px",
-              borderRadius: "6px",
-              cursor: "pointer",
-              fontSize: "13px",
-              fontWeight: "600"
-            }}
-          >
-            {systemIconForEmoji("🧪")} Probar Avance GPS (+20%)
-          </button>
+          {SIMULATOR_ENABLED && (
+            <button
+              type="button"
+              className="route-sim-btn"
+              data-state={simState}
+              onClick={() => (simState === "RUNNING" ? stopSimulation() : startSimulation())}
+              title="Solo para pruebas: recorre la ruta del local al cliente"
+            >
+              {systemIconForEmoji("🧪")} {simState === "RUNNING" ? "Detener simulación" : simState === "ARRIVED" ? "Simular otra vez" : "Simular recorrido"}
+            </button>
           )}
         </div>
       )}
@@ -657,7 +697,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
         </div>
 
         {/* Navigation Action Buttons */}
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: "1 1 auto", minWidth: 0, flexWrap: "wrap" }}>
           {isDriverView && (
             <button
               type="button"

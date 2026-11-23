@@ -17,6 +17,7 @@ import {
   HelpCircle
 } from "lucide-react";
 import { RouteMap } from "../components/RouteMap";
+import { isDeliverySimulationRunning } from "../utils/deliverySimulator";
 import { SupportModal } from "../components/SupportModal";
 import { DriverOrderActions } from "../components/DriverOrderActions";
 import { StarAverage } from "../components/Stars";
@@ -102,12 +103,10 @@ export const DeliveryDashboard: React.FC = () => {
   // Solicitudes de recarga del motorizado y sus entregas terminadas
   const [rechargeRequests, setRechargeRequests] = useState<any[]>([]);
   const [deliveryHistory, setDeliveryHistory] = useState<any[]>([]);
-  const [maxDebtLimit, setMaxDebtLimit] = useState<number>(50);
-  const [isDebtLocked, setIsDebtLocked] = useState<boolean>(false);
+  const [reservedBalance, setReservedBalance] = useState<number>(0);
   // Comes from the server, which applies the balance rule set by the administrator
   const [canTakeOrders, setCanTakeOrders] = useState<boolean>(true);
   const [takeBlockedMessage, setTakeBlockedMessage] = useState<string | null>(null);
-  const [balanceRule, setBalanceRule] = useState<string>("");
   const [costPerOrder, setCostPerOrder] = useState<number>(0);
   const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [deliveryRate, setDeliveryRate] = useState<any>(null);
@@ -141,7 +140,7 @@ export const DeliveryDashboard: React.FC = () => {
     const send = () =>
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          if (stopped) return;
+          if (stopped || isDeliverySimulationRunning()) return;
           apiRequest("/delivery/location", {
             method: "POST",
             body: JSON.stringify({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
@@ -219,11 +218,9 @@ export const DeliveryDashboard: React.FC = () => {
       const walletRes = await apiRequest("/delivery/wallet");
       if (walletRes.success) {
         setWalletBalance(walletRes.walletBalance || 0);
-        setMaxDebtLimit(walletRes.maxDebtLimit ?? 50);
-        setIsDebtLocked(!!walletRes.isDebtLocked);
+        setReservedBalance(walletRes.reservedBalance || 0);
         setCanTakeOrders(walletRes.canTakeOrders !== false);
         setTakeBlockedMessage(walletRes.blockedMessage || null);
-        setBalanceRule(walletRes.balanceRule || "");
         setCostPerOrder(Number(walletRes.costPerOrder) || 0);
         setTransactions(walletRes.transactions || []);
       }
@@ -422,9 +419,9 @@ export const DeliveryDashboard: React.FC = () => {
           }}>
             <Wallet size={18} color="#d42518" />
             <div>
-              <div style={{ fontSize: "12px", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Saldo Wallet</div>
-              <div style={{ fontSize: "18px", fontWeight: "bold", color: walletBalance >= 0 ? "var(--brand-black)" : "var(--brand-red)" }}>
-                ${walletBalance.toFixed(2)}
+              <div style={{ fontSize: "12px", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Tu saldo</div>
+              <div style={{ fontSize: "18px", fontWeight: "bold", color: canTakeOrders ? "var(--brand-black)" : "var(--brand-red)" }}>
+                ${Math.max(0, walletBalance).toFixed(2)}
               </div>
             </div>
           </div>
@@ -450,7 +447,7 @@ export const DeliveryDashboard: React.FC = () => {
             title="Línea de emergencia y ayuda para motorizados"
           >
             <HelpCircle size={16} />
-            SOS / Soporte en Ruta
+            Necesito ayuda
           </button>
 
           <button
@@ -481,10 +478,10 @@ export const DeliveryDashboard: React.FC = () => {
         border: "1px solid var(--border-light)"
       }}>
         {[
-          { id: "available", label: `Pedidos Disponibles (${availableOrders.length})`, icon: Clock },
+          { id: "available", label: `Pedidos (${availableOrders.length})`, icon: Clock },
           { id: "active", label: `Mis Entregas (${activeOrders.length})`, icon: Truck },
-          { id: "wallet", label: "Mi Billetera", icon: Wallet },
-          { id: "saas_plans", label: systemTextWithIcons("Planes de Recarga 🎫"), icon: Wallet }
+          { id: "wallet", label: "Billetera", icon: Wallet },
+          { id: "saas_plans", label: "Recargar", icon: Wallet }
         ].map((t) => {
           const Icon = t.icon;
           return (
@@ -734,7 +731,7 @@ export const DeliveryDashboard: React.FC = () => {
               {activeOrders.length === 0 ? (
                 <EmptyState
                   title="Sin entregas en curso"
-                  message='Toma un pedido desde la pestaña "Pedidos Disponibles" para empezar.'
+                  message='Toma un pedido desde la pestaña "Pedidos" para empezar.'
                 />
               ) : (
                 <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: "20px" }}>
@@ -1034,18 +1031,28 @@ export const DeliveryDashboard: React.FC = () => {
                 padding: "24px",
                 textAlign: "center"
               }}>
-                <Wallet size={40} style={{ color: walletBalance >= 0 ? "var(--success)" : "var(--accent-primary)", marginBottom: "15px" }} />
+                <Wallet size={40} style={{ color: canTakeOrders ? "var(--success)" : "var(--accent-primary)", marginBottom: "15px" }} />
                 <h3 style={{ fontSize: "16px", color: "var(--text-secondary)", textTransform: "uppercase" }}>
-                  {walletBalance >= 0 ? "Saldo a Favor" : "Balance de Deuda (Comisiones)"}
+                  Tu saldo
                 </h3>
                 <div style={{
                   fontSize: "36px",
                   fontWeight: "bold",
                   margin: "10px 0",
-                  color: walletBalance >= 0 ? "var(--success)" : "var(--brand-red)"
+                  color: canTakeOrders ? "var(--success)" : "var(--brand-red)"
                 }}>
-                  {walletBalance < 0 ? `-$${Math.abs(walletBalance).toFixed(2)}` : `$${walletBalance.toFixed(2)}`}
+                  ${Math.max(0, walletBalance).toFixed(2)}
                 </div>
+                {walletBalance < 0 && (
+                  <p style={{ margin: "0 0 12px", fontSize: "13px", color: "var(--brand-red)", fontWeight: 600 }}>
+                    Tienes ${Math.abs(walletBalance).toFixed(2)} pendientes con GoEats de antes. Recarga para cubrirlos y volver a tomar pedidos.
+                  </p>
+                )}
+                {reservedBalance > 0 && (
+                  <p style={{ margin: "0 0 12px", fontSize: "13px", color: "var(--text-secondary)" }}>
+                    ${reservedBalance.toFixed(2)} de tu saldo están apartados para la parte de GoEats del efectivo que vas a cobrar.
+                  </p>
+                )}
 
                 <div style={{
                   display: "inline-block",
@@ -1053,17 +1060,17 @@ export const DeliveryDashboard: React.FC = () => {
                   borderRadius: "20px",
                   fontSize: "13px",
                   fontWeight: "bold",
-                  backgroundColor: isDebtLocked ? "rgba(231, 76, 60, 0.15)" : "rgba(46, 204, 113, 0.15)",
-                  color: isDebtLocked ? "var(--brand-red)" : "#2ecc71",
+                  backgroundColor: !canTakeOrders ? "rgba(231, 76, 60, 0.15)" : "rgba(46, 204, 113, 0.15)",
+                  color: !canTakeOrders ? "var(--brand-red)" : "#2ecc71",
                   marginBottom: "15px"
                 }}>
-                  {isDebtLocked ? systemTextWithIcons("⚠️ CUENTA PAUSADA POR DEUDA") : "✓ ESTADO ACTIVO"}
+                  {!canTakeOrders ? systemTextWithIcons("⚠️ SIN SALDO PARA TOMAR PEDIDOS") : "✓ ESTADO ACTIVO"}
                 </div>
 
                 <div style={{
                   padding: "15px",
-                  backgroundColor: isDebtLocked ? "color-mix(in srgb, var(--brand-red) 8%, transparent)" : "rgba(243, 232, 204, 0.36)",
-                  border: isDebtLocked ? "1px solid color-mix(in srgb, var(--brand-red) 30%, transparent)" : "1px solid rgba(243, 232, 204, 1.0)",
+                  backgroundColor: !canTakeOrders ? "color-mix(in srgb, var(--brand-red) 8%, transparent)" : "rgba(243, 232, 204, 0.36)",
+                  border: !canTakeOrders ? "1px solid color-mix(in srgb, var(--brand-red) 30%, transparent)" : "1px solid rgba(243, 232, 204, 1.0)",
                   borderRadius: "var(--radius-md)",
                   fontSize: "13px",
                   color: "var(--text-secondary)",
@@ -1071,27 +1078,19 @@ export const DeliveryDashboard: React.FC = () => {
                   gap: "10px",
                   textAlign: "left"
                 }}>
-                  <AlertTriangle size={20} color={isDebtLocked ? "var(--brand-red)" : "#000000"} style={{ flexShrink: 0 }} />
+                  <AlertTriangle size={20} color={!canTakeOrders ? "var(--brand-red)" : "#000000"} style={{ flexShrink: 0 }} />
                   <div>
-                    {balanceRule === "DEBT_LIMIT" ? (
-                      <>
-                        <strong>Límite de deuda:</strong> puedes seguir tomando pedidos aunque tu saldo quede en negativo, hasta <strong>-${maxDebtLimit.toFixed(2)}</strong>.
-                      </>
-                    ) : (
-                      <>
-                        <strong>Cómo funciona tu saldo:</strong> cada pedido que tomas descuenta <strong>${costPerOrder.toFixed(2)}</strong>. Si el cliente paga en efectivo, al entregar también se descuenta la comisión de GoEats que cobraste por el restaurante. Recarga antes de quedarte sin saldo.
-                      </>
-                    )}
-                    {isDebtLocked && (
+                    <strong>Cómo funciona tu saldo:</strong> cada pedido que tomas descuenta <strong>${costPerOrder.toFixed(2)}</strong>. Si el cliente paga en efectivo, al entregar también se descuenta la parte de GoEats que cobraste. Tu saldo nunca queda en negativo: para tomar un pedido debe alcanzar para las dos cosas.
+                    {!canTakeOrders && takeBlockedMessage && (
                       <div style={{ color: "var(--brand-red)", marginTop: "6px", fontWeight: "bold" }}>
-                        Has alcanzado el límite. No podrás aceptar pedidos en efectivo hasta realizar un abono a GoEats.
+                        {takeBlockedMessage}
                       </div>
                     )}
                   </div>
                 </div>
 
                 <div style={{ marginTop: "20px", fontSize: "13px", color: "var(--text-muted)" }}>
-                  Los pedidos pagados en línea (tarjeta) acreditan saldo a tu favor y descuentan automáticamente tu deuda.
+                  Los pedidos pagados en línea acreditan tu ganancia en el saldo al entregarlos.
                 </div>
               </div>
 
