@@ -959,6 +959,8 @@ export const Auth: React.FC = () => {
           </span>
         </div>
 
+        <p className="au-mobile-intro">Lo mejor de Loja, más cerca de ti.</p>
+
         <div className="au-card" ref={cardRef}>
           {mode === "login" ? renderLogin() : renderRegister()}
         </div>

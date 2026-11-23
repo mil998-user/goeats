@@ -1,8 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { Navigation, ExternalLink, Compass, RefreshCw, Radio } from "lucide-react";
-import { systemIconForEmoji } from "../utils/systemIcons";
+import { Bike, Navigation, ExternalLink, Compass, RefreshCw, Radio, Play, MapPin, Store } from "lucide-react";
 import { escapeHtml } from "../utils/html";
 import { SIMULATOR_ENABLED, SIM_STEPS, SIM_TICK_MS, resamplePath, setDeliverySimulationRunning } from "../utils/deliverySimulator";
 
@@ -544,7 +543,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
           overflow: "hidden",
           pointerEvents: "none"
         }}>
-          <span>{systemIconForEmoji("🛵")}</span>
+          <Bike size={15} aria-hidden="true" />
           <span style={{ color: "#1e8f4e" }}>
             {distanceKm > 0 ? `${distanceKm} km` : "En ruta"}
           </span>
@@ -684,7 +683,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
         gap: "10px"
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: "6px", flex: "1 1 180px", overflow: "hidden" }}>
-          <span style={{ fontSize: "14px" }}>{systemIconForEmoji("📍")}</span>
+          <MapPin size={14} aria-hidden="true" />
           <span style={{
             fontSize: "13px",
             color: "var(--text-primary, #ffffff)",
@@ -718,7 +717,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
                 transition: "background 0.2s ease",
               }}
             >
-              <span>{systemIconForEmoji("🏪")} Ir al Local</span>
+              <span><Store size={14} aria-hidden="true" /> Ir al Local</span>
             </button>
           )}
 

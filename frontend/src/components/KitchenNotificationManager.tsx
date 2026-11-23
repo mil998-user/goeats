@@ -3,8 +3,7 @@ import { createPortal } from "react-dom";
 import { useSocket } from "../context/SocketContext";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { Bell, BellRing, X, Clock, Volume2, VolumeX, CheckCircle2, Sparkles } from "lucide-react";
-import { systemIconForEmoji, systemTextWithIcons } from "../utils/systemIcons";
+import { Bell, BellRing, X, Clock, Volume2, VolumeX, CheckCircle2, Sparkles, Utensils, XCircle, MousePointerClick } from "lucide-react";
 
 
 export interface KitchenNotification {
@@ -504,7 +503,7 @@ export const KitchenNotificationManager: React.FC = () => {
                   gap: "6px"
                 }}
               >
-                {systemIconForEmoji("🍽️")} Ir a {activeToast.tableName}
+                <Utensils size={14} aria-hidden="true" /> Ir a {activeToast.tableName}
               </button>
               <button
                 type="button"
@@ -651,7 +650,7 @@ export const KitchenNotificationManager: React.FC = () => {
                 justifyContent: "space-between"
               }}>
                 <span>
-                  {pushPermission === "granted" ? systemTextWithIcons("🟢 Push: Activadas") : systemTextWithIcons("🔴 Push: Desactivadas")}
+                  {pushPermission === "granted" ? <><CheckCircle2 size={14} aria-hidden="true" /> Push: Activadas</> : <><XCircle size={14} aria-hidden="true" /> Push: Desactivadas</>}
                 </span>
                 {pushPermission !== "granted" && (
                   <button
@@ -704,7 +703,7 @@ export const KitchenNotificationManager: React.FC = () => {
                           backgroundColor: notif.type === "ALMOST_READY" ? "color-mix(in srgb, var(--brand-orange) 15%, transparent)" : "rgba(30, 143, 78, 0.15)",
                           color: notif.type === "ALMOST_READY" ? "var(--warning)" : "var(--success)"
                         }}>
-                          {notif.type === "ALMOST_READY" ? systemTextWithIcons("🟡 Casi Listo") : systemTextWithIcons("🟢 ¡Listo para Servir!")}
+                          {notif.type === "ALMOST_READY" ? <><Clock size={14} aria-hidden="true" /> Casi Listo</> : <><CheckCircle2 size={14} aria-hidden="true" /> ¡Listo para Servir!</>}
                         </span>
                         <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>
                           {new Date(notif.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -717,7 +716,7 @@ export const KitchenNotificationManager: React.FC = () => {
                         {notif.message}
                       </div>
                       <div style={{ fontSize: "13px", color: "var(--accent-primary)", fontWeight: 600, marginTop: "4px" }}>
-                        {systemIconForEmoji("👉")} Click para abrir {notif.tableName}
+                        <MousePointerClick size={14} aria-hidden="true" /> Abrir {notif.tableName}
                       </div>
                     </div>
                   ))

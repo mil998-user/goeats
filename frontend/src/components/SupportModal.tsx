@@ -9,10 +9,10 @@ import {
   Send,
   CheckCircle2,
   AlertCircle,
-  ExternalLink
+  ExternalLink,
+  Clock
 } from "lucide-react";
 import { apiRequest } from "../utils/api";
-import { systemIconForEmoji } from "../utils/systemIcons";
 
 
 export interface SupportModalProps {
@@ -790,7 +790,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({
                   marginTop: "2px",
                 }}
               >
-                <span>{systemIconForEmoji("🕐")}</span>
+                <Clock size={15} aria-hidden="true" />
                 <span>
                   <strong>Atención operadores:</strong> Lun a Dom &bull; 8:00 AM &ndash; 11:30 PM
                 </span>

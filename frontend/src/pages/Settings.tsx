@@ -30,12 +30,17 @@ import {
   EyeOff,
   Navigation,
   Sparkles,
-  CheckCircle
+  CheckCircle,
+  MapPinned,
+  Zap,
+  Lightbulb,
+  AlertTriangle,
+  Package,
+  ShoppingCart
 } from "lucide-react";
 import { ClipboardList, ShoppingBag, DollarSign } from "lucide-react";
 import { RestaurantLocationPicker } from "../components/RestaurantLocationPicker";
 import { TableQRModal } from "../components/TableQRModal";
-import { systemIconForEmoji, systemTextWithIcons } from "../utils/systemIcons";
 
 
 interface BankAccount {
@@ -1655,7 +1660,7 @@ export const Settings: React.FC = () => {
                 }}
               >
                 <Navigation size={13} />
-                <span>{systemIconForEmoji("📍")} Detectar mi GPS Actual</span>
+                <span>Detectar mi GPS Actual</span>
               </button>
             </h3>
 
@@ -1672,7 +1677,8 @@ export const Settings: React.FC = () => {
               border: "1px solid var(--border-light)"
             }}>
               <span style={{ fontSize: "13px", fontWeight: "700", color: "var(--text-muted)", marginRight: "4px" }}>
-                {systemIconForEmoji("⚡")} Fijar Ciudad:
+                <Zap size={14} style={{ verticalAlign: "middle", marginRight: "4px" }} aria-hidden="true" />
+                Fijar Ciudad:
               </span>
               {[
                 { name: "Loja Centro", lat: "-3.993130", lng: "-79.204220" },
@@ -1700,7 +1706,7 @@ export const Settings: React.FC = () => {
                     cursor: "pointer"
                   }}
                 >
-                  {systemIconForEmoji("📍")}
+                  <MapPin size={14} style={{ verticalAlign: "middle", marginRight: "4px" }} aria-hidden="true" />
                   {city.name}
                 </button>
               ))}
@@ -1792,14 +1798,16 @@ export const Settings: React.FC = () => {
               )}
 
               <small style={{ fontSize: "13px", color: "var(--text-muted)", marginTop: "4px", display: "block" }}>
-                {systemIconForEmoji("💡")} Pega cualquier link de Google Maps (incluyendo enlaces cortos como maps.app.goo.gl) y las coordenadas se extraerán automáticamente.
+                <Lightbulb size={14} style={{ verticalAlign: "middle", marginRight: "4px" }} aria-hidden="true" />
+                Pega cualquier link de Google Maps (incluyendo enlaces cortos como maps.app.goo.gl) y las coordenadas se extraerán automáticamente.
               </small>
             </div>
 
             {/* Interactive Visual Map Picker for Restaurant Only */}
             <div style={{ marginBottom: "20px" }}>
               <label style={{ fontSize: "13px", fontWeight: "700", marginBottom: "8px", display: "block", color: "var(--text-primary)" }}>
-                {systemIconForEmoji("🗺️")} Ubicación Oficial de la Puerta de tu Local (Arrastra o Haz Clic)
+                <MapPinned size={15} style={{ verticalAlign: "middle", marginRight: "6px" }} aria-hidden="true" />
+                Ubicación Oficial de la Puerta de tu Local (Arrastra o Haz Clic)
               </label>
               <RestaurantLocationPicker
                 key={`${mapLatitude}-${mapLongitude}`}
@@ -1892,7 +1900,7 @@ export const Settings: React.FC = () => {
                 ) : (
                   <>
                     <Save size={16} />
-                    <span>{systemIconForEmoji("💾")} Guardar Ubicación del Local</span>
+                    <span>Guardar Ubicación del Local</span>
                   </>
                 )}
               </button>
@@ -2232,7 +2240,7 @@ export const Settings: React.FC = () => {
               ) : (
                 <>
                   <Save size={16} />
-                  Guardar cambios
+                  Guardar Todos los Cambios
                 </>
               )}
             </button>
@@ -3387,7 +3395,7 @@ export const Settings: React.FC = () => {
                             <td style={{ padding: "12px 10px" }}>{sup.category?.name || "Sin Categoría"}</td>
                             <td style={{ padding: "12px 10px", textAlign: "right", fontWeight: 700, color: isLowStock ? "var(--danger)" : "var(--text-primary)" }}>
                               {sup.stock.toFixed(2)} {sup.unit?.name}
-                              {isLowStock && <span style={{ fontSize: "13px", display: "block", color: "var(--danger)", fontWeight: "normal" }}>{systemIconForEmoji("⚠️")} Stock Bajo</span>}
+                              {isLowStock && <span style={{ fontSize: "13px", display: "block", color: "var(--danger)", fontWeight: "normal" }}><AlertTriangle size={13} style={{ verticalAlign: "middle", marginRight: "4px" }} aria-hidden="true" />Stock Bajo</span>}
                             </td>
                             <td style={{ padding: "12px 10px", textAlign: "right", color: "var(--text-secondary)" }}>{sup.minStock.toFixed(2)} {sup.unit?.name}</td>
                             <td style={{ padding: "12px 10px", textAlign: "right" }}>${sup.cost.toFixed(2)}</td>
@@ -3565,7 +3573,7 @@ export const Settings: React.FC = () => {
                       <strong style={{ fontSize: "20px", color: "var(--accent-primary)" }}>${getPurchaseTotal().toFixed(2)}</strong>
                     </div>
                     <button type="submit" className="glow-btn" style={{ width: "100%", padding: "12px" }} disabled={purchaseItems.length === 0}>
-                      Procesar y Registrar Compra {systemIconForEmoji("📦")}
+                      Procesar y Registrar Compra <Package size={16} aria-hidden="true" />
                     </button>
                   </div>
                 </form>
@@ -3718,10 +3726,10 @@ export const Settings: React.FC = () => {
                             <td style={{ padding: "12px 10px", textAlign: "right", color: "var(--text-muted)" }}>${mov.costUnit.toFixed(2)}</td>
                             <td style={{ padding: "12px 10px", textAlign: "right", fontWeight: 600 }}>${totalVal.toFixed(2)}</td>
                             <td style={{ padding: "12px 10px", fontWeight: 500, color: "var(--text-secondary)" }}>
-                              {mov.reason === "COMPRA" && systemTextWithIcons("🛒 Factura de Compra")}
-                              {mov.reason === "VENTA" && systemTextWithIcons("🍔 Descuento por Venta POS")}
-                              {mov.reason === "DESPERDICIO" && systemTextWithIcons("🗑️ Merma / Desperdicio")}
-                              {mov.reason === "AJUSTE_MANUAL" && systemTextWithIcons("🔧 Ajuste de Inventario")}
+                              {mov.reason === "COMPRA" && <><ShoppingCart size={15} style={{ verticalAlign: "middle", marginRight: "5px" }} aria-hidden="true" />Factura de Compra</>}
+                              {mov.reason === "VENTA" && <><ShoppingBag size={15} style={{ verticalAlign: "middle", marginRight: "5px" }} aria-hidden="true" />Descuento por Venta POS</>}
+                              {mov.reason === "DESPERDICIO" && <><Trash2 size={15} style={{ verticalAlign: "middle", marginRight: "5px" }} aria-hidden="true" />Merma / Desperdicio</>}
+                              {mov.reason === "AJUSTE_MANUAL" && <><SettingsIcon size={15} style={{ verticalAlign: "middle", marginRight: "5px" }} aria-hidden="true" />Ajuste de Inventario</>}
                               {!["COMPRA", "VENTA", "DESPERDICIO", "AJUSTE_MANUAL"].includes(mov.reason) && mov.reason}
                             </td>
                           </tr>
@@ -3778,7 +3786,7 @@ export const Settings: React.FC = () => {
                             <td style={{ padding: "12px 10px", textAlign: "right", fontWeight: 700, color: balance > 0 ? "var(--danger)" : "var(--text-primary)" }}>${balance.toFixed(2)}</td>
                             <td style={{ padding: "12px 10px", color: isOverdue ? "var(--danger)" : "var(--text-primary)", fontWeight: isOverdue ? "bold" : "normal" }}>
                               {cred.dueDate ? new Date(cred.dueDate).toLocaleDateString() : "—"}
-                              {isOverdue && <span style={{ fontSize: "13px", display: "block", color: "var(--danger)" }}>{systemIconForEmoji("⚠️")} Vencido</span>}
+                              {isOverdue && <span style={{ fontSize: "13px", display: "block", color: "var(--danger)" }}><AlertTriangle size={13} style={{ verticalAlign: "middle", marginRight: "4px" }} aria-hidden="true" />Vencido</span>}
                             </td>
                             <td style={{ padding: "12px 10px" }}>
                               <span style={{

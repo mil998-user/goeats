@@ -28,6 +28,7 @@ import { apiRequest } from "../utils/api";
 import { prefersReducedMotion, revealDelay as delay, useReveal } from "../utils/useReveal";
 import "../styles/landing.css";
 import "../styles/landing-sections.css";
+import "../styles/footer-bottom.css";
 
 // Landing con la plantilla de los jefes (plan 9), con el ritmo de Good Pair Days:
 // fondos suaves que cambian en cada seccion, acentos de toda la paleta y movimiento al bajar
@@ -728,7 +729,6 @@ export const LandingExperience: React.FC = () => {
           </nav>
         </div>
 
-        {/* Firma grande de la marca */}
         <p className="gl-footer-word" aria-hidden="true">
           G<img src="/brand/boca-roja.png" alt="" />EATS
         </p>

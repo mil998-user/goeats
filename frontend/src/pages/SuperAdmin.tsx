@@ -32,9 +32,15 @@ import {
   Check,
   X,
   Phone,
+  Flame,
+  Bike,
+  CarFront,
+  Zap,
+  Sparkles,
+  CreditCard,
+  Building2,
 } from "lucide-react";
 import { EmailNotificationsTab } from "../components/admin/EmailNotificationsTab";
-import { systemIconForEmoji, systemTextWithIcons } from "../utils/systemIcons";
 
 
 interface Restaurant {
@@ -864,7 +870,7 @@ export const SuperAdmin: React.FC = () => {
               fontSize: "13px"
             }}
           >
-            {systemIconForEmoji("🔥")} Vaciar Sistema (Reset)
+            <Flame size={14} aria-hidden="true" /> Vaciar Sistema (Reset)
           </button>}
 
           <button
@@ -1255,7 +1261,7 @@ export const SuperAdmin: React.FC = () => {
                                 fontWeight: 700
                               }}>
                                 <Clock size={12} />
-                                {systemIconForEmoji("⏳")} Pendiente
+                                Pendiente
                               </span>
                             ) : restaurant.status === "UNDER_REVIEW" ? (
                               <span style={{
@@ -1270,7 +1276,7 @@ export const SuperAdmin: React.FC = () => {
                                 fontWeight: 700
                               }}>
                                 <Search size={12} />
-                                {systemIconForEmoji("🔍")} En Revisión
+                                En Revisión
                               </span>
                             ) : restaurant.status === "REJECTED" ? (
                               <span style={{
@@ -1285,7 +1291,7 @@ export const SuperAdmin: React.FC = () => {
                                 fontWeight: 700
                               }}>
                                 <XCircle size={12} />
-                                {systemIconForEmoji("❌")} Rechazado
+                                Rechazado
                               </span>
                             ) : (restaurant.status === "APPROVED" || restaurant.status === "ACTIVE" || (!restaurant.status && restaurant.isActive)) ? (
                               <span style={{
@@ -1300,7 +1306,7 @@ export const SuperAdmin: React.FC = () => {
                                 fontWeight: 700
                               }}>
                                 <CheckCircle size={12} />
-                                {systemIconForEmoji("✅")} Aprobado
+                                Aprobado
                               </span>
                             ) : (
                               <span style={{
@@ -2006,7 +2012,7 @@ export const SuperAdmin: React.FC = () => {
                             fontWeight: 600,
                             fontSize: "13px"
                           }}>
-                            {driver.vehicleType === "BICI" ? systemTextWithIcons("🚲 Bicicleta") : driver.vehicleType === "AUTO" ? systemTextWithIcons("🚗 Automóvil") : systemTextWithIcons("🛵 Moto")}
+                            {driver.vehicleType === "BICI" ? <><Bike size={14} aria-hidden="true" /> Bicicleta</> : driver.vehicleType === "AUTO" ? <><CarFront size={14} aria-hidden="true" /> Automóvil</> : <><Bike size={14} aria-hidden="true" /> Moto</>}
                           </span>
                           {driver.vehiclePlate && (
                             <div style={{ fontSize: "13px", color: "var(--text-secondary)", marginTop: "4px" }}>
@@ -2026,7 +2032,7 @@ export const SuperAdmin: React.FC = () => {
                               fontSize: "13px",
                               border: "1px solid rgba(30, 143, 78, 0.3)"
                             }}>
-                              {systemIconForEmoji("✅")} Aprobado / Activo
+                              <CheckCircle size={14} aria-hidden="true" /> Aprobado / Activo
                             </span>
                           ) : (
                             <span style={{
@@ -2039,7 +2045,7 @@ export const SuperAdmin: React.FC = () => {
                               fontSize: "13px",
                               border: "1px solid rgba(255, 171, 0, 0.3)"
                             }}>
-                              {systemIconForEmoji("⏳")} Pendiente Aprobación
+                              <Clock size={14} aria-hidden="true" /> Pendiente Aprobación
                             </span>
                           )}
                         </td>
@@ -2052,7 +2058,7 @@ export const SuperAdmin: React.FC = () => {
                           </div>
                           {driver.walletBalance <= -50 && (
                             <span style={{ fontSize: "13px", color: "var(--brand-red)", fontWeight: "bold" }}>
-                              {systemIconForEmoji("⚠️")} DEUDA &gt; $50 (PAUSADO)
+                              <AlertTriangle size={14} aria-hidden="true" /> DEUDA &gt; $50 (PAUSADO)
                             </span>
                           )}
                           {driver.walletBalance > 0 && (
@@ -2077,7 +2083,7 @@ export const SuperAdmin: React.FC = () => {
                                 }}
                                 title="Liquidar corte y registrar transferencia al motorizado"
                               >
-                                {systemIconForEmoji("⚡")} Liquidar ${driver.walletBalance.toFixed(2)}
+                                <Zap size={14} aria-hidden="true" /> Liquidar ${driver.walletBalance.toFixed(2)}
                               </button>
                             )}
                             <button
@@ -2095,7 +2101,7 @@ export const SuperAdmin: React.FC = () => {
                               }}
                               title={driver.isActive ? "Suspender acceso" : "Aprobar y habilitar cuenta"}
                             >
-                              {driver.isActive ? "Pausar" : systemTextWithIcons("Aprobar ✅")}
+                              {driver.isActive ? "Pausar" : <><Check size={14} aria-hidden="true" /> Aprobar</>}
                             </button>
 
                             <button
@@ -2174,7 +2180,7 @@ export const SuperAdmin: React.FC = () => {
                               fontSize: "13px",
                               fontWeight: "bold"
                             }}>
-                              Club Plus {systemIconForEmoji("✨")}
+                              Club Plus <Sparkles size={14} aria-hidden="true" />
                             </span>
                           ) : (
                             <span style={{
@@ -2570,7 +2576,7 @@ export const SuperAdmin: React.FC = () => {
                             {order.user.name} (@{order.user.username})
                           </td>
                           <td style={{ padding: "16px 20px", fontSize: "13px" }}>
-                            {order.user.role === "MOTORIZADO" ? systemTextWithIcons("Motorizado 🛵") : systemTextWithIcons("Cliente 🍔")}
+                            {order.user.role === "MOTORIZADO" ? <><Truck size={14} aria-hidden="true" /> Motorizado</> : <><UserIcon size={14} aria-hidden="true" /> Cliente</>}
                           </td>
                           <td style={{ padding: "16px 20px", fontSize: "13px" }}>
                             {order.type === "RECHARGE" ? "Recarga de saldo" : "Club GoEats Plus"}
@@ -2582,7 +2588,7 @@ export const SuperAdmin: React.FC = () => {
                             ${order.amount.toFixed(2)}
                           </td>
                           <td style={{ padding: "16px 20px", textAlign: "center", fontSize: "13px" }}>
-                            {order.paymentMethod === "CARD" ? systemTextWithIcons("💳 Tarjeta (Payphone)") : systemTextWithIcons("🏦 Transferencia")}
+                            {order.paymentMethod === "CARD" ? <><CreditCard size={14} aria-hidden="true" /> Tarjeta (Payphone)</> : <><Building2 size={14} aria-hidden="true" /> Transferencia</>}
                           </td>
                           <td style={{ padding: "16px 20px", textAlign: "center" }}>
                             <span style={{

@@ -20,11 +20,30 @@ import {
   Bell,
   Volume2,
   VolumeX,
-  LayoutGrid
+  LayoutGrid,
+  Armchair,
+  AlertTriangle,
+  Coffee,
+  Soup,
+  Wheat,
+  Beef,
+  Sandwich,
+  CupSoda,
+  CakeSlice,
+  Salad,
+  Clock,
+  MousePointerClick,
+  Printer,
+  ChefHat,
+  Phone,
+  MonitorCheck,
+  MapPin
 } from "lucide-react";
 import { systemIconForEmoji, systemTextWithIcons } from "../utils/systemIcons";
 import { splitTakeAway } from "../utils/takeAway";
 import { printComanda } from "../utils/comanda";
+import { escapeHtml } from "../utils/html";
+import { buildComandaHeader, buildComandaFooter, COMANDA_HEADER_CSS } from "../utils/comandaHeader";
 
 
 export interface WaiterNotification {
@@ -1050,7 +1069,7 @@ export const POS: React.FC = () => {
                       backgroundColor: notif.type === "ALMOST_READY" ? "rgba(248, 96, 21, 0.15)" : "rgba(30, 143, 78, 0.15)",
                       color: notif.type === "ALMOST_READY" ? "var(--warning)" : "var(--success)"
                     }}>
-                      {notif.type === "ALMOST_READY" ? systemTextWithIcons("🟡 Casi Listo") : systemTextWithIcons("🟢 ¡Listo para Servir!")}
+                      {notif.type === "ALMOST_READY" ? <><Clock size={14} aria-hidden="true" /> Casi Listo</> : <><CheckCircle2 size={14} aria-hidden="true" /> ¡Listo para Servir!</>}
                     </span>
                     <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>
                       {new Date(notif.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -1064,7 +1083,7 @@ export const POS: React.FC = () => {
                   </div>
                   {notif.tableId && (
                     <div style={{ fontSize: "13px", color: "var(--accent-primary)", fontWeight: 600, marginTop: "4px" }}>
-                      {systemIconForEmoji("👉")} Click para abrir mesa
+                      <MousePointerClick size={14} aria-hidden="true" /> Abrir mesa
                     </div>
                   )}
                 </div>
@@ -1334,7 +1353,7 @@ export const POS: React.FC = () => {
                               gap: "2px",
                               zIndex: 2
                             }}>
-                              {systemIconForEmoji("🛎️")} ¡Listo!
+                              <CheckCircle2 size={14} aria-hidden="true" /> ¡Listo!
                             </span>
                           )}
                           {isAlmostReady && (
@@ -1354,7 +1373,7 @@ export const POS: React.FC = () => {
                               gap: "2px",
                               zIndex: 2
                             }}>
-                              {systemIconForEmoji("⏳")} {readiness.readyItems}/{readiness.totalItems}
+                              <Clock size={14} aria-hidden="true" /> {readiness.readyItems}/{readiness.totalItems}
                             </span>
                           )}
 
@@ -1365,7 +1384,7 @@ export const POS: React.FC = () => {
                           )}
                           {isAllReady && (
                             <span style={{ fontSize: "13px", color: "var(--success)", fontWeight: 700, marginTop: "2px" }}>
-                              Servir {systemIconForEmoji("🛎️")}
+                              Servir <Bell size={14} aria-hidden="true" />
                             </span>
                           )}
                           {isAlmostReady && (
@@ -1487,7 +1506,7 @@ export const POS: React.FC = () => {
                 gap: "10px"
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <span style={{ fontSize: "16px" }}>{systemIconForEmoji("🪑")}</span>
+                  <Armchair size={16} aria-hidden="true" />
                   <div>
                     <strong style={{ fontSize: "13px", color: "var(--text-primary)" }}>Mesa {selectedTable.number}</strong>
                     <span style={{ fontSize: "13px", color: "var(--text-secondary)", marginLeft: "6px" }}>
@@ -1524,7 +1543,7 @@ export const POS: React.FC = () => {
                 gap: "10px"
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <span style={{ fontSize: "16px" }}>{systemIconForEmoji("⚠️")}</span>
+                  <AlertTriangle size={16} aria-hidden="true" />
                   <span style={{ fontSize: "13px", color: "var(--warning)", fontWeight: 700 }}>Ninguna mesa seleccionada</span>
                 </div>
                 <button
@@ -1601,7 +1620,7 @@ export const POS: React.FC = () => {
                     padding: "8px 16px",
                     fontSize: "13px"
                   }}>
-                    {systemIconForEmoji("⚠️")} Abrir Caja Primero
+                    <AlertTriangle size={14} aria-hidden="true" /> Abrir Caja Primero
                   </Link>
                 )}
                 {(user?.role === "RESTAURANT_OWNER" || user?.role === "PRODUCCION") && (
@@ -1624,7 +1643,7 @@ export const POS: React.FC = () => {
                 onClick={() => setSelectedCategory(null)}
                 className={`pos-category-card ${selectedCategory === null ? "active" : ""}`}
               >
-                <span className="pos-category-card-icon">{systemIconForEmoji("🍽️")}</span>
+                <span className="pos-category-card-icon"><Utensils size={22} aria-hidden="true" /></span>
                 <span className="pos-category-card-title">Todos</span>
                 <span className="pos-category-card-count">
                   {menuCategories.reduce((sum, cat) => sum + cat.items.length, 0)} platos
@@ -1633,17 +1652,16 @@ export const POS: React.FC = () => {
 
               {/* Dynamic Categories */}
               {menuCategories.map(cat => {
-                // Pick emoji helper based on name
-                let emoji = systemTextWithIcons("🍔");
+                let CategoryIcon = Utensils;
                 const nameLower = cat.name.toLowerCase();
-                if (nameLower.includes("desayuno") || nameLower.includes("breakfast")) emoji = systemTextWithIcons("🍳");
-                else if (nameLower.includes("sopa") || nameLower.includes("soup") || nameLower.includes("caldo")) emoji = systemTextWithIcons("🍜");
-                else if (nameLower.includes("pasta") || nameLower.includes("tallarin")) emoji = systemTextWithIcons("🍝");
-                else if (nameLower.includes("fuerte") || nameLower.includes("fondo") || nameLower.includes("carne") || nameLower.includes("chili")) emoji = systemTextWithIcons("🌮");
-                else if (nameLower.includes("burger") || nameLower.includes("hamburguesa")) emoji = systemTextWithIcons("🍔");
-                else if (nameLower.includes("bebida") || nameLower.includes("jugo") || nameLower.includes("drink")) emoji = systemTextWithIcons("🍹");
-                else if (nameLower.includes("postre") || nameLower.includes("dulce")) emoji = systemTextWithIcons("🍰");
-                else if (nameLower.includes("ensalada") || nameLower.includes("salad") || nameLower.includes("diet")) emoji = systemTextWithIcons("🥗");
+                if (nameLower.includes("desayuno") || nameLower.includes("breakfast")) CategoryIcon = Coffee;
+                else if (nameLower.includes("sopa") || nameLower.includes("soup") || nameLower.includes("caldo")) CategoryIcon = Soup;
+                else if (nameLower.includes("pasta") || nameLower.includes("tallarin")) CategoryIcon = Wheat;
+                else if (nameLower.includes("fuerte") || nameLower.includes("fondo") || nameLower.includes("carne") || nameLower.includes("chili")) CategoryIcon = Beef;
+                else if (nameLower.includes("burger") || nameLower.includes("hamburguesa")) CategoryIcon = Sandwich;
+                else if (nameLower.includes("bebida") || nameLower.includes("jugo") || nameLower.includes("drink")) CategoryIcon = CupSoda;
+                else if (nameLower.includes("postre") || nameLower.includes("dulce")) CategoryIcon = CakeSlice;
+                else if (nameLower.includes("ensalada") || nameLower.includes("salad") || nameLower.includes("diet")) CategoryIcon = Salad;
 
                 return (
                   <div
@@ -1651,7 +1669,7 @@ export const POS: React.FC = () => {
                     onClick={() => setSelectedCategory(cat.id)}
                     className={`pos-category-card ${selectedCategory === cat.id ? "active" : ""}`}
                   >
-                    <span className="pos-category-card-icon">{emoji}</span>
+                    <span className="pos-category-card-icon"><CategoryIcon size={22} aria-hidden="true" /></span>
                     <span className="pos-category-card-title">{cat.name}</span>
                     <span className="pos-category-card-count">{cat.items.length} platos</span>
                   </div>
@@ -1847,18 +1865,18 @@ export const POS: React.FC = () => {
                             color: isAlmostReady ? "#000" : "#fff"
                           }}
                         >
-                          {isAllReady ? systemTextWithIcons("🛎️") : `T${table.number}`}
+                          {isAllReady ? <CheckCircle2 size={16} aria-hidden="true" /> : `T${table.number}`}
                         </div>
                         <div className="pos-table-pill-info">
                           <span className="pos-table-pill-name">Mesa {table.number}</span>
                           <span className="pos-table-pill-status">{table.areaName}</span>
                           {isAllReady ? (
                             <span style={{ color: "var(--success)", fontWeight: "bold", fontSize: "13px" }}>
-                              {systemIconForEmoji("🛎️")} ¡Listo para servir!
+                              <CheckCircle2 size={14} aria-hidden="true" /> ¡Listo para servir!
                             </span>
                           ) : isAlmostReady ? (
                             <span style={{ color: "var(--warning)", fontWeight: "bold", fontSize: "13px" }}>
-                              {systemIconForEmoji("⏳")} Casi listo ({readiness.readyItems}/{readiness.totalItems})
+                              <Clock size={14} aria-hidden="true" /> Casi listo ({readiness.readyItems}/{readiness.totalItems})
                             </span>
                           ) : (
                             <span className="pos-table-pill-process">Cuentas</span>
@@ -1916,7 +1934,7 @@ export const POS: React.FC = () => {
                     alignItems: "center",
                     gap: "4px"
                   }}>
-                    {systemIconForEmoji("🛎️")} ¡Todos los platos listos para servir!
+                    <CheckCircle2 size={14} aria-hidden="true" /> ¡Todos los platos listos para servir!
                   </span>
                 ) : (
                   <span style={{
@@ -1930,7 +1948,7 @@ export const POS: React.FC = () => {
                     alignItems: "center",
                     gap: "4px"
                   }}>
-                    {systemIconForEmoji("🟡")} Casi listo ({tableReadinessMap[selectedTable.id].readyItems}/{tableReadinessMap[selectedTable.id].totalItems} platos)
+                    <Clock size={14} aria-hidden="true" /> Casi listo ({tableReadinessMap[selectedTable.id].readyItems}/{tableReadinessMap[selectedTable.id].totalItems} platos)
                   </span>
                 )}
               </div>
@@ -2092,11 +2110,11 @@ export const POS: React.FC = () => {
               gap: "6px"
             }}>
               <div style={{ fontSize: "13px", fontWeight: "bold", color: "var(--accent-primary)", display: "flex", alignItems: "center", gap: "6px" }}>
-                <span>{systemIconForEmoji("⚠️")} Comprobante por Verificar</span>
+                <span><AlertTriangle size={14} aria-hidden="true" /> Comprobante por Verificar</span>
               </div>
               {user?.role === "MOZO" ? (
                 <div style={{ fontSize: "13px", color: "var(--text-secondary)", fontStyle: "italic" }}>
-                  Pendiente de verificación por caja {systemIconForEmoji("🖥️")}
+                  Pendiente de verificación por caja <MonitorCheck size={14} aria-hidden="true" />
                 </div>
               ) : (
                 <button
@@ -2295,7 +2313,7 @@ export const POS: React.FC = () => {
                 style={{ flex: 1, padding: "12px", fontSize: "14px" }}
                 disabled={cart.length === 0}
               >
-                {systemIconForEmoji("🖨️")} Imprimir Comanda
+                <Printer size={16} aria-hidden="true" /> Imprimir Comanda
               </button>
 
               {/* Pedir a Cocina / Guardar Pedido */}
@@ -2314,7 +2332,7 @@ export const POS: React.FC = () => {
                 }}
                 disabled={cart.length === 0 || placingOrder}
               >
-                {systemIconForEmoji("🔥")} {placingOrder ? "Enviando..." : "Enviar a Cocina"}
+                <ChefHat size={16} aria-hidden="true" /> {placingOrder ? "Enviando..." : "Enviar a Cocina"}
               </button>
             </div>
 
@@ -2941,7 +2959,7 @@ export const POS: React.FC = () => {
               margin: "0 auto 16px auto",
               fontSize: "2.2rem"
             }}>
-              {systemIconForEmoji("🛵")}
+              <Truck size={30} aria-hidden="true" />
             </div>
 
             <span style={{
@@ -2977,10 +2995,10 @@ export const POS: React.FC = () => {
               flexDirection: "column",
               gap: "8px"
             }}>
-              <div><strong>{systemIconForEmoji("📍")} Entrega:</strong> {incomingDeliveryOrder.deliveryAddress || "A domicilio"}</div>
-              <div><strong>{systemIconForEmoji("📞")} Teléfono:</strong> {incomingDeliveryOrder.deliveryPhone || "No especificado"}</div>
-              <div><strong>{systemIconForEmoji("💰")} Total:</strong> ${Number(incomingDeliveryOrder.total || 0).toFixed(2)}</div>
-              <div><strong>{systemIconForEmoji("🍽️")} Platos:</strong> {incomingDeliveryOrder.items?.length || 1} producto(s)</div>
+              <div><strong><MapPin size={14} aria-hidden="true" /> Entrega:</strong> {incomingDeliveryOrder.deliveryAddress || "A domicilio"}</div>
+              <div><strong><Phone size={14} aria-hidden="true" /> Teléfono:</strong> {incomingDeliveryOrder.deliveryPhone || "No especificado"}</div>
+              <div><strong><DollarSign size={14} aria-hidden="true" /> Total:</strong> ${Number(incomingDeliveryOrder.total || 0).toFixed(2)}</div>
+              <div><strong><Utensils size={14} aria-hidden="true" /> Platos:</strong> {incomingDeliveryOrder.items?.length || 1} producto(s)</div>
             </div>
 
             <div style={{ display: "flex", gap: "12px" }}>

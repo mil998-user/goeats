@@ -38,6 +38,7 @@ import { SupportModal } from "../components/SupportModal";
 import { systemIconForEmoji } from "../utils/systemIcons";
 import { useReveal } from "../utils/useReveal";
 import "../styles/restaurants.css";
+import "../styles/footer-bottom.css";
 
 
 interface PublicRestaurant {

@@ -144,4 +144,12 @@ Referencia: la plantilla de los jefes (Good Pair Days). Regla del usuario: nada 
 
 - Una sola pantalla para todos los roles. Web: panel amarillo con "Pide, cocina y reparte en un solo lugar" y la ilustracion del repartidor en tarjeta blanca; a la derecha la tarjeta blanca del formulario. Celular: sin panel, formulario a pantalla completa sobre blanco con el logo arriba.
 - Campos crema suave de 52 px y radio 16; al enfocarlos se ponen blancos con borde negro y halo amarillo. Boton principal rojo en pastilla; "Corregir" en crema.
-- Registro por pasos con barra de progreso roja y cuadro de confirmacion de datos en cada paso. Tipo de cuenta con tarjetas: Cliente (rojo), Repartidor (naranja), Restaurante (verde).
+- Registro por pasos con barra de progreso roja y cuadro de confirmacion de datos en cada paso. Tipo de cuenta con tarjetas: Cliente (rojo), Repartidor (naranja), Restaurante (amarillo con icono negro).
+- Ajuste responsive: encabezado movil con logo y frase de marca, controles tactiles de al menos 48 px, espacios seguros para dispositivos con recorte de pantalla y botones principales pegajosos al desplazar formularios con el teclado abierto. Se conserva el acceso de prueba solo en desarrollo.
+- La tipografia del formulario usa `--brand-font-text`; los roles usan rojo, naranja y amarillo de marca. El movimiento de entrada respeta `prefers-reduced-motion`.
+
+## Configuracion, mapas y paneles de operacion (17/11)
+
+- Los controles de ubicacion, guardado, inventario, mapas, POS de mesero, pantalla GoEats Plus para clientes y paneles motorizado/superadministrador usan iconos SVG de `lucide-react` en lugar de emojis. Los iconos son decorativos y no cambian el comportamiento de estas pantallas.
+- GoEats Plus usa fondo blanco y crema suave, tarjetas claras con sombras discretas, titulos con la fuente de marca y acciones principales rojas en pastilla. Los planes y modales se adaptan a movil, con controles tactiles y foco visible; los flujos de autenticacion y pago se mantienen sin cambios.
+- Restaurantes y GoEats Plus reutilizan el estilo `.gl-footer-bottom` solo para el copyright. Sus pies no agregan la firma G(boca)EATS ni el boton "Volver arriba"; el pie de inicio conserva su diseno original.

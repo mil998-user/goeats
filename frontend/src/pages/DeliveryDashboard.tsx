@@ -14,7 +14,14 @@ import {
   CheckCircle,
   FileText,
   RefreshCw,
-  HelpCircle
+  HelpCircle,
+  Ticket,
+  Map,
+  ShoppingCart,
+  DollarSign,
+  Gift,
+  CreditCard,
+  Building2
 } from "lucide-react";
 import { RouteMap } from "../components/RouteMap";
 import { isDeliverySimulationRunning } from "../utils/deliverySimulator";
@@ -22,7 +29,6 @@ import { SupportModal } from "../components/SupportModal";
 import { DriverOrderActions } from "../components/DriverOrderActions";
 import { StarAverage } from "../components/Stars";
 import { RateCustomerModal } from "../components/RateCustomerModal";
-import { systemIconForEmoji, systemTextWithIcons } from "../utils/systemIcons";
 
 // Card payments stay off until the payment provider account exists (set VITE_CARD_PAYMENTS=true to turn them on)
 const CARD_PAYMENTS_ENABLED = import.meta.env.VITE_CARD_PAYMENTS === "true";
@@ -481,7 +487,7 @@ export const DeliveryDashboard: React.FC = () => {
           { id: "available", label: `Pedidos (${availableOrders.length})`, icon: Clock },
           { id: "active", label: `Mis Entregas (${activeOrders.length})`, icon: Truck },
           { id: "wallet", label: "Billetera", icon: Wallet },
-          { id: "saas_plans", label: "Recargar", icon: Wallet }
+          { id: "saas_plans", label: "Recargar", icon: Ticket }
         ].map((t) => {
           const Icon = t.icon;
           return (
@@ -595,7 +601,7 @@ export const DeliveryDashboard: React.FC = () => {
                             transition: "all 0.2s ease"
                           }}
                         >
-                          <span>{systemIconForEmoji("🗺️")} {showMapForOrder[order.id] ? "Ocultar Mapa" : "Ver Ruta en Mapa"}</span>
+                          <span><Map size={15} aria-hidden="true" /> {showMapForOrder[order.id] ? "Ocultar Mapa" : "Ver Ruta en Mapa"}</span>
                         </button>
                       </div>
 
@@ -832,7 +838,7 @@ export const DeliveryDashboard: React.FC = () => {
                             <div style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "13px" }}>
                               {order.items.map((it) => (
                                 <div key={it.id} style={{ display: "flex", justifyContent: "space-between" }}>
-                                  <span>{systemIconForEmoji("🛒")} {it.quantity}x {it.variant.menuItem.name} ({it.variant.name})</span>
+                                  <span><ShoppingCart size={14} aria-hidden="true" /> {it.quantity}x {it.variant.menuItem.name} ({it.variant.name})</span>
                                   <span>${(it.price * it.quantity).toFixed(2)}</span>
                                 </div>
                               ))}
@@ -852,7 +858,7 @@ export const DeliveryDashboard: React.FC = () => {
                                 gap: "8px",
                               }}>
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                                  <span style={{ fontSize: "15px", fontWeight: "bold", color: "var(--brand-black)" }}>{systemIconForEmoji("💵")} Pagas en el local:</span>
+                                  <span style={{ fontSize: "15px", fontWeight: "bold", color: "var(--brand-black)" }}><DollarSign size={15} aria-hidden="true" /> Pagas en el local:</span>
                                   <span style={{ fontSize: "20px", fontWeight: "bold", color: "var(--brand-black)" }}>
                                     ${order.financialBreakdown.providerPayAmount.toFixed(2)}
                                   </span>
@@ -862,7 +868,7 @@ export const DeliveryDashboard: React.FC = () => {
                                 </p>
 
                                 <div style={{ fontSize: "13px", color: "#333333", marginTop: "4px" }}>
-                                  {systemIconForEmoji("🎁")} GoEats te paga <strong>${order.financialBreakdown.driverBonus.toFixed(2)} extra</strong> por este pedido. Cobra al cliente exactamente lo que marca abajo.
+                                  <Gift size={14} aria-hidden="true" /> GoEats te paga <strong>${order.financialBreakdown.driverBonus.toFixed(2)} extra</strong> por este pedido. Cobra al cliente exactamente lo que marca abajo.
                                 </div>
 
                                 <div style={{
@@ -1064,7 +1070,7 @@ export const DeliveryDashboard: React.FC = () => {
                   color: !canTakeOrders ? "var(--brand-red)" : "#2ecc71",
                   marginBottom: "15px"
                 }}>
-                  {!canTakeOrders ? systemTextWithIcons("⚠️ SIN SALDO PARA TOMAR PEDIDOS") : "✓ ESTADO ACTIVO"}
+                  {!canTakeOrders ? <><AlertTriangle size={14} aria-hidden="true" /> SIN SALDO PARA TOMAR PEDIDOS</> : <><CheckCircle size={14} aria-hidden="true" /> ESTADO ACTIVO</>}
                 </div>
 
                 <div style={{
@@ -1249,7 +1255,7 @@ export const DeliveryDashboard: React.FC = () => {
                           }}
                           style={{ padding: "8px", fontSize: "0.85rem" }}
                         >
-                          {systemIconForEmoji("💳")} {CARD_PAYMENTS_ENABLED ? "Tarjeta" : "Tarjeta (pronto)"}
+                          <CreditCard size={16} aria-hidden="true" /> {CARD_PAYMENTS_ENABLED ? "Tarjeta" : "Tarjeta (pronto)"}
                         </button>
                         <button
                           type="button"
@@ -1260,7 +1266,7 @@ export const DeliveryDashboard: React.FC = () => {
                           }}
                           style={{ padding: "8px", fontSize: "0.85rem" }}
                         >
-                          {systemIconForEmoji("🏦")} Transferencia
+                          <Building2 size={16} aria-hidden="true" /> Transferencia
                         </button>
                       </div>
                     </div>

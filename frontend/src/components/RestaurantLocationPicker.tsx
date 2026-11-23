@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Store, Navigation, Loader2, Search, MapPin, X } from "lucide-react";
-import { systemIconForEmoji, systemTextWithIcons } from "../utils/systemIcons";
 import { escapeHtml } from "../utils/html";
 
 
@@ -605,7 +604,7 @@ export const RestaurantLocationPicker: React.FC<RestaurantLocationPickerProps> =
             ) : (
               <Navigation size={13} fill="#f86015" color="#f86015" />
             )}
-            <span>{locating ? "Detectando..." : systemTextWithIcons("📍 Mi GPS Actual")}</span>
+            <span>{locating ? "Detectando..." : <><MapPin size={14} aria-hidden="true" /> Mi GPS Actual</>}</span>
           </button>
         </div>
       </div>
@@ -641,7 +640,7 @@ export const RestaurantLocationPicker: React.FC<RestaurantLocationPickerProps> =
           gap: "4px",
           border: "1px solid rgba(248, 96, 21, 0.25)"
         }}>
-          <span>{systemIconForEmoji("🏪")} Ubicación Oficial del Restaurante</span>
+          <span><Store size={14} aria-hidden="true" /> Ubicación Oficial del Restaurante</span>
         </div>
       </div>
     </div>
