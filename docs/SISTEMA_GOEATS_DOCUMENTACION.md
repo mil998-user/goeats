@@ -489,6 +489,42 @@ SISTEMA ACTUAL (Single-Tenant)          SISTEMA NUEVO (Multi-Tenant SaaS)
 
 ## 📝 Historial de Cambios
 
+### v0.7.36 — 2026-11-24 (Sin reservas dobles)
+`reservations.controller.ts` y `Reservations.tsx`. Sin migraciones.
+- Una mesa no se da dos veces con menos de 2 horas entre reservas (`TABLE_HOLD_MS`). Cuentan las que están por confirmar, confirmadas y "Ya llegaron".
+- Se revisa al registrar con mesa, asignar o cambiar mesa, confirmar y reactivar. Marcar la llegada o cancelar nunca se bloquea.
+- Si dos personas asignan la misma mesa a la vez, solo entra una: la mesa se bloquea dentro de una transacción.
+- El servidor responde 409 y la pantalla dice quién tiene la mesa y a qué hora, en hora de Ecuador y sin teléfono.
+- El cliente sigue reservando sin elegir mesa; el choque se revisa cuando el local la asigna.
+- Las reservas dobles que ya existan no se tocan. Una mesa unida a otra se revisa por su propio número.
+- Probado en la copia aislada (MySQL 9.4): 30 de 30, con choques simultáneos, y se repitieron 81 de 81 y 15 de 15. No se probó contra TiDB, en un celular real ni en la página publicada.
+
+### v0.7.35 — 2026-11-23 (Mesa reservada, aviso para calificar y velocidad)
+Plan 5.4, 5.6, 5.8, 5.9 y parte de la fase 7. Sin migraciones ni dependencias nuevas.
+- **Mesa reservada:**
+  - cada mesa muestra su próxima reserva de los siguientes 7 días, con día, hora, nombre y personas;
+  - si está confirmada y faltan 2 horas o menos, la mesa dice "Reservada" en amarillo y abrirla pide confirmación;
+  - las que faltan por confirmar dicen "Por confirmar" y no bloquean; se quita sola 1 hora después o al marcar "Ya llegaron";
+  - sale en Servicios de Mesa y en la pantalla del mesero, en tiempo real (`reservation-updated`);
+  - `/tables/dining-areas` no manda el teléfono del cliente.
+- **Aviso para calificar:** `RateReminder.tsx` y `ratings/ratingReminder.ts`.
+  - El servidor avisa entre 15 y 20 minutos después de la entrega (`rate-order`).
+  - Si la app estaba cerrada, sale al volver dentro de 3 días (`GET /api/ratings/pending`). "Ahora no" con la X se recuerda en ese equipo.
+  - Usa `updatedAt` del pedido como hora de entrega, porque no hay un campo propio.
+- **Tiempo de entrega:** una sola regla en `utils/rideTime.ts` (3,2 min por km más 1, y nunca menos que la ruta). 5 km dan 17 minutos. El margen es uno solo; todavía no hay uno por ciudad.
+- **Recargas:** la bandeja del administrador ya existía. Ahora van primero las pendientes, dice cuántas faltan y el comprobante solo viaja en las que faltan revisar.
+- **Velocidad:** `GET /api/orders?active=1` trae solo pedidos abiertos. Lo usan el contador del menú, Mesas y el mesero, que antes bajaban todo el historial. Medido en la copia local con 500 pedidos viejos: de 676 KB y 49 ms a 1 KB y 5 ms. Mesas pide sus dos consultas a la vez.
+- **Pruebas del repositorio:** cuatro estaban viejas desde `ddb0af8` (teléfono obligatorio en para llevar y bloqueo de pedidos repetidos). Se actualizaron.
+- **Segunda revisión (lectura de código, unitarias y mutaciones).** Encontró y se corrigió:
+  - en una pantalla de mesas abierta sin actividad, "Reservada" no aparecía al llegar la hora ni se quitaba después (`utils/useNow.ts`);
+  - una ubicación tardía del motorizado cambiaba un pedido ya terminado y atrasaba el aviso para calificar;
+  - calificar en la lista no cerraba el aviso, ni al revés, y un segundo aviso podía borrar lo que se estaba escribiendo;
+  - una reserva por confirmar podía tapar la confirmada de la misma mesa;
+  - si fallaban los pedidos, tampoco salían las mesas;
+  - el servidor consultaba la base cada minuto aunque no hubiera nadie conectado.
+- Pendiente: `Order` no tiene índice por estado y fecha (pide migración) y todavía se puede reservar la misma mesa a la misma hora (resuelto en v0.7.36).
+- Probado en la copia aislada: 81 de 81 de punta a punta, 15 de 15 del repositorio, y 16 de 16 errores plantados detectados por las unitarias. No se probó en el celular real ni en la página publicada.
+
 ### v0.7.34 — 2026-11-22 (Landing pulida para celular)
 Revisión pantalla por pantalla a 390 y 320 px, comparada con la versión de celular de la plantilla.
 - **Cabecera:** el botón "Pedir ahora" también se ve en celular, en una línea; en pantallas de 360 px o menos dice "Pedir".
