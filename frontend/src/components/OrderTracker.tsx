@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Bike, ChefHat, ClipboardCheck, PartyPopper, ShoppingBag, UtensilsCrossed, X } from "lucide-react";
 import { estimateMinutes } from "../utils/kitchenTime";
+import { rideMinutesStraight } from "../utils/rideTime";
 import "../styles/tracking.css";
 
 type OrderType = "DELIVERY" | "TAKEOUT" | "DINE_IN";
@@ -48,9 +49,6 @@ function km(aLat: number, aLng: number, bLat: number, bLng: number) {
   return 2 * 6371 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
-// Same rule as the route map: about 3.2 minutes per km in the city, plus one
-const rideMinutes = (distanceKm: number) => Math.max(1, Math.round(distanceKm * 3.2 + 1));
-
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
 
 interface TrackerView {
@@ -71,7 +69,7 @@ function getTrackerView(order: TrackableOrder, now: number): TrackerView {
   const rest = order.restaurant;
   const hasRoute = rest.mapLatitude != null && rest.mapLongitude != null && order.deliveryLat != null && order.deliveryLng != null;
   const routeKm = hasRoute ? km(rest.mapLatitude!, rest.mapLongitude!, order.deliveryLat!, order.deliveryLng!) : null;
-  const ride = routeKm != null ? rideMinutes(routeKm) : 10;
+  const ride = routeKm != null ? rideMinutesStraight(routeKm) : 10;
 
   // Position on the bar: icons sit at 0, 1/3, 2/3 and 1
   const at = (step: number, fraction: number) => clamp((step + clamp(fraction, 0, 1)) / 3, 0, 1);
@@ -101,7 +99,7 @@ function getTrackerView(order: TrackableOrder, now: number): TrackerView {
         step: 2,
         progress: at(2, clamp(done, 0.05, 0.95)),
         title: "Tu pedido va en camino",
-        eta: leftKm != null && leftKm < 0.08 ? "Está llegando" : `Llega en ~${leftKm != null ? rideMinutes(leftKm) : ride} min`,
+        eta: leftKm != null && leftKm < 0.08 ? "Está llegando" : `Llega en ~${leftKm != null ? rideMinutesStraight(leftKm) : ride} min`,
         detail: order.deliveryDriver?.name ? `${order.deliveryDriver.name.split(" ")[0]} lo lleva` : null,
       };
     }

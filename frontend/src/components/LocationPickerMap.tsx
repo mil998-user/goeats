@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { rideMinutes, rideMinutesStraight } from "../utils/rideTime";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { MapPin, Navigation, Compass, Loader2, Search, X } from "lucide-react";
@@ -101,7 +102,7 @@ export const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
             (coord: [number, number]) => [coord[1], coord[0]]
           );
           const distanceKm = parseFloat((route.distance / 1000).toFixed(2));
-          const durationMin = Math.max(3, Math.round(route.duration / 60));
+          const durationMin = Math.max(3, rideMinutes(distanceKm, route.duration / 60));
           return { coordinates: latLngs, distanceKm, durationMin };
         }
       }
@@ -116,7 +117,7 @@ export const LocationPickerMap: React.FC<LocationPickerMapProps> = ({
         [endLat, endLng],
       ],
       distanceKm: dist,
-      durationMin: Math.max(3, Math.round(dist * 3 + 2)),
+      durationMin: Math.max(3, rideMinutesStraight(dist)),
     };
   };
 

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
+import { rideMinutes, rideMinutesStraight } from "../utils/rideTime";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Bike, Navigation, ExternalLink, Compass, RefreshCw, Radio, Play, MapPin, Store } from "lucide-react";
@@ -122,7 +123,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
             (coord: [number, number]) => [coord[1], coord[0]]
           );
           const distKm = parseFloat((route.distance / 1000).toFixed(2));
-          const durMin = Math.max(3, Math.round(route.duration / 60));
+          const durMin = Math.max(3, rideMinutes(distKm, route.duration / 60));
           return { coordinates: latLngs, distanceKm: distKm, durationMin: durMin };
         }
       }
@@ -139,7 +140,7 @@ export const RouteMap: React.FC<RouteMapProps> = ({
     return {
       coordinates: coords,
       distanceKm: dist,
-      durationMin: Math.max(3, Math.round(dist * 3.5 + 2)),
+      durationMin: Math.max(3, rideMinutesStraight(dist)),
     };
   };
 
