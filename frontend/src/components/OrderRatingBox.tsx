@@ -9,6 +9,8 @@ export interface OrderRating {
 }
 
 // Rating for a delivered order: once saved it is shown read-only
+export const ORDER_RATED_EVENT = "goeats:order-rated";
+
 export const OrderRatingBox: React.FC<{
   orderId: number;
   hasDriver: boolean;
@@ -52,7 +54,10 @@ export const OrderRatingBox: React.FC<{
       const body: Record<string, unknown> = { restaurantStars, comment };
       if (hasDriver && driverStars > 0) body.driverStars = driverStars;
       await apiRequest(`/ratings/orders/${orderId}`, { method: "POST", body: JSON.stringify(body) });
-      onSaved({ restaurantStars, driverStars: hasDriver && driverStars > 0 ? driverStars : null, comment: comment.trim() || null });
+      const saved = { restaurantStars, driverStars: hasDriver && driverStars > 0 ? driverStars : null, comment: comment.trim() || null };
+      onSaved(saved);
+      // The order may be on screen twice (the order list and the reminder)
+      window.dispatchEvent(new CustomEvent(ORDER_RATED_EVENT, { detail: { orderId, rating: saved } }));
     } catch (err) {
       setError((err instanceof Error && err.message) || "No se pudo guardar la calificación.");
     } finally {

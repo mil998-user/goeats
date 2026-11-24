@@ -999,6 +999,11 @@ export async function updateDriverLocation(req: Request, res: Response, next: Ne
       if (!assignedOrder) {
         return res.status(403).json({ success: false, message: "This order is not assigned to you" });
       }
+      // A late position never touches a finished order: the customer stops being followed
+      // and its delivery time (updatedAt) stays as it was
+      if (assignedOrder.status === "DELIVERED" || assignedOrder.status === "CANCELLED") {
+        return res.status(200).json({ success: true, driverLat: lat, driverLng: lng, orderId: targetOrderId, order: null });
+      }
 
       updatedOrder = await prisma.order.update({
         where: { id: targetOrderId },

@@ -28,7 +28,7 @@ import { CustomerProfileView } from "../components/CustomerProfileView";
 import { SupportModal } from "../components/SupportModal";
 import { useSocket } from "../context/SocketContext";
 import { systemIconForEmoji } from "../utils/systemIcons";
-import { OrderRatingBox, type OrderRating } from "../components/OrderRatingBox";
+import { ORDER_RATED_EVENT, OrderRatingBox, type OrderRating } from "../components/OrderRatingBox";
 import { MyReservations } from "../components/MyReservations";
 import { CalendarDays } from "lucide-react";
 import "../styles/customer.css";
@@ -158,6 +158,16 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
     totalSpent: 0,
     favoriteRestaurant: "Ninguno",
   });
+  // Rated from the reminder: the list shows it without reloading
+  useEffect(() => {
+    const onRated = (event: Event) => {
+      const { orderId, rating } = (event as CustomEvent<{ orderId: number; rating: OrderRating }>).detail;
+      setOrders((list) => list.map((o) => (o.id === orderId ? { ...o, rating } : o)));
+    };
+    window.addEventListener(ORDER_RATED_EVENT, onRated);
+    return () => window.removeEventListener(ORDER_RATED_EVENT, onRated);
+  }, []);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [plusLoading, setPlusLoading] = useState(false);

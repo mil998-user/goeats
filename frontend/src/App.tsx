@@ -28,6 +28,7 @@ import { CustomerLocationSetup } from "./pages/CustomerLocationSetup";
 import { LandingExperience } from "./components/LandingExperience";
 import { MobileTableLabels } from "./components/MobileTableLabels";
 import { CustomerTabBar } from "./components/CustomerTabBar";
+import { RateReminder } from "./components/RateReminder";
 import { ShoppingBag, ChefHat, Wallet, Settings, TrendingUp, LogOut, Shield, Truck, BookOpen, Menu as MenuIcon, Utensils, ClipboardList, User, HelpCircle, CalendarDays } from "lucide-react";
 
 // Protected Route Guard
@@ -104,7 +105,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
     const load = async () => {
       const [ordersRes, kitchenRes] = await Promise.all([
-        seesOrders ? apiRequest("/orders").catch(() => null) : null,
+        seesOrders ? apiRequest("/orders?active=1").catch(() => null) : null,
         seesKitchen ? apiRequest("/kitchen/pending").catch(() => null) : null,
       ]);
       if (cancelled) return;
@@ -447,6 +448,7 @@ function App() {
         <SocketProvider>
           <AppDialogHost />
           <CustomerTabBar />
+          <RateReminder />
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<LandingExperience />} />

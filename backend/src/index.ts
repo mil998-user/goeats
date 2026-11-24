@@ -11,6 +11,7 @@ import { errorHandler } from "./middlewares/errorHandler";
 import { prisma } from "./config/database";
 import { setupSocket } from "./config/socket";
 import { startDispatchWatcher } from "./modules/delivery/dispatch";
+import { startRatingReminder } from "./modules/ratings/ratingReminder";
 
 const app = express();
 app.disable("x-powered-by");
@@ -51,6 +52,8 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 setupSocket(io);
 // Warns the administrator when a ready delivery waits longer than the configured time
 startDispatchWatcher(io);
+// Asks the customer to rate some minutes after the delivery
+startRatingReminder(io);
 
 // Share socket io instance with routers/controllers
 app.set("io", io);

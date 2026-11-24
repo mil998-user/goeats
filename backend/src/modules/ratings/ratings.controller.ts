@@ -1,6 +1,9 @@
 import { Request, Response, NextFunction } from "express";
 import { OrderStatus } from "@prisma/client";
 import { prisma } from "../../config/database";
+import { RATING_AFTER_MS } from "./ratingReminder";
+
+const RATING_PENDING_DAYS = 3;
 
 const COMMENT_MAX = 500;
 
@@ -46,6 +49,33 @@ export async function getDriverAverages(driverIds: number[]) {
       .filter((row) => row.driverId !== null)
       .map((row) => [row.driverId as number, { average: roundAverage(row._avg.driverStars), count: row._count.driverStars }])
   );
+}
+
+// Latest delivered order the customer has not rated yet, from 15 minutes to 3 days after the delivery
+export async function getPendingRating(req: Request, res: Response, next: NextFunction) {
+  try {
+    const now = Date.now();
+    const order = await prisma.order.findFirst({
+      where: {
+        customerId: req.user?.userId ?? -1,
+        status: OrderStatus.DELIVERED,
+        updatedAt: { gte: new Date(now - RATING_PENDING_DAYS * 24 * 60 * 60 * 1000), lte: new Date(now - RATING_AFTER_MS) },
+        OR: [{ rating: { is: null } }, { rating: { is: { restaurantStars: null } } }],
+      },
+      orderBy: { updatedAt: "desc" },
+      select: { id: true, type: true, deliveryDriverId: true, restaurant: { select: { name: true } } },
+    });
+    return res.status(200).json({
+      success: true,
+      order: order && {
+        id: order.id,
+        restaurantName: order.restaurant.name,
+        hasDriver: order.type === "DELIVERY" && order.deliveryDriverId !== null,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
 }
 
 // The customer rates the restaurant and, for a delivery, the driver. Once per order
