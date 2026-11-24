@@ -168,7 +168,7 @@ export async function createOrder(req: Request, res: Response, next: NextFunctio
 export async function getOrders(req: Request, res: Response, next: NextFunction) {
   try {
     const restaurantId = req.restaurantId;
-    const { status, type } = req.query;
+    const { status, type, active } = req.query;
 
     if (!restaurantId) {
       return res.status(400).json({ success: false, message: "Restaurant context is required" });
@@ -177,7 +177,13 @@ export async function getOrders(req: Request, res: Response, next: NextFunction)
     const orders = await prisma.order.findMany({
       where: {
         restaurantId,
-        status: status ? (status as OrderStatus) : undefined,
+        // active=1: only orders still open, so the floor does not download the whole history
+        status:
+          active === "1"
+            ? { notIn: [OrderStatus.DELIVERED, OrderStatus.CANCELLED] }
+            : status
+              ? (status as OrderStatus)
+              : undefined,
         type: type ? (type as OrderType) : undefined,
       },
       include: {
