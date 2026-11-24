@@ -57,7 +57,7 @@ test("un dueño no ve pedidos de otro restaurante", { skip: configError || !proc
   const { variant } = await catalogVariant();
   const created = await api("POST", `/api/restaurants/public/catalog/${SLUG}/order`, {
     token: customer.token,
-    body: { type: "TAKEOUT", customerName: "Prueba automática", paymentMethod: "CASH", items: [{ variantId: variant.id, quantity: 1 }] },
+    body: { type: "TAKEOUT", customerName: "Prueba automática", deliveryPhone: "0991112233", paymentMethod: "CASH", items: [{ variantId: variant.id, quantity: 1 }] },
   });
   assert.equal(created.status, 201, created.text.slice(0, 200));
   const orderId = created.json.order.id;

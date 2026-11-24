@@ -13,11 +13,14 @@ before(async () => {
   ({ variant } = await catalogVariant());
 });
 
+// The server rejects two identical orders in a row as duplicates, so each one has its own quantity
+let quantity = 1;
 const takeout = (extra = {}) => ({
   type: "TAKEOUT",
   customerName: "Prueba automática",
+  deliveryPhone: "0991112233",
   paymentMethod: "CASH",
-  items: [{ variantId: variant.id, quantity: 2 }],
+  items: [{ variantId: variant.id, quantity: ++quantity }],
   ...extra,
 });
 
