@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { RestaurantStatus } from "@prisma/client";
+import { Prisma, RestaurantStatus } from "@prisma/client";
 import { prisma } from "../../config/database";
 import { canEncryptSecrets, decryptSecret, encryptSecret } from "../../utils/secrets";
 
@@ -10,6 +10,9 @@ export const RESERVATION_MAX_AHEAD_DAYS = 60;
 export const RESERVATION_MAX_PEOPLE = 30;
 const MAX_OPEN_PER_CUSTOMER = 3;
 const OPEN_STATUSES = ["PENDING", "CONFIRMED"];
+// A reservation holds its table for 2 hours: closer than that, the same table cannot be given twice
+export const TABLE_HOLD_MS = 2 * HOUR_MS;
+const HOLDING_STATUSES = ["PENDING", "CONFIRMED", "SEATED"];
 const STAFF_STATUSES = ["PENDING", "CONFIRMED", "SEATED", "CANCELLED", "NO_SHOW"];
 const PUBLIC_RESTAURANT = { isActive: true, status: { in: [RestaurantStatus.APPROVED, RestaurantStatus.ACTIVE] } };
 
@@ -206,6 +209,41 @@ export async function getRestaurantReservations(req: Request, res: Response, nex
   }
 }
 
+class TableTakenError extends Error {}
+
+// Locks the table row so two requests at the same time cannot both find it free.
+// Read committed: after waiting for the lock, the check sees what the other request saved.
+const TABLE_TX = { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted };
+
+async function assertTableFree(tx: Prisma.TransactionClient, tableId: number, reservedAt: Date, exceptId?: number) {
+  await tx.$queryRaw`SELECT id FROM \`Table\` WHERE id = ${tableId} FOR UPDATE`;
+  const taken = await tx.reservation.findFirst({
+    where: {
+      tableId,
+      status: { in: HOLDING_STATUSES },
+      id: exceptId ? { not: exceptId } : undefined,
+      reservedAt: {
+        gt: new Date(reservedAt.getTime() - TABLE_HOLD_MS),
+        lt: new Date(reservedAt.getTime() + TABLE_HOLD_MS),
+      },
+    },
+    orderBy: { reservedAt: "asc" },
+    select: { name: true, reservedAt: true, table: { select: { number: true } } },
+  });
+  if (!taken) return;
+  const when = taken.reservedAt.toLocaleString("es-EC", {
+    timeZone: "America/Guayaquil",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  });
+  throw new TableTakenError(
+    `La mesa ${taken.table?.number ?? ""} ya está reservada para ${taken.name} (${when}). Deja al menos 2 horas o elige otra mesa.`
+  );
+}
+
 // Staff: a reservation taken by phone or in person
 export async function createStaffReservation(req: Request, res: Response, next: NextFunction) {
   try {
@@ -217,13 +255,17 @@ export async function createStaffReservation(req: Request, res: Response, next: 
     const tableId = await readTable(req.body?.tableId, restaurantId);
     if (tableId === false) return res.status(400).json({ success: false, message: "La mesa no es de este restaurante." });
 
-    const reservation = await prisma.reservation.create({
-      data: { ...input, phone: protectPhone(input.phone), restaurantId, tableId, status: "CONFIRMED" },
-      include: { table: { select: { id: true, number: true } } },
-    });
+    const reservation = await prisma.$transaction(async (tx) => {
+      if (tableId) await assertTableFree(tx, tableId, input.reservedAt);
+      return tx.reservation.create({
+        data: { ...input, phone: protectPhone(input.phone), restaurantId, tableId, status: "CONFIRMED" },
+        include: { table: { select: { id: true, number: true } } },
+      });
+    }, TABLE_TX);
     notifyRestaurant(req, restaurantId, reservation.id);
     return res.status(201).json({ success: true, message: "Reserva registrada.", reservation: staffView(reservation) });
   } catch (error) {
+    if (error instanceof TableTakenError) return res.status(409).json({ success: false, message: error.message });
     next(error);
   }
 }
@@ -261,14 +303,27 @@ export async function updateReservation(req: Request, res: Response, next: NextF
       return res.status(400).json({ success: false, message: "Nada que cambiar." });
     }
 
-    const updated = await prisma.reservation.update({
-      where: { id },
-      data,
-      include: { table: { select: { id: true, number: true } } },
-    });
+    const updated = await prisma.$transaction(async (tx) => {
+      // Checked when the table changes or the reservation starts to count. Marking an arrival is never blocked
+      const current = await tx.reservation.findUniqueOrThrow({ where: { id }, select: { status: true, tableId: true, reservedAt: true } });
+      const status = data.status ?? current.status;
+      const tableId = data.tableId === undefined ? current.tableId : data.tableId;
+      const tableChanges = tableId !== current.tableId;
+      const startsToCount =
+        status !== current.status && (status === "CONFIRMED" || !HOLDING_STATUSES.includes(current.status));
+      if (tableId && HOLDING_STATUSES.includes(status) && (tableChanges || startsToCount)) {
+        await assertTableFree(tx, tableId, current.reservedAt, id);
+      }
+      return tx.reservation.update({
+        where: { id },
+        data,
+        include: { table: { select: { id: true, number: true } } },
+      });
+    }, TABLE_TX);
     notifyRestaurant(req, restaurantId as number, id);
     return res.status(200).json({ success: true, message: "Reserva actualizada.", reservation: staffView(updated) });
   } catch (error) {
+    if (error instanceof TableTakenError) return res.status(409).json({ success: false, message: error.message });
     next(error);
   }
 }

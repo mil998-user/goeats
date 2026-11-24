@@ -61,6 +61,10 @@ function getLocalIpAddress(): string {
   return "localhost";
 }
 
+// Reservations shown on each table: from one hour late up to a week ahead
+const RESERVATION_LATE_MS = 60 * 60 * 1000;
+const RESERVATION_AHEAD_MS = 7 * 24 * 60 * 60 * 1000;
+
 // DINING AREAS
 
 export async function getDiningAreas(req: Request, res: Response, next: NextFunction) {
@@ -71,24 +75,40 @@ export async function getDiningAreas(req: Request, res: Response, next: NextFunc
       return res.status(400).json({ success: false, message: "Restaurant context is required" });
     }
 
-    const diningAreas = await prisma.diningArea.findMany({
-      where: { restaurantId },
-      include: {
-        tables: true,
-      },
-    });
-
-    const restaurant = await prisma.restaurant.findUnique({
-      where: { id: restaurantId },
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        logo: true,
-        wifiSsid: true,
-        wifiPassword: true,
-      },
-    });
+    const now = Date.now();
+    const [diningAreas, restaurant] = await Promise.all([
+      prisma.diningArea.findMany({
+        where: { restaurantId },
+        include: {
+          tables: {
+            include: {
+              // Only what the floor staff needs: the phone stays in the reservations screen
+              reservations: {
+                where: {
+                  restaurantId,
+                  status: { in: ["PENDING", "CONFIRMED"] },
+                  reservedAt: { gte: new Date(now - RESERVATION_LATE_MS), lte: new Date(now + RESERVATION_AHEAD_MS) },
+                },
+                orderBy: { reservedAt: "asc" },
+                take: 5,
+                select: { id: true, name: true, people: true, reservedAt: true, status: true },
+              },
+            },
+          },
+        },
+      }),
+      prisma.restaurant.findUnique({
+        where: { id: restaurantId },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          logo: true,
+          wifiSsid: true,
+          wifiPassword: true,
+        },
+      }),
+    ]);
 
     const localIp = getLocalIpAddress();
 

@@ -7,6 +7,7 @@ import { TableQRModal } from "../components/TableQRModal";
 import {
   Utensils,
   Users,
+  CalendarDays,
   Clock,
   Printer,
   Plus,
@@ -18,11 +19,15 @@ import {
 } from "lucide-react";
 import { comandaFromOrder, printComanda } from "../utils/comanda";
 import { TableGroupActions } from "../components/TableGroupActions";
+import { appConfirm } from "../components/AppDialogs";
+import { getReservedSoon, getShownReservation, reservationPeople, reservationWhen } from "../utils/tableReservation";
+import { useNow } from "../utils/useNow";
 
 export const TablesPage: React.FC = () => {
   const navigate = useNavigate();
   const { socket } = useSocket();
   const { user } = useAuth();
+  const now = useNow();
 
   const [diningAreas, setDiningAreas] = useState<any[]>([]);
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
@@ -41,8 +46,12 @@ export const TablesPage: React.FC = () => {
     else setLoading(true);
 
     try {
-      // 1. Fetch dining areas with tables
-      const areasRes = await apiRequest("/tables/dining-areas");
+      // Dining areas with tables, and the open dine-in orders, at the same time
+      const [areasRes, ordersRes] = await Promise.all([
+        apiRequest("/tables/dining-areas"),
+        // If the orders fail, the tables still show
+        apiRequest("/orders?type=DINE_IN&active=1").catch(() => ({ success: false })),
+      ]);
       if (areasRes.success) {
         const areas = areasRes.diningAreas || [];
         setDiningAreas(areas);
@@ -59,8 +68,6 @@ export const TablesPage: React.FC = () => {
         }
       }
 
-      // 2. Fetch active DINE_IN orders to match details
-      const ordersRes = await apiRequest("/orders");
       if (ordersRes.success) {
         // Only active dine-in orders
         const dineInActive = (ordersRes.orders || []).filter(
@@ -87,6 +94,7 @@ export const TablesPage: React.FC = () => {
       socket.on("order-status-updated", handleSocketUpdate);
       socket.on("order-cancelled", handleSocketUpdate);
       socket.on("tables-updated", handleSocketUpdate);
+      socket.on("reservation-updated", handleSocketUpdate);
       // Al volver la conexion (senal, celular desbloqueado) se piden los datos de nuevo
       socket.on("connect", handleSocketUpdate);
 
@@ -95,6 +103,7 @@ export const TablesPage: React.FC = () => {
         socket.off("order-status-updated", handleSocketUpdate);
         socket.off("order-cancelled", handleSocketUpdate);
         socket.off("tables-updated", handleSocketUpdate);
+        socket.off("reservation-updated", handleSocketUpdate);
         socket.off("connect", handleSocketUpdate);
       };
     }
@@ -126,7 +135,7 @@ export const TablesPage: React.FC = () => {
   const allTables: any[] = diningAreas.flatMap((a) => a.tables || []);
   const findTable = (id: number | null | undefined) => allTables.find((t) => t.id === id);
 
-  const handleTableClick = (table: any) => {
+  const handleTableClick = async (table: any) => {
     // A joined table shares the bill of its main table
     if (table.joinedToId) {
       const main = findTable(table.joinedToId);
@@ -138,6 +147,15 @@ export const TablesPage: React.FC = () => {
     if (table.status === "FREE") {
       if (user?.role === "RESTAURANT_OWNER") {
         alert("Los pedidos en mesa los toma un mesero. Si aún no tienes uno, créalo en Ajustes → Personal.");
+        return;
+      }
+      const reserved = getReservedSoon(table.reservations);
+      if (
+        reserved &&
+        !(await appConfirm(
+          `La mesa ${table.number} está reservada para ${reserved.name} (${reservationWhen(reserved.reservedAt)}, ${reservationPeople(reserved.people)}). ¿Abrirla igual?`
+        ))
+      ) {
         return;
       }
       // Redirect to POS with tableId parameter to start order
@@ -275,13 +293,15 @@ export const TablesPage: React.FC = () => {
         ) : activeArea && activeArea.tables && activeArea.tables.length > 0 ? (
           <div style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fill, minmax(min(220px, 100%), 1fr))",
             gap: "18px"
           }}>
             {activeArea.tables.map((table: any) => {
               const isOccupied = table.status === "OCCUPIED";
               const order = getTableOrder(table.id);
               const isSelected = selectedTable?.id === table.id;
+              const nextReservation = getShownReservation(table.reservations, now);
+              const reservedSoon = !isOccupied ? getReservedSoon(table.reservations, now) : null;
 
               return (
                 <div
@@ -310,8 +330,8 @@ export const TablesPage: React.FC = () => {
                   }}
                 >
                   {/* Top: Table Number & Capacity */}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <div>
+                  <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
+                    <div style={{ minWidth: 0 }}>
                       <h3 style={{ fontSize: "18px", fontWeight: 850, color: "var(--text-primary)" }}>
                         Mesa {table.number}
                       </h3>
@@ -321,7 +341,8 @@ export const TablesPage: React.FC = () => {
                         display: "flex",
                         alignItems: "center",
                         gap: "4px",
-                        marginTop: "2px"
+                        marginTop: "2px",
+                        whiteSpace: "nowrap"
                       }}>
                         <Users size={12} /> {table.capacity} personas
                       </span>
@@ -366,13 +387,26 @@ export const TablesPage: React.FC = () => {
                         padding: "2px 8px",
                         borderRadius: "20px",
                         textTransform: "uppercase",
-                        backgroundColor: isOccupied ? "rgba(212, 37, 24, 0.1)" : "rgba(30, 143, 78, 0.1)",
-                        color: isOccupied ? "var(--danger)" : "var(--success)"
+                        backgroundColor: isOccupied ? "rgba(212, 37, 24, 0.1)" : reservedSoon ? "var(--brand-yellow, #ffca26)" : "rgba(30, 143, 78, 0.1)",
+                        color: isOccupied ? "var(--danger)" : reservedSoon ? "var(--brand-black, #000)" : "var(--success)"
                       }}>
-                        {isOccupied ? "Ocupada" : "Libre"}
+                        {isOccupied ? "Ocupada" : reservedSoon ? "Reservada" : "Libre"}
                       </span>
                     </div>
                   </div>
+
+                  {/* Next reservation of this table, with its day and time */}
+                  {nextReservation && (
+                    <p
+                      data-testid={`reservation-${table.id}`}
+                      style={{ margin: "12px 0 0", fontSize: "13px", fontWeight: 600, color: "var(--text-primary)", display: "flex", alignItems: "flex-start", gap: "6px", overflowWrap: "anywhere" }}
+                    >
+                      <CalendarDays size={14} aria-hidden="true" style={{ flexShrink: 0, marginTop: "2px" }} />
+                      <span style={{ minWidth: 0 }}>
+                        {nextReservation.status === "PENDING" ? "Por confirmar" : "Reservada"}: {reservationWhen(nextReservation.reservedAt)} · {nextReservation.name} ({reservationPeople(nextReservation.people)})
+                      </span>
+                    </p>
+                  )}
 
                   {/* Bottom: Client Name / Order Total if occupied */}
                   {isOccupied && order && (

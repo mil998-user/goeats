@@ -1,4 +1,6 @@
 import { appConfirm } from "../components/AppDialogs";
+import { useNow } from "../utils/useNow";
+import { getReservedSoon, getShownReservation, reservationPeople, reservationWhen, type TableReservation } from "../utils/tableReservation";
 import React, { useEffect, useState, useRef } from "react";
 import { useSocket } from "../context/SocketContext";
 import { apiRequest } from "../utils/api";
@@ -65,6 +67,7 @@ interface Table {
   number: string;
   capacity: number;
   status: "FREE" | "OCCUPIED";
+  reservations?: TableReservation[];
 }
 
 interface DiningArea {
@@ -132,6 +135,7 @@ export const POS: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const viewParam = searchParams.get("view") || "menu";
 
+  const now = useNow();
   const [diningAreas, setDiningAreas] = useState<DiningArea[]>([]);
   const [menuCategories, setMenuCategories] = useState<MenuCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
@@ -302,7 +306,7 @@ export const POS: React.FC = () => {
 
   const loadExternalOrders = async () => {
     try {
-      const orderRes = await apiRequest("/orders");
+      const orderRes = await apiRequest("/orders?active=1");
       const filtered = orderRes.orders.filter(
         (o: any) => (o.type === "DELIVERY" || o.type === "TAKEOUT") && o.status !== "DELIVERED" && o.status !== "CANCELLED"
       );
@@ -559,6 +563,7 @@ export const POS: React.FC = () => {
     socket.on("order-status-updated", handleTableChange);
     socket.on("new-order", handleNewOrder);
     socket.on("order-cancelled", handleTableChange);
+    socket.on("reservation-updated", handleTableChange);
     // Al volver la conexion (senal, celular desbloqueado) se piden los datos de nuevo
     socket.on("connect", handleTableChange);
     socket.on("cash-session-changed", handleCashSessionChange);
@@ -568,6 +573,7 @@ export const POS: React.FC = () => {
       socket.off("order-status-updated", handleTableChange);
       socket.off("new-order", handleNewOrder);
       socket.off("order-cancelled", handleTableChange);
+      socket.off("reservation-updated", handleTableChange);
       socket.off("connect", handleTableChange);
       socket.off("cash-session-changed", handleCashSessionChange);
       socket.off("waiter-order-notification", handleWaiterNotification);
@@ -601,6 +607,20 @@ export const POS: React.FC = () => {
     }
   };
 
+  // A free table reserved for the next 2 hours asks before opening it
+  const handleTapTable = async (table: Table) => {
+    const reserved = table.status === "FREE" ? getReservedSoon(table.reservations) : null;
+    if (
+      reserved &&
+      !(await appConfirm(
+        `La mesa ${table.number} está reservada para ${reserved.name} (${reservationWhen(reserved.reservedAt)}, ${reservationPeople(reserved.people)}). ¿Abrirla igual?`
+      ))
+    ) {
+      return;
+    }
+    handleSelectTable(table);
+  };
+
   // Load existing table order
   const handleSelectTable = async (table: Table) => {
     isLoadingOrderRef.current = true;
@@ -613,7 +633,7 @@ export const POS: React.FC = () => {
 
     if (table.status === "OCCUPIED") {
       try {
-        const orderRes = await apiRequest("/orders");
+        const orderRes = await apiRequest("/orders?type=DINE_IN&active=1");
         const tableOrder = orderRes.orders.find((o: any) => o.tableId === table.id && o.status !== "DELIVERED" && o.status !== "CANCELLED");
         if (tableOrder) {
           setActiveOrderId(tableOrder.id);
@@ -1284,6 +1304,8 @@ export const POS: React.FC = () => {
                     {area.tables.map(table => {
                       const isSelected = selectedTable?.id === table.id;
                       const isOccupied = table.status === "OCCUPIED";
+                      const nextReservation = getShownReservation(table.reservations, now);
+                      const reservedSoon = !isOccupied ? getReservedSoon(table.reservations, now) : null;
                       const readiness = tableReadinessMap[table.id];
                       const isAllReady = readiness?.status === "ALL_READY" || readiness?.status === "CALL_WAITER";
                       const isAlmostReady = readiness?.status === "ALMOST_READY";
@@ -1293,8 +1315,8 @@ export const POS: React.FC = () => {
                           key={table.id}
                           type="button"
                           className="pos-table-btn"
-                          onClick={() => handleSelectTable(table)}
-                          aria-label={`Mesa ${table.number}, ${isOccupied ? "ocupada" : "libre"}, ${table.capacity} personas`}
+                          onClick={() => handleTapTable(table)}
+                          aria-label={`Mesa ${table.number}, ${isOccupied ? "ocupada" : reservedSoon ? "reservada" : "libre"}, ${table.capacity} personas${nextReservation ? `, reserva ${reservationWhen(nextReservation.reservedAt)}` : ""}`}
                           style={{
                             borderRadius: "var(--radius-md)",
                             display: "flex",
@@ -1377,7 +1399,12 @@ export const POS: React.FC = () => {
                           <span className="pos-table-btn-number">{table.number}</span>
                           <span style={{ fontSize: "13px", opacity: 0.8 }}>{table.capacity} personas</span>
                           {!isAllReady && !isAlmostReady && (
-                            <span className="pos-table-btn-state">{isOccupied ? "Ocupada" : "Libre"}</span>
+                            <span className={`pos-table-btn-state${reservedSoon ? " pos-table-btn-state--reserved" : ""}`}>
+                              {isOccupied ? "Ocupada" : reservedSoon ? "Reservada" : "Libre"}
+                            </span>
+                          )}
+                          {nextReservation && (
+                            <span className="pos-table-btn-reservation">Reserva: {reservationWhen(nextReservation.reservedAt)}</span>
                           )}
                           {isAllReady && (
                             <span style={{ fontSize: "13px", color: "var(--success)", fontWeight: 700, marginTop: "2px" }}>

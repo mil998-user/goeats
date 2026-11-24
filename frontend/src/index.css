@@ -1441,6 +1441,18 @@ button, input, select, textarea {
   background: color-mix(in srgb, currentColor 12%, transparent);
 }
 
+.pos-table-btn-state--reserved {
+  background: var(--brand-yellow, #ffca26);
+  color: var(--brand-black, #000);
+}
+
+.pos-table-btn-reservation {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 480px) {
   .pos-table-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -5631,6 +5643,57 @@ h1, h2, h3 {
 .tabbar-item:focus-visible {
   outline: 3px solid var(--brand-red);
   outline-offset: 2px;
+}
+/* Aviso para calificar un pedido entregado */
+.rate-reminder {
+  position: fixed;
+  right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 1190;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(380px, calc(100vw - 32px));
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 16px;
+  border-radius: 22px;
+  background: var(--brand-white);
+  color: var(--brand-black);
+  box-shadow: 0 2px 6px rgba(40, 25, 5, 0.08), 0 14px 34px rgba(40, 25, 5, 0.18);
+}
+.rate-reminder-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+.rate-reminder-head strong {
+  min-width: 0;
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+.rate-reminder-close {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: -10px -10px 0 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.rate-reminder-close:focus-visible {
+  outline: 3px solid var(--brand-red);
+}
+body.has-tabbar .rate-reminder {
+  right: 12px;
+  bottom: calc(92px + env(safe-area-inset-bottom));
+  width: calc(100vw - 24px);
 }
 /* Espacio para que la barra no tape lo ultimo de la pagina */
 body.has-tabbar {

@@ -1,4 +1,4 @@
-import { appConfirm } from "../components/AppDialogs";
+import { appAlert, appConfirm } from "../components/AppDialogs";
 import React, { useEffect, useMemo, useState } from "react";
 import { CalendarDays, Phone, Plus, Users, X } from "lucide-react";
 import { apiRequest } from "../utils/api";
@@ -107,7 +107,8 @@ export const Reservations: React.FC = () => {
       const res = await apiRequest(`/reservations/${id}`, { method: "PUT", body: JSON.stringify(body) });
       setReservations((list) => list.map((r) => (r.id === id ? res.reservation : r)));
     } catch (err) {
-      setMessage({ ok: false, text: err instanceof Error ? err.message : "No se pudo actualizar la reserva." });
+      // A dialog, because the list can be scrolled far from the message at the top
+      appAlert(err instanceof Error ? err.message : "No se pudo actualizar la reserva.");
     } finally {
       setBusyId(null);
     }
