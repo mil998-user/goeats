@@ -123,6 +123,8 @@ export async function getSaaSOrders(req: Request, res: Response, next: NextFunct
   try {
     const orders = await prisma.saaSOrder.findMany({
       orderBy: { createdAt: "desc" },
+      // The receipt is a big image: it only travels for the requests still to review
+      omit: { paymentReceipt: true },
       include: {
         user: {
           select: {
@@ -137,7 +139,18 @@ export async function getSaaSOrders(req: Request, res: Response, next: NextFunct
       }
     });
 
-    return res.status(200).json({ success: true, orders });
+    const pending = await prisma.saaSOrder.findMany({
+      where: { status: "PENDING" },
+      select: { id: true, paymentReceipt: true },
+    });
+    const receipts = new Map(pending.map((order) => [order.id, order.paymentReceipt]));
+
+    // Pending first, each group from newest to oldest
+    const list = orders
+      .map((order) => ({ ...order, paymentReceipt: receipts.get(order.id) ?? null }))
+      .sort((a, b) => Number(b.status === "PENDING") - Number(a.status === "PENDING"));
+
+    return res.status(200).json({ success: true, orders: list });
   } catch (error) {
     next(error);
   }

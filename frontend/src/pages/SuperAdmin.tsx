@@ -2539,7 +2539,10 @@ export const SuperAdmin: React.FC = () => {
         {activeTab === "saas_orders" && (
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-              <h2 style={{ fontSize: "18px", margin: 0 }}>Pagos de recargas y de Plus</h2>
+              <h2 style={{ fontSize: "18px", margin: 0 }}>
+                Pagos de recargas y de Plus
+                {saasOrders.some((o) => o.status === "PENDING") && ` · ${saasOrders.filter((o) => o.status === "PENDING").length} por revisar`}
+              </h2>
               <button type="button" onClick={loadSaasOrders} className="secondary-btn" style={{ padding: "8px 16px", fontSize: "13px" }}>
                 Actualizar Lista
               </button>
