@@ -120,11 +120,11 @@
   min-width: 0;
   margin: 0;
   padding: 0 24px;
-  font-family: var(--brand-font-logo);
+  font-family: var(--gl-font-title);
   font-size: clamp(24px, 3.2vw, 45px);
   font-weight: 800;
   line-height: 1.08;
-  letter-spacing: -0.03em;
+  letter-spacing: 0;
   text-align: center;
   text-transform: uppercase;
   text-wrap: balance;
@@ -154,10 +154,10 @@
   min-height: 64px;
   padding: 8px 30px;
   color: var(--brand-black);
-  font-family: var(--brand-font-logo);
+  font-family: var(--gl-font-title);
   font-size: 21px;
   font-weight: 800;
-  letter-spacing: -0.03em;
+  letter-spacing: 0;
   white-space: nowrap;
   transition: color 0.2s ease;
 }
@@ -270,11 +270,11 @@
 }
 .gl-how-num {
   display: block;
-  font-family: var(--brand-font-logo);
+  font-family: var(--gl-font-title);
   font-size: clamp(96px, 9vw, 132px);
   font-weight: 800;
   line-height: 0.85;
-  letter-spacing: -0.06em;
+  letter-spacing: 0;
 }
 .tone-yellow .gl-how-num { color: var(--brand-yellow); }
 .tone-orange .gl-how-num { color: var(--brand-orange); }
@@ -623,9 +623,9 @@
   box-shadow: 14px 18px 0 color-mix(in srgb, var(--brand-black) 14%, transparent);
   text-align: center;
 }
-.gl-paper.is-1 { right: 38%; top: 5%; transform: rotate(7deg); z-index: 1; }
-.gl-paper.is-2 { right: 5%; top: 24%; transform: rotate(-3deg); z-index: 2; }
-.gl-paper.is-3 { right: 42%; top: 55%; transform: rotate(-10deg); z-index: 1; }
+.gl-paper.is-1 { right: 31%; top: 4%; transform: rotate(7deg); z-index: 1; }
+.gl-paper.is-2 { right: 3%; top: 31%; transform: rotate(-3deg); z-index: 2; }
+.gl-paper.is-3 { right: 41%; top: 57%; transform: rotate(-10deg); z-index: 1; }
 .gl-paper-top {
   display: block;
   margin: 0 -18px 16px;
@@ -725,6 +725,240 @@
   }
 }
 
+/* ---------- Medidas de la plantilla (25 nov) ---------- */
+/* Cabecera: logo grande, menu a la derecha y una raya antes de "Iniciar sesion" */
+.gl .gl-nav {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  max-width: 1308px;
+}
+.gl .gl-links {
+  justify-content: flex-end;
+}
+.gl .gl-links a {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--brand-black);
+}
+.gl .gl-links .gl-login {
+  padding-left: 26px;
+  border-left: 1px solid var(--brand-black);
+}
+.gl .gl-header:not(.is-scrolled) .gl-brand {
+  transform: translateY(12px) scale(1.7);
+}
+.gl .gl-promo {
+  font-family: var(--gl-font-title);
+  font-size: 16px;
+}
+.gl .gl-promo strong {
+  font-weight: inherit;
+}
+/* Botones: bloque negro de 313 x 60 con letra chica */
+.gl .gl-block-btn {
+  min-width: min(100%, 313px);
+  min-height: 60px;
+  border-radius: 0;
+  font-size: 13px;
+  letter-spacing: 0;
+}
+.gl .gl-nav-cta.gl-block-btn {
+  min-width: 0;
+  min-height: 46px;
+  font-size: 13px;
+}
+.gl .gl-outline-btn {
+  min-height: 56px;
+  border-width: 1px;
+  font-size: 13px;
+  letter-spacing: 0;
+}
+/* Inicio: luz suave sobre el coral, como la foto, y titular a la derecha */
+.gl .gl-hero {
+  background:
+    radial-gradient(70% 90% at 78% 8%, color-mix(in srgb, var(--brand-white) 26%, transparent), transparent 70%),
+    radial-gradient(60% 80% at 8% 100%, color-mix(in srgb, var(--brand-red) 26%, transparent), transparent 72%),
+    var(--gl-coral);
+}
+.gl .gl-hero-center {
+  padding-left: clamp(0px, 0.5vw, 12px);
+  padding-bottom: 120px;
+}
+.gl .gl-hero .gl-block-btn {
+  width: 313px;
+  max-width: 100%;
+}
+.gl .gl-hero-title {
+  font-size: clamp(44px, 15.4cqi, 82px);
+  line-height: 1;
+  letter-spacing: 0;
+}
+/* Frase y locales */
+.gl .gl-press {
+  padding: 80px 0 120px;
+}
+.gl .gl-press-track p {
+  line-height: 1;
+  font-size: clamp(28px, 3.3vw, 46px);
+}
+.gl .gl-brands {
+  margin-top: 84px;
+}
+.gl .gl-brands-track a {
+  font-size: 26px;
+}
+/* Titulos anchos */
+.gl .gl-how-title,
+.gl .gl-locales-band .gl-locales-side h2,
+.gl .gl-fleet-text h2,
+.gl .gl-footer-cols h3 {
+  font-family: var(--gl-font-wide);
+}
+.gl .gl-how-title {
+  margin-bottom: 72px;
+  font-size: clamp(32px, 3.5vw, 50px);
+}
+.gl .gl-locales-band .gl-locales-side h2 {
+  font-size: clamp(34px, 3.5vw, 50px);
+  line-height: 0.92;
+}
+.gl .gl-fleet-text h2 {
+  font-size: clamp(34px, 3.5vw, 50px);
+  line-height: 0.94;
+}
+/* Como funciona: personajes chicos y mucho aire entre pasos */
+.gl .gl-how {
+  padding: 40px 24px 120px;
+}
+.gl .gl-how-grid {
+  max-width: 1100px;
+  row-gap: 96px;
+}
+.gl-how .gl-ill-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.gl .gl-how-step:nth-child(1) {
+  grid-template-columns: 170px minmax(0, 1fr);
+  align-items: center;
+  padding-left: 32px;
+}
+.gl .gl-how-step:nth-child(2) {
+  align-self: center;
+}
+.gl .gl-how-step:nth-child(2) .gl-how-art {
+  justify-self: end;
+  width: min(100%, 360px);
+  margin: 0 24px 0 0;
+}
+.gl .gl-how-step:nth-child(2) .gl-how-text {
+  margin-top: -72px;
+}
+.gl .gl-how-step:nth-child(3) {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 285px);
+}
+.gl .gl-how-num {
+  font-size: 118px;
+  line-height: 0.82;
+}
+.gl .gl-how-text h3 {
+  font-size: 27px;
+  line-height: 1.15;
+}
+.gl .gl-how-text p {
+  font-size: 18px;
+  line-height: 1.5;
+}
+.gl-how-text .gl-block-btn {
+  min-width: 0;
+  margin-top: 28px;
+  padding: 0 24px;
+  white-space: nowrap;
+}
+.gs-thought {
+  animation: gs-float 2.8s ease-in-out infinite alternate;
+}
+/* Beneficios: a todo lo ancho, icono relleno y titulo grande */
+#beneficios .gl-benefits {
+  max-width: 1340px;
+  gap: 64px clamp(32px, 10vw, 152px);
+}
+#beneficios .gl-benefit-ico {
+  height: 76px;
+  margin-bottom: 0;
+}
+.gs-solid {
+  width: 68px;
+  height: 68px;
+}
+#beneficios .gl-benefits h3 {
+  font-size: 35px;
+  line-height: 1;
+}
+#beneficios .gl-benefits p {
+  margin-top: 8px;
+  max-width: 340px;
+  color: var(--brand-black);
+}
+/* Titulos gigantes montados sobre la foto: muy juntos */
+.gl .gl-loose h2 {
+  top: 21%;
+  left: 35%;
+  font-size: clamp(64px, 10.4vw, 176px);
+  line-height: 0.86;
+  letter-spacing: -0.005em;
+}
+.gl .gl-guides-text h2 {
+  font-size: clamp(60px, 7.5vw, 124px);
+  line-height: 0.86;
+  letter-spacing: -0.005em;
+}
+.gl .gl-loose h2,
+.gl .gl-guides-text h2 {
+  -webkit-text-stroke-width: 0.07em;
+}
+.gl .gl-app-side h2 {
+  font-size: clamp(30px, 3.4vw, 48px);
+  line-height: 1.04;
+}
+/* Repartidores: el texto entra como en la plantilla */
+.gl .gl-fleet {
+  padding-left: max(24px, calc((100vw - 1020px) / 2));
+}
+/* Cierre y pie */
+.gl .gl-last {
+  padding: 80px max(24px, calc((100vw - 1260px) / 2));
+}
+.gl .gl-last h2 {
+  font-size: clamp(34px, 3.5vw, 50px);
+}
+.gl .gl-footer {
+  padding: 64px max(24px, calc((100vw - 1260px) / 2)) 24px;
+}
+.gl .gl-footer-top {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2.4fr);
+}
+.gl .gl-footer-cols {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.gl .gl-footer-cols h3 {
+  font-size: 14px;
+  letter-spacing: 0;
+}
+.gl .gl-footer-cols a,
+.gl .gl-footer-cols button,
+.gl .gl-footer-cols span {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--brand-black);
+}
+.gl .gl-footer-hello span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+}
+
 /* ---------- Tablet ---------- */
 @media (max-width: 1280px) {
   .gl-guides-text .gl-block-btn {
@@ -733,8 +967,30 @@
   }
 }
 @media (max-width: 1080px) {
-  .gl-how-step:nth-child(2) .gl-how-text {
-    margin-top: 8px;
+  .gl .gl-header:not(.is-scrolled) .gl-brand {
+    transform: scale(1.15);
+  }
+  .gl .gl-links {
+    gap: 18px;
+  }
+  .gl .gl-links a {
+    font-size: 14px;
+    white-space: nowrap;
+  }
+  .gl .gl-links .gl-login {
+    padding-left: 18px;
+  }
+  .gl .gl-nav {
+    gap: 18px;
+  }
+  .gl .gl-hero {
+    min-height: 600px;
+  }
+  .gl .gl-how-step:nth-child(2) .gl-how-text {
+    margin-top: -24px;
+  }
+  .gl-how-text .gl-block-btn {
+    padding: 0 18px;
   }
   .gl-guides-text {
     left: 24%;
@@ -742,12 +998,12 @@
   .gl-guides-text .gl-block-btn {
     white-space: nowrap;
   }
-  .gl-how-step:nth-child(1) {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    column-gap: 16px;
+  .gl .gl-how-step:nth-child(1) {
+    grid-template-columns: 130px minmax(0, 1fr);
+    padding-left: 0;
   }
-  .gl-how-step:nth-child(3) {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  .gl .gl-how-step:nth-child(3) {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
     column-gap: 16px;
   }
 }
@@ -968,5 +1224,127 @@
   }
   .gl .gl-footer-top {
     align-items: start;
+  }
+}
+
+@media (max-width: 860px) {
+  .gl .gl-header:not(.is-scrolled) .gl-brand {
+    transform: none;
+  }
+  .gl .gl-links {
+    justify-content: flex-start;
+  }
+  .gl .gl-links a {
+    font-family: var(--gl-font-title);
+    font-size: 30px;
+  }
+  .gl .gl-links .gl-login {
+    padding-left: 0;
+    border-left: 0;
+  }
+  .gl .gl-promo {
+    font-size: 14px;
+  }
+  .gl .gl-hero-center {
+    padding: 28px 20px 8px;
+  }
+  .gl .gl-hero .gl-block-btn {
+    width: 100%;
+  }
+  .gl .gl-hero-title {
+    font-size: clamp(52px, 17.5cqi, 92px);
+  }
+  .gl .gl-press {
+    padding: 56px 0 72px;
+  }
+  .gl .gl-press-track p {
+    font-size: clamp(32px, 9.4vw, 46px);
+  }
+  .gl .gl-brands {
+    margin-top: 44px;
+  }
+  .gl .gl-brands-track a {
+    font-size: 22px;
+  }
+  .gl .gl-how {
+    padding: 24px 20px 72px;
+  }
+  .gl .gl-how-title {
+    margin-bottom: 40px;
+  }
+  .gl .gl-how-grid {
+    row-gap: 56px;
+  }
+  .gl .gl-how-grid .gl-how-step:nth-child(n) {
+    padding-left: 0;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .gl .gl-how-grid .gl-how-step:nth-child(1) {
+    grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.1fr);
+  }
+  .gl .gl-how-grid .gl-how-step:nth-child(1) .gl-how-art {
+    max-width: 132px;
+    justify-self: center;
+  }
+  .gl .gl-how-grid .gl-how-step:nth-child(2) .gl-how-art {
+    width: 100%;
+    margin: 0;
+  }
+  .gl .gl-how-grid .gl-how-step:nth-child(2) .gl-how-text {
+    margin-top: 0;
+  }
+  .gl .gl-how-num {
+    font-size: 92px;
+  }
+  .gl-how-text .gl-block-btn {
+    padding: 0 12px;
+  }
+  #beneficios .gl-benefits h3 {
+    font-size: 32px;
+  }
+  .gl .gl-loose h2 {
+    left: 20px;
+    top: 36%;
+    font-size: clamp(64px, 20.5vw, 132px);
+  }
+  .gl .gl-guides-text h2 {
+    font-size: clamp(64px, 20vw, 128px);
+  }
+  .gl .gl-app-side h2 {
+    font-size: 34px;
+  }
+  .gl .gl-fleet {
+    padding-left: 20px;
+  }
+  .gl .gl-footer-top {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .gl .gl-footer-cols {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 860px) {
+  .gl .gl-links {
+    gap: 0;
+  }
+  .gl .gl-links a {
+    font-size: 30px;
+  }
+  .gl .gl-links .gl-login {
+    padding-left: 0;
+  }
+  .gl .gl-nav {
+    gap: 12px;
+  }
+  .gl .gl-hero {
+    min-height: 0;
+  }
+  .gl .gl-header:not(.is-scrolled) .gl-brand {
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gs-thought {
+    animation: none;
   }
 }

@@ -13,9 +13,9 @@
   background: var(--brand-white);
 }
 .gl h3 {
-  font-family: var(--brand-font-logo);
+  font-family: var(--gl-font-title);
   font-weight: 800 !important;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 /* ---------- 9.4 Restaurantes de Loja: cuantos hay y el carrusel ---------- */
@@ -339,11 +339,11 @@
   animation: gl-pop-in 0.6s 0.1s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 .gl-phone-hero strong {
-  font-family: var(--brand-font-logo);
+  font-family: var(--gl-font-title);
   font-size: 19px;
   font-weight: 800;
   line-height: 1.15;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 .gl-phone-hero small {
   font-size: 13px;
@@ -406,10 +406,10 @@
   color: var(--brand-red);
 }
 .gl-track-label strong {
-  font-family: var(--brand-font-logo);
+  font-family: var(--gl-font-title);
   font-size: 26px;
   font-weight: 800;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 .gl-track-dots {
   position: relative;

@@ -12,9 +12,16 @@
   --gl-shadow: 0 1px 2px rgba(40, 25, 5, 0.06), 0 12px 32px rgba(40, 25, 5, 0.1);
   --gl-ease: cubic-bezier(0.32, 0.72, 0, 1);
   /* Fondos suaves de la plantilla, hechos solo con los colores del manual */
-  --gl-peach: color-mix(in srgb, var(--brand-orange) 26%, var(--brand-cream));
+  --gl-peach: color-mix(in srgb, var(--brand-orange) 16%, var(--brand-white));
   /* Coral del inicio, la cabecera y el pie, como el de la plantilla: naranja con crema */
-  --gl-coral: color-mix(in srgb, var(--brand-orange) 55%, var(--brand-cream));
+  --gl-coral: color-mix(in srgb, color-mix(in srgb, var(--brand-orange) 74%, var(--brand-red)) 72%, var(--brand-white));
+  /* Titulos: la letra del manual va primero. Mientras no esten sus archivos, una negra y angosta
+     del propio equipo (sin descargar nada), que es la que mas se parece a la de la plantilla */
+  --gl-font-title: "TAN St Canard", "HelveticaNeue-CondensedBlack", "Avenir Next Condensed", Impact, "Roboto Condensed", sans-serif-condensed, "Arial Narrow", sans-serif;
+  /* Los pocos titulos anchos de la plantilla */
+  --gl-font-wide: "More Sugar", "Arial Black", "Segoe UI Black", "Avenir Next Heavy", Roboto, sans-serif;
+  /* Con una sola negrita disponible el navegador no debe engordarla mas */
+  font-synthesis-weight: none;
   --gl-sun: color-mix(in srgb, var(--brand-yellow) 30%, var(--brand-white));
   --gl-blush: color-mix(in srgb, var(--brand-red) 13%, var(--brand-white));
   --gl-header-h: 84px;
@@ -27,14 +34,14 @@
 
 .gl h1,
 .gl h2 {
-  font-family: var(--brand-font-logo);
+  font-family: var(--gl-font-title);
   font-weight: 800 !important;
   color: inherit;
-  letter-spacing: -0.04em;
+  letter-spacing: 0;
 }
 .gl h2 {
   text-transform: uppercase;
-  letter-spacing: -0.025em;
+  letter-spacing: 0;
   line-height: 0.98;
 }
 
@@ -81,12 +88,16 @@ html.gl-root::-webkit-scrollbar {
   left: 0;
   right: 0;
   z-index: 50;
-  background: var(--gl-coral);
+  /* Arriba del todo deja ver el inicio; con el menu abierto o al bajar tiene fondo */
+  background: transparent;
   border-bottom: 1px solid transparent;
   transition:
     background-color 0.35s ease,
     border-color 0.35s ease,
     box-shadow 0.35s ease;
+}
+.gl-header.is-menu {
+  background: var(--gl-coral);
 }
 .gl-header.is-scrolled {
   background: var(--brand-white);
@@ -149,10 +160,6 @@ html.gl-root::-webkit-scrollbar {
   cursor: pointer;
 }
 
-.gl main {
-  padding-top: var(--gl-header-h);
-}
-
 /* ---------- Inicio ----------
    Igual que la plantilla: un solo campo coral de borde a borde (la cabecera es del mismo color),
    la escena de la caja abierta saliendo por la esquina de abajo a la izquierda y el titular grande
@@ -161,8 +168,9 @@ html.gl-root::-webkit-scrollbar {
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
-  min-height: max(560px, min(calc(100vh - var(--gl-header-h)), 900px));
-  min-height: max(560px, min(calc(100dvh - var(--gl-header-h)), 900px));
+  padding-top: var(--gl-header-h);
+  min-height: max(640px, min(100vh, 984px));
+  min-height: max(640px, min(100dvh, 984px));
   background: var(--gl-coral);
   color: var(--brand-black);
   overflow: hidden;
@@ -693,10 +701,10 @@ html.gl-root::-webkit-scrollbar {
     min-height: 64px;
     display: flex;
     align-items: center;
-    font-family: var(--brand-font-logo);
+    font-family: var(--gl-font-title);
     font-size: 26px;
     font-weight: 800;
-    letter-spacing: -0.02em;
+    letter-spacing: 0;
     text-transform: uppercase;
     color: var(--brand-black);
     border-bottom: 2px solid var(--brand-black);

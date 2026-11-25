@@ -7,22 +7,30 @@ import {
   Bike,
   Check,
   ChefHat,
-  Home,
   Menu,
-  MapPin,
   Pause,
   Play,
   QrCode,
   Receipt,
-  RotateCcw,
-  ShoppingBag,
-  Sparkles,
-  Wallet,
   X,
 } from "lucide-react";
 import { BrandLogo } from "./BrandLogo";
-import { ChefIllustration, CustomerIllustration, HeroScene, RiderIllustration } from "./LandingIllustrations";
-import { ChiliDoodle, LemonDoodle, LojaScene, SofaScene } from "./LandingScenes";
+import { ChefIllustration, HeroScene, RiderIllustration } from "./LandingIllustrations";
+import {
+  CashIcon,
+  ChiliDoodle,
+  ChooseArt,
+  CookArt,
+  HomeIcon,
+  LemonDoodle,
+  LojaScene,
+  PickupIcon,
+  PlusIcon,
+  RepeatIcon,
+  RideArt,
+  SofaScene,
+  TrackIcon,
+} from "./LandingScenes";
 import { OpenBadge } from "./OpenBadge";
 import { apiRequest } from "../utils/api";
 import { useCalmScroll } from "../utils/useCalmScroll";
@@ -200,19 +208,19 @@ const PressStrip: React.FC<{ restaurants: PublicRestaurant[] }> = ({ restaurants
 
 // Como funciona (9.3): es una secuencia real, por eso lleva numeros
 const HOW_STEPS = [
-  { n: 1, title: "Elige", text: "Busca por antojo o por restaurante y arma tu pedido.", Art: CustomerIllustration, tone: "yellow" },
-  { n: 2, title: "Pide", text: "Paga en efectivo o con transferencia. El local lo recibe y lo cocina.", Art: ChefIllustration, tone: "orange" },
-  { n: 3, title: "Recibe", text: "Sigue al motorizado en el mapa hasta tu puerta, o retíralo en el local.", Art: RiderIllustration, tone: "red" },
+  { n: 1, title: "Elige", text: "Busca por antojo o por restaurante y arma tu pedido.", Art: ChooseArt, tone: "yellow" },
+  { n: 2, title: "Pide", text: "Paga en efectivo o con transferencia. El local lo recibe y lo cocina.", Art: CookArt, tone: "orange" },
+  { n: 3, title: "Recibe", text: "Sigue al motorizado en el mapa hasta tu puerta, o retíralo en el local.", Art: RideArt, tone: "red" },
 ];
 
 // Beneficios (9.5): lo que la cuenta y el plan Plus dan de verdad. Iconos negros y grandes, como la plantilla
 const BENEFITS = [
-  { Icon: Sparkles, title: "Envío $0 con Plus", text: "Con GoEats Plus no pagas envío a domicilio." },
-  { Icon: Wallet, title: "Pago en efectivo", text: "Paga al recibir o con transferencia." },
-  { Icon: ShoppingBag, title: "Retiro en el local", text: "Pide para llevar y pasa a retirarlo." },
-  { Icon: Bike, title: "Seguimiento en vivo", text: "Mira cada paso y al motorizado en el mapa." },
-  { Icon: Home, title: "Direcciones guardadas", text: "Tu casa y tu trabajo, listos para el próximo pedido." },
-  { Icon: RotateCcw, title: "Repite un pedido", text: "Tu favorito otra vez, con un toque." },
+  { Icon: PlusIcon, title: "Envío $0 con Plus", text: "Con GoEats Plus no pagas envío a domicilio." },
+  { Icon: CashIcon, title: "Pago en efectivo", text: "Paga al recibir o con transferencia." },
+  { Icon: PickupIcon, title: "Retiro en el local", text: "Pide para llevar y pasa a retirarlo." },
+  { Icon: TrackIcon, title: "Seguimiento en vivo", text: "Mira cada paso y al motorizado en el mapa." },
+  { Icon: HomeIcon, title: "Direcciones guardadas", text: "Tu casa y tu trabajo, listos para el próximo pedido." },
+  { Icon: RepeatIcon, title: "Repite un pedido", text: "Tu favorito otra vez, con un toque." },
 ];
 
 // En el celular los beneficios se deslizan de lado, con una barra que dice por donde vas
@@ -231,7 +239,7 @@ const BenefitsGrid: React.FC = () => {
         {BENEFITS.map(({ Icon, title, text }) => (
           <li key={title}>
             <span className="gl-benefit-ico" aria-hidden="true">
-              <Icon size={56} strokeWidth={2.1} />
+              <Icon />
             </span>
             <h3>{title}</h3>
             <p>{text}</p>
@@ -460,7 +468,7 @@ const LandingHeader: React.FC<{ onOrder: () => void; onRegister: () => void }> =
   const closeMenu = () => setMenuOpen(false);
 
   return (
-    <header className={`gl-header${scrolled ? " is-scrolled" : ""}${headerHidden && !menuOpen ? " is-hidden" : ""}`}>
+    <header className={`gl-header${scrolled ? " is-scrolled" : ""}${headerHidden && !menuOpen ? " is-hidden" : ""}${menuOpen ? " is-menu" : ""}`}>
       <div className="gl-nav">
         <Link to="/" aria-label="GoEats, ir al inicio" className="gl-brand">
           <BrandLogo size={30} />
@@ -585,9 +593,6 @@ export const LandingExperience: React.FC = () => {
               <button className="gl-block-btn" onClick={openRestaurants}>
                 Ver restaurantes
               </button>
-              <button className="gl-text-link" onClick={() => openRegistration("customer")}>
-                o crea tu cuenta gratis
-              </button>
             </div>
           </div>
         </section>
@@ -597,7 +602,7 @@ export const LandingExperience: React.FC = () => {
         {/* Como funciona (9.3): tres pasos escalonados, como la plantilla: 1 y 3 a la izquierda y 2 a la derecha */}
         <section className="gl-how" id="como-funciona">
           <h2 className="gl-how-title">
-            Tu antojo en tres pasos
+            Cómo funciona
           </h2>
           <ol className="gl-how-grid">
             {HOW_STEPS.map(({ n, title, text, Art, tone }) => (
@@ -611,6 +616,11 @@ export const LandingExperience: React.FC = () => {
                   </span>
                   <h3>{title}</h3>
                   <p>{text}</p>
+                  {n === 3 && (
+                    <button className="gl-block-btn" onClick={openRestaurants}>
+                      Ver restaurantes
+                    </button>
+                  )}
                 </div>
               </li>
             ))}
@@ -770,11 +780,7 @@ export const LandingExperience: React.FC = () => {
       <footer className="gl-footer">
         <div className="gl-footer-top">
           <div className="gl-footer-brand">
-            <BrandLogo size={56} />
-            <p>Comida de los restaurantes de Loja, a domicilio o para retirar en el local.</p>
-            <span className="gl-footer-chip">
-              <MapPin size={14} /> Loja, Ecuador
-            </span>
+            <BrandLogo size={72} />
           </div>
 
           <nav className="gl-footer-cols" aria-label="Enlaces del sitio">
@@ -797,7 +803,11 @@ export const LandingExperience: React.FC = () => {
               <a href="#como-funciona">Cómo funciona</a>
               <a href="#locales">Locales</a>
               <a href="#beneficios">Beneficios</a>
+            </div>
+            <div className="gl-footer-hello">
+              <h3>Escríbenos</h3>
               <Link to="/support">Ayuda y soporte</Link>
+              <span>Loja, Ecuador</span>
             </div>
           </nav>
         </div>
