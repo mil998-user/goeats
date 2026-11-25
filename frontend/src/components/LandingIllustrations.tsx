@@ -244,6 +244,50 @@ export const CustomerIllustration: React.FC = () => (
   </svg>
 );
 
+// La moto con el repartidor, sola: la usan el dibujo de abajo y la escena de Loja
+export const RiderScooter: React.FC = () => (
+  <g className="gl-ill-bob">
+    {/* Humo */}
+    <g className="gl-ill-puff" fill="#d9d9d9">
+      <circle cx="136" cy="304" r="9" />
+      <circle cx="114" cy="296" r="6" />
+    </g>
+
+    {/* Ruedas */}
+    {[200, 390].map((cx) => (
+      <g key={cx}>
+        <circle cx={cx} cy="312" r="34" fill={INK} />
+        <g className="gl-ill-wheel">
+          <circle cx={cx} cy="312" r="15" fill="#cfcfcf" />
+          <line x1={cx - 15} y1="312" x2={cx + 15} y2="312" stroke={INK} strokeWidth="4" />
+          <line x1={cx} y1="297" x2={cx} y2="327" stroke={INK} strokeWidth="4" />
+        </g>
+      </g>
+    ))}
+
+    {/* Caja de reparto con la boca de GoEats */}
+    <rect x="118" y="150" width="98" height="86" rx="12" fill="var(--brand-yellow)" stroke={INK} strokeWidth="5" />
+    <image href="/brand/boca-negra.png" x="140" y="168" width="54" height="48" />
+
+    {/* Scooter */}
+    <path d="M150 300 Q145 236 215 232 L272 232 Q262 300 302 300 Z" fill="var(--brand-red)" stroke={INK} strokeWidth="5" strokeLinejoin="round" />
+    <rect x="268" y="284" width="96" height="18" rx="9" fill="var(--brand-red)" stroke={INK} strokeWidth="5" />
+    <path d="M350 302 L386 206 L406 212 L374 302 Z" fill="var(--brand-red)" stroke={INK} strokeWidth="5" strokeLinejoin="round" />
+    <path d="M352 286 Q390 260 428 286" fill="none" stroke={INK} strokeWidth="6" strokeLinecap="round" />
+    <circle cx="414" cy="224" r="9" fill="var(--brand-yellow)" stroke={INK} strokeWidth="4" />
+    <line x1="378" y1="202" x2="410" y2="196" stroke={INK} strokeWidth="8" strokeLinecap="round" />
+
+    {/* Repartidor */}
+    <path d="M268 232 L318 240 L330 288" fill="none" stroke="#333333" strokeWidth="22" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M232 232 L258 162 L302 166 L292 234 Z" fill="#1f1f1f" stroke={INK} strokeWidth="5" strokeLinejoin="round" />
+    <path d="M288 176 L384 200" stroke="#1f1f1f" strokeWidth="18" strokeLinecap="round" />
+    <circle cx="386" cy="200" r="10" fill={SKIN} stroke={INK} strokeWidth="4" />
+    <circle cx="284" cy="130" r="32" fill="var(--brand-yellow)" stroke={INK} strokeWidth="5" />
+    <path d="M290 118 Q318 120 316 140 L294 140 Z" fill={INK} />
+    <path d="M256 128 Q262 100 290 98" fill="none" stroke="var(--brand-red)" strokeWidth="7" strokeLinecap="round" />
+  </g>
+);
+
 // Repartidor en scooter con la caja de GoEats: ruedas girando, calle en movimiento
 export const RiderIllustration: React.FC = () => (
   <svg viewBox="0 0 520 520" className="gl-ill-svg" role="img" aria-label="Ilustración de un repartidor en moto">
@@ -281,46 +325,7 @@ export const RiderIllustration: React.FC = () => (
         <line x1="20" y1="300" x2="90" y2="300" />
       </g>
 
-      <g className="gl-ill-bob">
-        {/* Humo */}
-        <g className="gl-ill-puff" fill="#d9d9d9">
-          <circle cx="136" cy="304" r="9" />
-          <circle cx="114" cy="296" r="6" />
-        </g>
-
-        {/* Ruedas */}
-        {[200, 390].map((cx) => (
-          <g key={cx}>
-            <circle cx={cx} cy="312" r="34" fill={INK} />
-            <g className="gl-ill-wheel">
-              <circle cx={cx} cy="312" r="15" fill="#cfcfcf" />
-              <line x1={cx - 15} y1="312" x2={cx + 15} y2="312" stroke={INK} strokeWidth="4" />
-              <line x1={cx} y1="297" x2={cx} y2="327" stroke={INK} strokeWidth="4" />
-            </g>
-          </g>
-        ))}
-
-        {/* Caja de reparto con la boca de GoEats */}
-        <rect x="118" y="150" width="98" height="86" rx="12" fill="var(--brand-yellow)" stroke={INK} strokeWidth="5" />
-        <image href="/brand/boca-negra.png" x="140" y="168" width="54" height="48" />
-
-        {/* Scooter */}
-        <path d="M150 300 Q145 236 215 232 L272 232 Q262 300 302 300 Z" fill="var(--brand-red)" stroke={INK} strokeWidth="5" strokeLinejoin="round" />
-        <rect x="268" y="284" width="96" height="18" rx="9" fill="var(--brand-red)" stroke={INK} strokeWidth="5" />
-        <path d="M350 302 L386 206 L406 212 L374 302 Z" fill="var(--brand-red)" stroke={INK} strokeWidth="5" strokeLinejoin="round" />
-        <path d="M352 286 Q390 260 428 286" fill="none" stroke={INK} strokeWidth="6" strokeLinecap="round" />
-        <circle cx="414" cy="224" r="9" fill="var(--brand-yellow)" stroke={INK} strokeWidth="4" />
-        <line x1="378" y1="202" x2="410" y2="196" stroke={INK} strokeWidth="8" strokeLinecap="round" />
-
-        {/* Repartidor */}
-        <path d="M268 232 L318 240 L330 288" fill="none" stroke="#333333" strokeWidth="22" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M232 232 L258 162 L302 166 L292 234 Z" fill="#1f1f1f" stroke={INK} strokeWidth="5" strokeLinejoin="round" />
-        <path d="M288 176 L384 200" stroke="#1f1f1f" strokeWidth="18" strokeLinecap="round" />
-        <circle cx="386" cy="200" r="10" fill={SKIN} stroke={INK} strokeWidth="4" />
-        <circle cx="284" cy="130" r="32" fill="var(--brand-yellow)" stroke={INK} strokeWidth="5" />
-        <path d="M290 118 Q318 120 316 140 L294 140 Z" fill={INK} />
-        <path d="M256 128 Q262 100 290 98" fill="none" stroke="var(--brand-red)" strokeWidth="7" strokeLinecap="round" />
-      </g>
+      <RiderScooter />
     </g>
   </svg>
 );
