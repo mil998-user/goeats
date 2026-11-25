@@ -11,28 +11,6 @@
   font-size: 14px;
 }
 
-.gl-footer-word {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 56px 0 8px;
-  color: transparent;
-  font-family: var(--brand-font-logo);
-  font-size: clamp(72px, 17vw, 250px);
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  line-height: 0.85;
-  -webkit-text-stroke: 3px var(--brand-black);
-  user-select: none;
-}
-
-.gl-footer-word img {
-  width: auto;
-  height: 0.82em;
-  margin: 0 0.02em;
-  animation: gl-chew 2.4s ease-in-out infinite;
-}
-
 @keyframes gl-chew {
   0%, 100% { transform: none; }
   30% { transform: scaleY(0.7) rotate(-6deg); }
@@ -84,16 +62,10 @@
     justify-content: center;
     text-align: center;
   }
-
-  .gl-footer-word {
-    margin-top: 40px;
-    -webkit-text-stroke: 2px var(--brand-black);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .gl-footer-bottom button,
-  .gl-footer-word img {
+  .gl-footer-bottom button {
     animation: none;
     transition: none;
   }

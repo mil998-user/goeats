@@ -1,0 +1,942 @@
+/* =====================================================================
+   Landing con el ritmo de la plantilla de los jefes (Good Pair Days), 25 nov.
+   Misma estructura y movimiento; colores, letras, dibujos y textos de GoEats.
+   Cabecera, inicio y pie base: landing.css. Carrusel y celular: landing-sections.css.
+   ===================================================================== */
+
+/* ---------- Cabecera que se esconde al bajar y barra de promo ---------- */
+.gl-header {
+  transition:
+    transform 0.35s var(--gl-ease),
+    background-color 0.35s ease,
+    border-color 0.35s ease,
+    box-shadow 0.35s ease;
+}
+.gl-header.is-hidden:not(:focus-within) {
+  transform: translateY(-100%);
+}
+.gl-promo {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 4px 56px;
+  background: var(--brand-yellow);
+  color: var(--brand-black);
+  font-size: 15px;
+  text-align: center;
+  animation: gl-promo-in 0.35s var(--gl-ease) both;
+}
+.gl-promo a {
+  color: inherit;
+  font-weight: 600;
+}
+.gl-promo a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.gl-promo button {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  transform: translateY(-50%);
+  color: inherit;
+  cursor: pointer;
+}
+.gl-promo a:focus-visible,
+.gl-promo button:focus-visible {
+  outline: 3px solid var(--brand-black);
+  outline-offset: -3px;
+}
+@keyframes gl-promo-in {
+  from { transform: translateY(-100%); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+.gl main > section[id] {
+  scroll-margin-top: 96px;
+}
+
+/* ---------- Botones con borde ---------- */
+.gl-text-link {
+  min-height: 32px;
+}
+.gl-outline-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 180px;
+  min-height: 56px;
+  padding: 0 28px;
+  border: 2px solid var(--brand-black);
+  background: transparent;
+  color: var(--brand-black);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.gl-outline-btn:hover {
+  background: var(--brand-black);
+  color: var(--brand-white);
+}
+.gl-outline-btn:focus-visible {
+  outline: 3px solid var(--brand-red);
+  outline-offset: 3px;
+}
+
+/* ---------- Frase que cambia y locales pasando de a uno ---------- */
+.gl-press {
+  position: relative;
+  padding: 80px 0 64px;
+  background: var(--brand-white);
+}
+.gl-press-view,
+.gl-brands {
+  max-width: 1240px;
+  margin: 0 auto;
+  overflow: hidden;
+}
+.gl-press-track,
+.gl-brands-track {
+  display: flex;
+  align-items: center;
+}
+.gl-press-track.is-sliding,
+.gl-brands-track.is-sliding {
+  transition: transform 0.5s ease-in-out;
+}
+.gl-press-track p {
+  flex: 0 0 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0 24px;
+  font-family: var(--brand-font-logo);
+  font-size: clamp(24px, 3.2vw, 45px);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  text-align: center;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+.gl-brands {
+  margin-top: 56px;
+}
+.gl-brands-track {
+  position: relative;
+  width: max-content;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.gl-brands-track.is-few {
+  width: 100%;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.gl-brands-track li {
+  flex: 0 0 auto;
+}
+.gl-brands-track a {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 8px 30px;
+  color: var(--brand-black);
+  font-family: var(--brand-font-logo);
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+  transition: color 0.2s ease;
+}
+.gl-brands-track img {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  object-fit: cover;
+  filter: grayscale(1);
+  transition: filter 0.2s ease;
+}
+.gl-brands-track a:hover {
+  color: var(--brand-red);
+}
+.gl-brands-track a:hover img,
+.gl-brands-track a:focus-visible img {
+  filter: none;
+}
+.gl-brands-track a:focus-visible {
+  outline: 3px solid var(--brand-red);
+  outline-offset: -4px;
+}
+.gl-press-pause {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: var(--brand-black-55);
+  cursor: pointer;
+}
+.gl-press-pause:hover {
+  color: var(--brand-black);
+}
+.gl-press-pause:focus-visible {
+  outline: 3px solid var(--brand-red);
+  outline-offset: -2px;
+}
+/* Con "reducir movimiento": frase quieta y locales que se deslizan a mano */
+.gl-press.is-still .gl-brands {
+  overflow-x: auto;
+}
+
+/* ---------- Como funciona: tres pasos escalonados ---------- */
+.gl-how {
+  padding: 48px 24px 112px;
+  background: var(--brand-white);
+}
+.gl .gl-how-title {
+  margin: 0 auto 56px;
+  font-size: clamp(30px, 3.6vw, 48px);
+  text-align: center;
+}
+.gl-how-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: clamp(32px, 6vw, 96px);
+  row-gap: 24px;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0;
+  list-style: none;
+}
+.gl-how-step {
+  display: grid;
+  align-items: end;
+  gap: 8px 28px;
+  min-width: 0;
+}
+.gl-how-step:nth-child(1) {
+  grid-column: 1;
+  grid-template-columns: minmax(0, 290px) minmax(0, 1fr);
+}
+.gl-how-step:nth-child(2) {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  justify-items: start;
+  grid-template-columns: minmax(0, 1fr);
+}
+.gl-how-step:nth-child(2) .gl-how-art {
+  justify-self: end;
+  width: min(100%, 380px);
+  /* Arriba del gorro el dibujo tiene aire de sobra */
+  margin-top: -56px;
+}
+.gl-how-step:nth-child(2) .gl-how-text {
+  margin-top: -56px;
+}
+.gl-how-step:nth-child(3) {
+  grid-column: 1;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 290px);
+}
+.gl-how-step:nth-child(3) .gl-how-art {
+  order: 2;
+}
+.gl-how-art .gl-ill-svg {
+  display: block;
+  height: auto;
+}
+/* Como en la plantilla, los personajes van sobre blanco, sin circulo detras */
+.gl-how-art .gl-ill-svg > circle:nth-of-type(-n + 2) {
+  display: none;
+}
+.gl-how-art .gl-ill-steam {
+  stroke: var(--brand-black-35);
+}
+.gl-how-num {
+  display: block;
+  font-family: var(--brand-font-logo);
+  font-size: clamp(96px, 9vw, 132px);
+  font-weight: 800;
+  line-height: 0.85;
+  letter-spacing: -0.06em;
+}
+.tone-yellow .gl-how-num { color: var(--brand-yellow); }
+.tone-orange .gl-how-num { color: var(--brand-orange); }
+.tone-red .gl-how-num { color: var(--brand-red); }
+.gl-how-text h3 {
+  margin: 18px 0 8px;
+  font-size: 28px;
+  line-height: 1.05;
+}
+.gl-how-text p {
+  max-width: 300px;
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+/* ---------- Restaurantes: frase y dibujo a un lado, carrusel al otro ---------- */
+.gl-locales-band {
+  padding: 0 24px;
+  background: var(--gl-sun);
+  overflow: hidden;
+}
+.gl-locales-band .gl-locales {
+  grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
+}
+.gl-locales-band .gl-locales-side {
+  align-items: center;
+  gap: 24px;
+  padding-top: 72px;
+  text-align: center;
+}
+.gl-locales-band .gl-locales-side h2 {
+  font-size: clamp(36px, 4.4vw, 64px);
+}
+.gs-sofa {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin-top: 8px;
+  margin-bottom: -3px;
+}
+.gl-locales-band .gl-locales-list {
+  padding: 48px 0;
+}
+.gl-locales-band .gl-carousel-nav {
+  justify-content: flex-start;
+  gap: 8px;
+}
+.gl-locales-band .gl-carousel-nav button {
+  background: none;
+  color: var(--brand-black);
+}
+.gl-locales-band .gl-rcard {
+  border-radius: 0;
+}
+
+/* ---------- Beneficios: iconos negros y grandes ---------- */
+#beneficios .gl-benefits {
+  margin-top: 0;
+}
+#beneficios .gl-benefit-ico {
+  width: auto;
+  height: 64px;
+  border: none;
+  border-radius: 0;
+  color: var(--brand-black);
+}
+#beneficios .gl-center {
+  margin-top: 72px;
+}
+
+/* ---------- Collage suelto con el titulo montado ---------- */
+.gl-loose {
+  position: relative;
+  z-index: 1;
+  height: clamp(620px, 63vw, 940px);
+  background: var(--brand-white);
+}
+.gl-loose-photo {
+  position: absolute;
+  overflow: hidden;
+  will-change: translate;
+}
+.gl-loose-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.gl-loose-photo.is-1 {
+  left: 12%;
+  top: 14%;
+  width: 34%;
+  height: 72%;
+}
+.gl-loose-photo.is-2 {
+  right: 0;
+  top: 0;
+  width: 36%;
+  height: 32%;
+}
+/* El plato redondo cae sobre la seccion siguiente, como la copa de la plantilla */
+.gl-loose-photo.is-3 {
+  right: 9%;
+  bottom: -8%;
+  width: clamp(240px, 27vw, 400px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 14px solid var(--brand-white);
+  box-shadow: 0 30px 50px rgba(60, 20, 5, 0.28);
+}
+.gl-loose-photo.is-3 img {
+  animation: gs-plate 40s linear infinite;
+}
+.gl .gl-loose h2 {
+  position: absolute;
+  left: 34%;
+  top: 30%;
+  margin: 0;
+  font-size: clamp(48px, 7.6vw, 124px);
+  line-height: 0.94;
+  letter-spacing: -0.045em;
+}
+/* Contorno blanco como una calcomania: el negro se lee sobre cualquier foto */
+.gl .gl-loose h2,
+.gl .gl-guides-text h2 {
+  -webkit-text-stroke: 0.14em var(--brand-white);
+  paint-order: stroke fill;
+  stroke-linejoin: round;
+}
+@keyframes gs-plate {
+  to { transform: rotate(360deg); }
+}
+
+/* ---------- Seguimiento: foto y celular sobre coral ---------- */
+.gl-app {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  min-height: 860px;
+}
+.gl .gl-app-side {
+  gap: 40px;
+  background: var(--gl-coral);
+}
+.gl .gl-app-side h2 {
+  max-width: 640px;
+  margin: 0 auto;
+  font-size: clamp(28px, 3.1vw, 44px);
+  line-height: 1.06;
+  text-transform: none;
+}
+.gl-track::before,
+.gl-track::after {
+  content: none;
+}
+.gl-track-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(12px, 3vw, 48px);
+}
+.gl-track .gl-phone {
+  box-shadow: none;
+}
+.gl-track-arrow {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  color: var(--brand-black);
+  cursor: pointer;
+  transition: transform 0.2s var(--gl-ease);
+}
+.gl-track-arrow:hover {
+  transform: scale(1.15);
+}
+.gl-doodle-left,
+.gl-doodle-right {
+  position: absolute;
+  bottom: -4px;
+  z-index: 2;
+  width: 96px;
+}
+.gl-doodle-left {
+  right: calc(50% + 112px);
+}
+.gl-doodle-right {
+  left: calc(50% + 108px);
+  width: 110px;
+}
+.gs-doodle {
+  display: block;
+  width: 100%;
+  height: auto;
+  animation: gs-sway 3.2s ease-in-out infinite alternate;
+  transform-origin: 50% 100%;
+}
+.gl-doodle-right .gs-doodle {
+  animation-delay: -1.4s;
+}
+@keyframes gs-sway {
+  from { transform: rotate(-5deg); }
+  to { transform: rotate(6deg); }
+}
+.gl-track .gl-track-label strong {
+  font-size: 24px;
+  text-transform: uppercase;
+}
+/* Rayas en vez de puntos */
+.gl-track .gl-track-dots {
+  gap: 6px;
+}
+.gl-track .gl-track-dots button:not(.gl-track-play)::after {
+  width: 26px;
+  height: 4px;
+  border-radius: 0;
+  background: var(--brand-white);
+}
+.gl-track .gl-track-dots button.is-on::after {
+  width: 26px;
+  background: var(--brand-black);
+}
+
+/* ---------- Repartidores: la moto da la vuelta a Loja ---------- */
+.gl-fleet {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  align-items: end;
+  gap: clamp(24px, 4vw, 64px);
+  padding: 72px max(24px, calc((100vw - 1200px) / 2)) 0;
+  background: var(--brand-cream);
+  overflow: hidden;
+}
+.gl-fleet-text {
+  align-self: center;
+  padding-bottom: 72px;
+}
+.gl .gl-fleet-text h2 {
+  margin: 0 0 24px;
+  font-size: clamp(36px, 4.4vw, 64px);
+}
+.gl-fleet-text p {
+  max-width: 460px;
+  margin: 0 0 16px;
+  font-size: 18px;
+  line-height: 1.6;
+}
+.gl-fleet-text .gl-outline-btn {
+  margin-top: 16px;
+}
+.gs-loja {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* Las casas que giran salen un poco del dibujo; la franja las recorta, no el svg */
+  overflow: visible;
+}
+.gs-loja-ground {
+  transform-origin: 320px 510px;
+  animation: gs-ground 60s linear infinite;
+}
+@keyframes gs-ground {
+  to { transform: rotate(-360deg); }
+}
+.gs-float image {
+  animation: gs-float 2.8s ease-in-out infinite alternate;
+}
+.gs-float image:nth-child(2) { animation-delay: -0.9s; }
+.gs-float image:nth-child(3) { animation-delay: -1.8s; }
+@keyframes gs-float {
+  from { transform: translateY(6px); }
+  to { transform: translateY(-8px); }
+}
+.gs-bite {
+  transform-origin: 188px 178px;
+  animation: gs-bite 2.4s ease-in-out infinite;
+}
+@keyframes gs-bite {
+  0%, 45%, 100% { transform: rotate(0deg); }
+  65%, 80% { transform: rotate(-14deg); }
+}
+
+/* ---------- Restaurantes que se suman: foto, titulo montado y hojas inclinadas ---------- */
+.gl-guides {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  min-height: 860px;
+  background: var(--brand-white);
+  overflow: hidden;
+}
+.gl-guides-photo {
+  position: relative;
+  display: grid;
+  place-items: center;
+  background: var(--gl-blush);
+}
+.gl-guides-photo > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.gl-guides-photo .gl-ill-svg {
+  width: min(70%, 420px);
+  height: auto;
+}
+.gl-guides-text {
+  position: absolute;
+  left: 35%;
+  top: 72px;
+  z-index: 3;
+}
+.gl .gl-guides-text h2 {
+  margin: 0 0 32px;
+  font-size: clamp(44px, 5.6vw, 88px);
+  line-height: 0.96;
+  letter-spacing: -0.045em;
+}
+.gl-papers {
+  position: relative;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.gl-paper {
+  position: absolute;
+  width: clamp(190px, 18vw, 262px);
+  padding: 0 18px 22px;
+  background: var(--brand-white);
+  border: 2px solid var(--brand-black);
+  box-shadow: 14px 18px 0 color-mix(in srgb, var(--brand-black) 14%, transparent);
+  text-align: center;
+  will-change: translate;
+}
+.gl-paper.is-1 { right: 38%; top: 5%; transform: rotate(7deg); z-index: 1; }
+.gl-paper.is-2 { right: 5%; top: 24%; transform: rotate(-3deg); z-index: 2; }
+.gl-paper.is-3 { right: 42%; top: 55%; transform: rotate(-10deg); z-index: 1; }
+.gl-paper-top {
+  display: block;
+  margin: 0 -18px 16px;
+  padding: 8px;
+  border-bottom: 2px solid var(--brand-black);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.gl-paper-top.is-red { background: var(--brand-red); color: var(--brand-white); }
+.gl-paper-top.is-yellow { background: var(--brand-yellow); }
+.gl-paper-top.is-orange { background: var(--brand-orange); }
+.gl-paper h3 {
+  margin: 0 0 12px;
+  font-size: 24px;
+  line-height: 1;
+}
+.gl-paper-list {
+  margin: 0 0 14px;
+  padding: 10px 0;
+  border-block: 2px dashed var(--brand-black-35);
+  list-style: none;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.7;
+  text-align: left;
+}
+.gl-paper-qr {
+  display: block;
+  margin: 0 auto 12px;
+}
+.gl-paper p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+/* ---------- Invitacion final y pie ---------- */
+.gl-last {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px 48px;
+  padding: 72px max(24px, calc((100vw - 1200px) / 2));
+  background: var(--gl-peach);
+}
+.gl .gl-last h2 {
+  margin: 0;
+  font-size: clamp(30px, 3.4vw, 48px);
+  text-transform: none;
+}
+.gl .gl-footer {
+  padding-top: 72px;
+}
+.gl .gl-footer-top {
+  align-items: end;
+  margin-bottom: 56px;
+}
+.gl .gl-footer-cols {
+  align-self: start;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gl-promo,
+  .gl-loose-photo.is-3 img,
+  .gs-doodle,
+  .gs-loja-ground,
+  .gs-float image,
+  .gs-bite {
+    animation: none;
+  }
+  .gl-header,
+  .gl-press-track.is-sliding,
+  .gl-brands-track.is-sliding {
+    transition: none;
+  }
+}
+
+/* ---------- Tablet ---------- */
+@media (max-width: 1280px) {
+  .gl-guides-text .gl-block-btn {
+    min-width: 0;
+    padding: 0 28px;
+  }
+}
+@media (max-width: 1080px) {
+  .gl-how-step:nth-child(2) .gl-how-text {
+    margin-top: 8px;
+  }
+  .gl-guides-text {
+    left: 24%;
+  }
+  .gl-guides-text .gl-block-btn {
+    white-space: nowrap;
+  }
+  .gl-how-step:nth-child(1) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 16px;
+  }
+  .gl-how-step:nth-child(3) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 16px;
+  }
+}
+
+/* ---------- Celular ---------- */
+@media (max-width: 860px) {
+  .gl-promo {
+    min-height: 44px;
+    padding: 6px 12px 6px 52px;
+    font-size: 13px;
+    line-height: 1.3;
+  }
+  .gl-press {
+    padding: 56px 0 52px;
+  }
+  .gl-press-track p {
+    font-size: clamp(24px, 7.4vw, 34px);
+  }
+  .gl-brands {
+    margin-top: 36px;
+  }
+  .gl-brands-track a {
+    gap: 10px;
+    padding: 8px 18px;
+    font-size: 18px;
+  }
+  .gl-brands-track img {
+    width: 38px;
+    height: 38px;
+  }
+
+  .gl-how {
+    padding: 32px 20px 72px;
+  }
+  .gl .gl-how-title {
+    margin-bottom: 36px;
+    font-size: clamp(30px, 8.6vw, 42px);
+  }
+  .gl-how-grid {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 48px;
+  }
+  .gl-how-grid .gl-how-step:nth-child(n) {
+    grid-column: 1;
+    grid-row: auto;
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+    gap: 16px;
+    align-items: center;
+  }
+  .gl-how-grid .gl-how-step:nth-child(2) .gl-how-art {
+    order: 2;
+    margin-top: 0;
+  }
+  .gl-how-grid .gl-how-step:nth-child(3) .gl-how-art {
+    order: 0;
+  }
+  .gl-how-grid .gl-how-step:nth-child(2) .gl-how-text {
+    margin-top: 0;
+  }
+  .gl-how-num {
+    font-size: 84px;
+  }
+  .gl-how-text h3 {
+    margin-top: 12px;
+    font-size: 26px;
+  }
+  .gl-how-text p {
+    font-size: 16px;
+  }
+
+  .gl-locales-band {
+    padding: 0 20px;
+  }
+  .gl-locales-band .gl-locales {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+  .gl-locales-band .gl-locales-side {
+    display: contents;
+  }
+  .gl-locales-band .gl-locales-side h2 {
+    margin-top: 56px;
+    text-align: center;
+  }
+  .gl-locales-band .gl-locales-side .gl-outline-btn {
+    justify-self: center;
+    margin: 20px 0 8px;
+  }
+  .gl-locales-band .gl-locales-list {
+    padding: 8px 0 0;
+  }
+  .gl-locales-band .gl-carousel-nav {
+    justify-content: center;
+  }
+  .gs-sofa {
+    order: 5;
+    width: min(100%, 380px);
+    margin: 20px auto -3px;
+  }
+
+  .gl-loose {
+    height: auto;
+    padding: 56px 0 72px;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    overflow: hidden;
+  }
+  .gl-loose-photo.is-1,
+  .gl-loose-photo.is-2,
+  .gl-loose-photo.is-3 {
+    position: relative;
+    inset: auto;
+    width: auto;
+    height: auto;
+  }
+  .gl-loose-photo.is-2 {
+    grid-column: 3 / 7;
+    grid-row: 1;
+    aspect-ratio: 16 / 10;
+  }
+  .gl-loose-photo.is-1 {
+    grid-column: 1 / 5;
+    grid-row: 2;
+    aspect-ratio: 3 / 4;
+    margin-top: 20px;
+  }
+  .gl-loose-photo.is-3 {
+    grid-column: 3 / 7;
+    grid-row: 3;
+    justify-self: end;
+    width: 56vw;
+    margin: -22vw 16px 0 0;
+    border-width: 10px;
+  }
+  .gl .gl-loose h2 {
+    left: 20px;
+    top: 34%;
+    font-size: clamp(44px, 14.5vw, 84px);
+  }
+
+  .gl-app {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+  }
+  .gl-track-row {
+    gap: 2px;
+  }
+  .gl-track-arrow {
+    width: 44px;
+  }
+  .gl-doodle-left,
+  .gl-doodle-right {
+    display: none;
+  }
+
+  .gl-fleet {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 56px 20px 0;
+  }
+  .gl-fleet-text {
+    padding-bottom: 8px;
+  }
+  .gl-fleet-text .gl-outline-btn {
+    width: 100%;
+  }
+  .gs-loja {
+    width: calc(100% + 40px);
+    margin-inline: -20px;
+  }
+
+  .gl-guides {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+  }
+  .gl-guides-photo {
+    min-height: 300px;
+    padding: 24px;
+  }
+  .gl-guides-text {
+    position: relative;
+    left: auto;
+    top: auto;
+    margin-top: -96px;
+    padding: 0 20px;
+  }
+  .gl .gl-guides-text h2 {
+    font-size: clamp(44px, 14vw, 80px);
+    margin-bottom: 24px;
+  }
+  .gl-papers {
+    display: flex;
+    gap: 22px;
+    margin: 24px 0 0;
+    padding: 20px 28px 56px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+  .gl-papers::-webkit-scrollbar {
+    display: none;
+  }
+  .gl-paper.is-1,
+  .gl-paper.is-2,
+  .gl-paper.is-3 {
+    position: static;
+    flex: 0 0 210px;
+    scroll-snap-align: center;
+  }
+  .gl-paper.is-1 { transform: rotate(3deg); }
+  .gl-paper.is-2 { transform: rotate(-2deg); }
+  .gl-paper.is-3 { transform: rotate(2deg); }
+
+  .gl-last {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 56px 20px;
+    text-align: center;
+  }
+  .gl .gl-footer-top {
+    align-items: start;
+  }
+}
