@@ -20,7 +20,12 @@ interface TableOption {
   id: number;
   number: string;
   area: string;
+  capacity: number;
 }
+
+// Same rule as the server: a reservation holds its table for 2 hours
+const HOLD_MS = 2 * 60 * 60 * 1000;
+const HOLDING = ["PENDING", "CONFIRMED", "SEATED"];
 
 const STATUS_LABEL: Record<Reservation["status"], string> = {
   PENDING: "Por confirmar",
@@ -70,7 +75,7 @@ export const Reservations: React.FC = () => {
       .then((res) =>
         setTables(
           (res.diningAreas || []).flatMap((area: any) =>
-            (area.tables || []).map((table: any) => ({ id: table.id, number: table.number, area: area.name }))
+            (area.tables || []).map((table: any) => ({ id: table.id, number: table.number, area: area.name, capacity: table.capacity }))
           )
         )
       )
@@ -81,8 +86,11 @@ export const Reservations: React.FC = () => {
     if (!socket) return;
     const refresh = () => load();
     socket.on("reservation-updated", refresh);
+    // Back online: ask again for what changed meanwhile
+    socket.on("connect", refresh);
     return () => {
       socket.off("reservation-updated", refresh);
+      socket.off("connect", refresh);
     };
   }, [socket]);
 
@@ -99,6 +107,19 @@ export const Reservations: React.FC = () => {
     return [...groups.values()];
   }, [visible]);
   const pendingCount = reservations.filter((r) => r.status === "PENDING").length;
+
+  // Only a hint for choosing: the server is the one that decides
+  const tableLabel = (table: TableOption, at: Date, people: number, exceptId?: number) => {
+    const taken = reservations.some(
+      (r) =>
+        r.id !== exceptId &&
+        r.table?.id === table.id &&
+        HOLDING.includes(r.status) &&
+        Math.abs(new Date(r.reservedAt).getTime() - at.getTime()) < HOLD_MS
+    );
+    const hint = taken ? " (ya reservada)" : people > table.capacity ? " (queda pequeña)" : "";
+    return `Mesa ${table.number} · ${table.area} · ${table.capacity} pers.${hint}`;
+  };
 
   const update = async (id: number, body: Record<string, unknown>) => {
     setBusyId(id);
@@ -191,7 +212,7 @@ export const Reservations: React.FC = () => {
             <select className="input-field" style={field} value={form.tableId} onChange={(e) => setForm({ ...form, tableId: e.target.value })}>
               <option value="">Sin asignar</option>
               {tables.map((table) => (
-                <option key={table.id} value={table.id}>Mesa {table.number} · {table.area}</option>
+                <option key={table.id} value={table.id}>{tableLabel(table, new Date(`${form.date}T${form.time}`), Number(form.people))}</option>
               ))}
             </select>
           </label>
@@ -254,7 +275,7 @@ export const Reservations: React.FC = () => {
                       >
                         <option value="">Sin mesa</option>
                         {tables.map((table) => (
-                          <option key={table.id} value={table.id}>Mesa {table.number} · {table.area}</option>
+                          <option key={table.id} value={table.id}>{tableLabel(table, new Date(reservation.reservedAt), reservation.people, reservation.id)}</option>
                         ))}
                       </select>
                       {reservation.status === "PENDING" && (
