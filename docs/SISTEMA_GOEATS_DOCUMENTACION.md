@@ -489,6 +489,23 @@ SISTEMA ACTUAL (Single-Tenant)          SISTEMA NUEVO (Multi-Tenant SaaS)
 
 ## 📝 Historial de Cambios
 
+### v0.7.39 — 2026-11-25 (Landing con la estructura y el movimiento de la plantilla)
+Solo la página de inicio. Sin dependencias nuevas, sin cambios en el servidor. Textos, dibujos y fotos propios.
+- **Cabecera:** se esconde al bajar y vuelve al subir o con el teclado. Debajo sale una barra amarilla de promo (Envío $0 con Plus) que se puede cerrar (`sessionStorage`).
+- **Franja debajo del inicio** (reemplaza la cinta): una frase grande que cambia sola y los locales reales pasando de a uno. La plantilla pone citas de prensa; aquí no, porque no hay reales y no se inventan. Tiene botón de pausa y se detiene con el mouse encima.
+- **Cómo funciona:** tres pasos escalonados, sin círculos detrás.
+- **Locales:** cuántos hay, un dibujo nuevo en el sofá y el carrusel.
+- **Beneficios:** 6 iconos negros y un solo botón.
+- **Collage:** tres fotos reales sueltas que se mueven distinto al bajar, con el título montado y un plato que gira.
+- **Seguimiento:** foto y celular sobre coral, con flechas a los lados.
+- **Repartidores:** la moto sobre una pizza que gira, con casas y la iglesia de dos torres.
+- **Restaurantes:** foto, título montado y tres hojas inclinadas (cocina, carta con QR y caja).
+- **Cierre y pie:** franja con un solo botón y pie con el logo grande. Se quitó la palabra GOEATS gigante del pie.
+- Archivos: `LandingExperience.tsx`, `LandingScenes.tsx` (nuevo), `LandingIllustrations.tsx`, `styles/landing-template.css` (nuevo), `utils/useParallax.ts` (nuevo). Se quitaron unas 950 líneas de estilos que ya no se usaban.
+- Con "reducir movimiento" todo queda quieto. Sin restaurantes o sin fotos, las demás secciones salen igual.
+- Las fuentes del manual no están en `frontend/public/fonts`, así que se ve la letra de reemplazo del sistema.
+- Probado en la copia aislada: 62 de 62 en 320, 375, 768, 861, 1024, 1440 y 1920 px. No se probó en celular real.
+
 ### v0.7.38 — 2026-11-24 (Mesas reservadas al mover pedidos y cocina al día)
 Solo pantallas. Sin migraciones ni cambios en el servidor.
 - `TableGroupActions.tsx`: al unir una mesa o cambiar un pedido a una mesa reservada en las próximas 2 horas, pregunta antes (nombre, hora y personas). Las listas marcan "(reservada)".
