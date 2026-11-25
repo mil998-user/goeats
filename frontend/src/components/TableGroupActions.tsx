@@ -1,11 +1,15 @@
 import React, { useState } from "react";
 import { apiRequest } from "../utils/api";
+import { appConfirm } from "./AppDialogs";
+import { getReservedSoon, reservationPeople, reservationWhen, type TableReservation } from "../utils/tableReservation";
+import { useNow } from "../utils/useNow";
 
 interface TableLite {
   id: number;
   number: string;
   status: string;
   joinedToId?: number | null;
+  reservations?: TableReservation[];
 }
 
 // Move the order to another table, join more tables to this one, or separate them
@@ -19,6 +23,7 @@ export const TableGroupActions: React.FC<{
   const [joinId, setJoinId] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const now = useNow();
 
   const joined = allTables.filter((t) => t.joinedToId === table.id);
   const isGroupMain = (id: number) => allTables.some((t) => t.joinedToId === id);
@@ -26,6 +31,19 @@ export const TableGroupActions: React.FC<{
   const freeTables = allTables.filter((t) => t.id !== table.id && t.status === "FREE" && !t.joinedToId && !isGroupMain(t.id));
   // Any other table outside a group can be joined; its open orders move to this bill
   const joinable = allTables.filter((t) => t.id !== table.id && !t.joinedToId && !isGroupMain(t.id));
+
+  const tableLabel = (t: TableLite) =>
+    `Mesa ${t.number}${t.status === "OCCUPIED" ? " (ocupada)" : getReservedSoon(t.reservations, now) ? " (reservada)" : ""}`;
+
+  // Taking a table reserved for the next 2 hours asks first, as when opening it
+  const confirmReserved = async (id: string, question: string) => {
+    const target = allTables.find((t) => t.id === Number(id));
+    const reserved = getReservedSoon(target?.reservations);
+    if (!target || !reserved) return true;
+    return appConfirm(
+      `La mesa ${target.number} está reservada para ${reserved.name} (${reservationWhen(reserved.reservedAt)}, ${reservationPeople(reserved.people)}). ${question}`
+    );
+  };
 
   const run = async (path: string, body?: Record<string, unknown>) => {
     setBusy(true);
@@ -67,7 +85,7 @@ export const TableGroupActions: React.FC<{
             <option value="">Elegir mesa</option>
             {joinable.map((t) => (
               <option key={t.id} value={t.id}>
-                Mesa {t.number} {t.status === "OCCUPIED" ? "(ocupada)" : ""}
+                {tableLabel(t)}
               </option>
             ))}
           </select>
@@ -77,7 +95,9 @@ export const TableGroupActions: React.FC<{
           className="secondary-btn"
           style={{ minHeight: "44px" }}
           disabled={busy || !joinId}
-          onClick={() => run(`/tables/${joinId}/join`, { intoTableId: table.id })}
+          onClick={async () =>
+            (await confirmReserved(joinId, "¿Unirla igual?")) && run(`/tables/${joinId}/join`, { intoTableId: table.id })
+          }
         >
           Unir
         </button>
@@ -92,7 +112,7 @@ export const TableGroupActions: React.FC<{
             <option value="">{joined.length > 0 ? "Separa las mesas primero" : "Elegir mesa libre"}</option>
             {freeTables.map((t) => (
               <option key={t.id} value={t.id}>
-                Mesa {t.number}
+                {tableLabel(t)}
               </option>
             ))}
           </select>
@@ -102,7 +122,10 @@ export const TableGroupActions: React.FC<{
           className="secondary-btn"
           style={{ minHeight: "44px" }}
           disabled={busy || !moveTo}
-          onClick={() => run(`/orders/${orderId}/change-table`, { newTableId: Number(moveTo) })}
+          onClick={async () =>
+            (await confirmReserved(moveTo, "¿Cambiar el pedido a esa mesa igual?")) &&
+            run(`/orders/${orderId}/change-table`, { newTableId: Number(moveTo) })
+          }
         >
           Cambiar
         </button>

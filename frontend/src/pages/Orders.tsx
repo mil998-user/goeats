@@ -57,6 +57,9 @@ export const Orders: React.FC = () => {
       socket.on("new-order", handleSocketUpdate);
       socket.on("order-status-updated", handleSocketUpdate);
       socket.on("order-cancelled", handleSocketUpdate);
+      // An order moved to another table, or tables joined or separated
+      socket.on("order-table-changed", handleSocketUpdate);
+      socket.on("tables-updated", handleSocketUpdate);
       // Al volver la conexion (senal, celular desbloqueado) se piden los datos de nuevo
       socket.on("connect", handleSocketUpdate);
 
@@ -64,6 +67,8 @@ export const Orders: React.FC = () => {
         socket.off("new-order", handleSocketUpdate);
         socket.off("order-status-updated", handleSocketUpdate);
         socket.off("order-cancelled", handleSocketUpdate);
+        socket.off("order-table-changed", handleSocketUpdate);
+        socket.off("tables-updated", handleSocketUpdate);
         socket.off("connect", handleSocketUpdate);
       };
     }

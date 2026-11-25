@@ -94,6 +94,7 @@ export const TablesPage: React.FC = () => {
       socket.on("order-status-updated", handleSocketUpdate);
       socket.on("order-cancelled", handleSocketUpdate);
       socket.on("tables-updated", handleSocketUpdate);
+      socket.on("order-table-changed", handleSocketUpdate);
       socket.on("reservation-updated", handleSocketUpdate);
       // Al volver la conexion (senal, celular desbloqueado) se piden los datos de nuevo
       socket.on("connect", handleSocketUpdate);
@@ -103,6 +104,7 @@ export const TablesPage: React.FC = () => {
         socket.off("order-status-updated", handleSocketUpdate);
         socket.off("order-cancelled", handleSocketUpdate);
         socket.off("tables-updated", handleSocketUpdate);
+        socket.off("order-table-changed", handleSocketUpdate);
         socket.off("reservation-updated", handleSocketUpdate);
         socket.off("connect", handleSocketUpdate);
       };

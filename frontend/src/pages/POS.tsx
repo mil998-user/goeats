@@ -563,6 +563,9 @@ export const POS: React.FC = () => {
     socket.on("order-status-updated", handleTableChange);
     socket.on("new-order", handleNewOrder);
     socket.on("order-cancelled", handleTableChange);
+    // An order moved to another table, or tables joined or separated
+    socket.on("order-table-changed", handleTableChange);
+    socket.on("tables-updated", handleTableChange);
     socket.on("reservation-updated", handleTableChange);
     // Al volver la conexion (senal, celular desbloqueado) se piden los datos de nuevo
     socket.on("connect", handleTableChange);
@@ -573,6 +576,8 @@ export const POS: React.FC = () => {
       socket.off("order-status-updated", handleTableChange);
       socket.off("new-order", handleNewOrder);
       socket.off("order-cancelled", handleTableChange);
+      socket.off("order-table-changed", handleTableChange);
+      socket.off("tables-updated", handleTableChange);
       socket.off("reservation-updated", handleTableChange);
       socket.off("connect", handleTableChange);
       socket.off("cash-session-changed", handleCashSessionChange);

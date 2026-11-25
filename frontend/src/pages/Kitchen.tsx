@@ -125,12 +125,17 @@ export const Kitchen: React.FC = () => {
     socket.on("new-order", handleNewOrder);
     socket.on("kitchen-item-status-updated", handleItemStatusUpdated);
     socket.on("order-status-updated", handleItemStatusUpdated);
+    // An order moved to another table, or tables joined or separated
+    socket.on("order-table-changed", handleItemStatusUpdated);
+    socket.on("tables-updated", handleItemStatusUpdated);
     // When the connection comes back (signal, phone unlocked) the data is asked again
     socket.on("connect", handleItemStatusUpdated);
     return () => {
       socket.off("new-order", handleNewOrder);
       socket.off("kitchen-item-status-updated", handleItemStatusUpdated);
       socket.off("order-status-updated", handleItemStatusUpdated);
+      socket.off("order-table-changed", handleItemStatusUpdated);
+      socket.off("tables-updated", handleItemStatusUpdated);
       socket.off("connect", handleItemStatusUpdated);
     };
   }, [socket]);
