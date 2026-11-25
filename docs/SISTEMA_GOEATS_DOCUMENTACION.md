@@ -489,6 +489,17 @@ SISTEMA ACTUAL (Single-Tenant)          SISTEMA NUEVO (Multi-Tenant SaaS)
 
 ## 📝 Historial de Cambios
 
+### v0.7.41 — 2026-11-25 (Landing con las medidas de la plantilla)
+Se midieron tamaños y espacios de la plantilla y se ajustó la landing. Solo diseño de la página de inicio.
+- **Letra de los títulos:** la del manual (TAN St Canard) va primero. Como faltan sus archivos, se usa una negra y angosta que ya trae cada equipo (Impact en Windows; otra parecida en iPhone y Android), sin descargar nada. Los títulos anchos usan More Sugar primero. Al llegar las fuentes hay que revisar los tamaños.
+- **Color:** coral más vivo, mezcla de naranja, rojo y blanco del manual, con luz suave en el inicio.
+- **Cabecera:** transparente arriba, logo más grande, menú a la derecha con una raya antes de "Iniciar sesión".
+- **Inicio:** un solo botón. "Crear mi cuenta" sigue en el menú del celular y en el pie.
+- **Cómo funciona:** personajes nuevos de cuerpo entero (`ChooseArt`, `CookArt`, `RideArt`), más aire y botón debajo del paso 3.
+- **Beneficios:** seis iconos rellenos propios, a todo lo ancho.
+- **Títulos gigantes** en el collage y en restaurantes; botones de 313 x 60; pie con el logo grande y cuatro columnas.
+- Probado en la copia aislada: 69 de 69, de 320 a 1920 px. El scroll sigue fluido (147 a 149 cuadros por segundo en computadora y 128 en tamaño de celular, con el equipo frenado). No se probó en celular real.
+
 ### v0.7.40 — 2026-11-25 (Scroll fluido en la landing)
 El scroll se trababa. Se midió con el procesador 4 veces más lento, alternando la versión publicada y la nueva en el mismo equipo: en computadora de 45–50 a 95–142 cuadros por segundo; en tamaño de celular (6 veces más lento) de 46–76 a 72–112.
 - **Dibujos animados:** el navegador los redibujaba enteros en cada cuadro. Ahora se congelan mientras se baja y cuando no se ven (`utils/useCalmScroll.ts`, reemplaza a `useParallax.ts`).
