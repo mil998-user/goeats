@@ -489,6 +489,17 @@ SISTEMA ACTUAL (Single-Tenant)          SISTEMA NUEVO (Multi-Tenant SaaS)
 
 ## 📝 Historial de Cambios
 
+### v0.7.38 — 2026-11-24 (Mesas reservadas al mover pedidos y cocina al día)
+Solo pantallas. Sin migraciones ni cambios en el servidor.
+- `TableGroupActions.tsx`: al unir una mesa o cambiar un pedido a una mesa reservada en las próximas 2 horas, pregunta antes (nombre, hora y personas). Las listas marcan "(reservada)".
+- `Reservations.tsx`: al elegir mesa se ve cuántas personas caben y si está "(ya reservada)" a esa hora o "(queda pequeña)". Es una guía: quien decide sigue siendo el servidor. La lista se actualiza al volver la conexión.
+- `Kitchen.tsx`, `POS.tsx`, `Orders.tsx` y `TablesPage.tsx`: cuando un pedido cambia de mesa, se enteran al instante. Antes el servidor avisaba y ninguna pantalla escuchaba, y cocina seguía mostrando la mesa anterior. Cocina, POS y Pedidos también se enteran al unir o separar mesas.
+- Probado en la copia aislada: 48 de 48 en 390 y 1366 px, y reservas dobles 30 de 30. No se probó en celular real ni en la página publicada.
+
+### v0.7.37 — 2026-11-24 (Errores falsos del editor)
+- `backend/scripts/tsconfig.json` y `backend/prisma/tsconfig.json`: VS Code marcaba errores en `db-local.ts` y otros porque `backend/tsconfig.json` solo incluye `src`. El código no tenía errores y no se cambió.
+- Comprobado con el TypeScript de VS Code (6.0.3): `db-local.ts` pasa de 11 errores a 0. `npm run db:check` y la compilación del servidor siguen igual.
+
 ### v0.7.36 — 2026-11-24 (Sin reservas dobles)
 `reservations.controller.ts` y `Reservations.tsx`. Sin migraciones.
 - Una mesa no se da dos veces con menos de 2 horas entre reservas (`TABLE_HOLD_MS`). Cuentan las que están por confirmar, confirmadas y "Ya llegaron".
