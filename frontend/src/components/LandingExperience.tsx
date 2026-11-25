@@ -25,8 +25,8 @@ import { ChefIllustration, CustomerIllustration, HeroScene, RiderIllustration } 
 import { ChiliDoodle, LemonDoodle, LojaScene, SofaScene } from "./LandingScenes";
 import { OpenBadge } from "./OpenBadge";
 import { apiRequest } from "../utils/api";
-import { useParallax } from "../utils/useParallax";
-import { prefersReducedMotion, revealDelay as delay, useReveal } from "../utils/useReveal";
+import { useCalmScroll } from "../utils/useCalmScroll";
+import { prefersReducedMotion, revealDelay as delay } from "../utils/useReveal";
 import "../styles/landing.css";
 import "../styles/landing-sections.css";
 import "../styles/landing-template.css";
@@ -228,8 +228,8 @@ const BenefitsGrid: React.FC = () => {
   return (
     <>
       <ul className="gl-benefits" ref={listRef} onScroll={onScroll}>
-        {BENEFITS.map(({ Icon, title, text }, i) => (
-          <li key={title} data-reveal style={delay(i)}>
+        {BENEFITS.map(({ Icon, title, text }) => (
+          <li key={title}>
             <span className="gl-benefit-ico" aria-hidden="true">
               <Icon size={56} strokeWidth={2.1} />
             </span>
@@ -361,13 +361,13 @@ const TrackDemo: React.FC = () => {
 const RestaurantCard: React.FC<{ r: PublicRestaurant }> = ({ r }) => (
   <Link to={`/r/${encodeURIComponent(r.slug)}`} className="gl-rcard">
     <span className="gl-rcard-photo">
-      {safeImage(r.coverImage || r.logo) && <img src={safeImage(r.coverImage || r.logo) || ""} alt="" loading="lazy" />}
+      {safeImage(r.coverImage || r.logo) && <img src={safeImage(r.coverImage || r.logo) || ""} alt="" loading="lazy" decoding="async" />}
       <span className="gl-rcard-badge">
         <OpenBadge hours={r.openingHours} />
       </span>
     </span>
     <span className="gl-rcard-body">
-      {safeImage(r.logo) && <img className="gl-rcard-logo" src={safeImage(r.logo) || ""} alt="" loading="lazy" />}
+      {safeImage(r.logo) && <img className="gl-rcard-logo" src={safeImage(r.logo) || ""} alt="" loading="lazy" decoding="async" />}
       <span className="gl-rcard-text">
         <strong>{r.name}</strong>
         <small>{r.categories?.[0]?.name || "Restaurante"}</small>
@@ -426,36 +426,12 @@ const RestaurantCarousel: React.FC<{ restaurants: PublicRestaurant[] }> = ({ res
   );
 };
 
-export const LandingExperience: React.FC = () => {
-  const navigate = useNavigate();
-  const rootRef = useRef<HTMLDivElement>(null);
+// La cabecera va aparte: cambia al bajar y al subir, y asi no se vuelve a dibujar toda la pagina
+const LandingHeader: React.FC<{ onOrder: () => void; onRegister: () => void }> = ({ onOrder, onRegister }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [headerHidden, setHeaderHidden] = useState(false);
   const [promoClosed, setPromoClosed] = useState(readPromoClosed);
-  const [restaurants, setRestaurants] = useState<PublicRestaurant[]>([]);
-
-  useEffect(() => {
-    let active = true;
-    apiRequest("/restaurants/public/list")
-      .then((res) => {
-        if (active) setRestaurants(res.restaurants || []);
-      })
-      .catch(() => {
-        if (active) setRestaurants([]);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  // En la landing no se ve la barra de desplazamiento: su fondo crema quedaba como una raya junto al coral.
-  // Se sigue bajando con la rueda, el teclado o el dedo; al salir de la landing vuelve la barra normal
-  useEffect(() => {
-    const root = document.documentElement;
-    root.classList.add("gl-root");
-    return () => root.classList.remove("gl-root");
-  }, []);
 
   // Como en la plantilla: al bajar la cabecera se esconde y queda la barra de promo; al subir vuelve
   useEffect(() => {
@@ -481,10 +457,89 @@ export const LandingExperience: React.FC = () => {
     }
   };
 
+  const closeMenu = () => setMenuOpen(false);
+
+  return (
+    <header className={`gl-header${scrolled ? " is-scrolled" : ""}${headerHidden && !menuOpen ? " is-hidden" : ""}`}>
+      <div className="gl-nav">
+        <Link to="/" aria-label="GoEats, ir al inicio" className="gl-brand">
+          <BrandLogo size={30} />
+        </Link>
+        <nav className={`gl-links${menuOpen ? " is-open" : ""}`} aria-label="Navegación principal">
+          {sections.map((s) => (
+            <a key={s.id} href={`#${s.id}`} onClick={closeMenu}>
+              {s.label}
+            </a>
+          ))}
+          <Link to="/login" onClick={closeMenu} className="gl-login">
+            Iniciar sesión
+          </Link>
+          {/* Solo en el menu del celular: las dos acciones principales abajo, como en la plantilla */}
+          <div className="gl-links-cta">
+            <button className="gl-block-btn" onClick={() => { closeMenu(); onOrder(); }}>
+              Ver restaurantes
+            </button>
+            <button className="gl-text-link" onClick={() => { closeMenu(); onRegister(); }}>
+              o crea tu cuenta gratis
+            </button>
+          </div>
+        </nav>
+        <button className="gl-block-btn gl-nav-cta" onClick={onOrder} aria-label="Pedir ahora">
+          Pedir<span className="gl-cta-more">&nbsp;ahora</span>
+        </button>
+        <button
+          className="gl-menu-btn"
+          onClick={() => setMenuOpen((o) => !o)}
+          aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}
+          aria-expanded={menuOpen}
+        >
+          {menuOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+      </div>
+      {scrolled && !promoClosed && !menuOpen && (
+        <div className="gl-promo">
+          <Link to="/plus">
+            <strong>Envío $0</strong> en tus pedidos a domicilio con GoEats Plus
+          </Link>
+          <button type="button" onClick={closePromo} aria-label="Cerrar el aviso">
+            <X size={20} />
+          </button>
+        </div>
+      )}
+    </header>
+  );
+};
+
+export const LandingExperience: React.FC = () => {
+  const navigate = useNavigate();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [restaurants, setRestaurants] = useState<PublicRestaurant[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    apiRequest("/restaurants/public/list")
+      .then((res) => {
+        if (active) setRestaurants(res.restaurants || []);
+      })
+      .catch(() => {
+        if (active) setRestaurants([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // En la landing no se ve la barra de desplazamiento: su fondo crema quedaba como una raya junto al coral.
+  // Se sigue bajando con la rueda, el teclado o el dedo; al salir de la landing vuelve la barra normal
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.add("gl-root");
+    return () => root.classList.remove("gl-root");
+  }, []);
+
   // Restaurantes reales con su carta
   const listed = restaurants.filter((r) => r.slug);
-  useReveal(rootRef, listed.length);
-  useParallax(rootRef, listed.length);
+  useCalmScroll(rootRef, listed.length);
 
   // Portadas reales sin repetir: 3 para el collage suelto, una para el seguimiento y otra para los locales
   const photos = Array.from(
@@ -500,57 +555,10 @@ export const LandingExperience: React.FC = () => {
 
   const openRestaurants = () => navigate("/restaurants");
   const openRegistration = (role: "customer" | "restaurant" | "driver") => navigate(`/login?role=${role}&mode=register`);
-  const closeMenu = () => setMenuOpen(false);
 
   return (
     <div className="gl" ref={rootRef}>
-      <header className={`gl-header${scrolled ? " is-scrolled" : ""}${headerHidden && !menuOpen ? " is-hidden" : ""}`}>
-        <div className="gl-nav">
-          <Link to="/" aria-label="GoEats, ir al inicio" className="gl-brand">
-            <BrandLogo size={30} />
-          </Link>
-          <nav className={`gl-links${menuOpen ? " is-open" : ""}`} aria-label="Navegación principal">
-            {sections.map((s) => (
-              <a key={s.id} href={`#${s.id}`} onClick={closeMenu}>
-                {s.label}
-              </a>
-            ))}
-            <Link to="/login" onClick={closeMenu} className="gl-login">
-              Iniciar sesión
-            </Link>
-            {/* Solo en el menu del celular: las dos acciones principales abajo, como en la plantilla */}
-            <div className="gl-links-cta">
-              <button className="gl-block-btn" onClick={() => { closeMenu(); openRestaurants(); }}>
-                Ver restaurantes
-              </button>
-              <button className="gl-text-link" onClick={() => { closeMenu(); openRegistration("customer"); }}>
-                o crea tu cuenta gratis
-              </button>
-            </div>
-          </nav>
-          <button className="gl-block-btn gl-nav-cta" onClick={openRestaurants} aria-label="Pedir ahora">
-            Pedir<span className="gl-cta-more">&nbsp;ahora</span>
-          </button>
-          <button
-            className="gl-menu-btn"
-            onClick={() => setMenuOpen((o) => !o)}
-            aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"}
-            aria-expanded={menuOpen}
-          >
-            {menuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
-        </div>
-        {scrolled && !promoClosed && !menuOpen && (
-          <div className="gl-promo">
-            <Link to="/plus">
-              <strong>Envío $0</strong> en tus pedidos a domicilio con GoEats Plus
-            </Link>
-            <button type="button" onClick={closePromo} aria-label="Cerrar el aviso">
-              <X size={20} />
-            </button>
-          </div>
-        )}
-      </header>
+      <LandingHeader onOrder={openRestaurants} onRegister={() => openRegistration("customer")} />
 
       <main>
         {/* Inicio (9.1), igual que la plantilla: un solo campo coral de borde a borde (con la cabecera),
@@ -588,16 +596,16 @@ export const LandingExperience: React.FC = () => {
 
         {/* Como funciona (9.3): tres pasos escalonados, como la plantilla: 1 y 3 a la izquierda y 2 a la derecha */}
         <section className="gl-how" id="como-funciona">
-          <h2 className="gl-how-title" data-reveal>
+          <h2 className="gl-how-title">
             Tu antojo en tres pasos
           </h2>
           <ol className="gl-how-grid">
             {HOW_STEPS.map(({ n, title, text, Art, tone }) => (
               <li key={n} className={`gl-how-step tone-${tone}`}>
-                <div className="gl-how-art" data-reveal={n === 2 ? "right" : "left"}>
+                <div className="gl-how-art">
                   <Art />
                 </div>
-                <div className="gl-how-text" data-reveal style={delay(1)}>
+                <div className="gl-how-text">
                   <span className="gl-how-num" aria-hidden="true">
                     {n}
                   </span>
@@ -614,7 +622,7 @@ export const LandingExperience: React.FC = () => {
         {listed.length > 0 && (
           <section className="gl-locales-band" id="locales">
             <div className="gl-locales">
-              <div className="gl-locales-side" data-reveal>
+              <div className="gl-locales-side">
                 <h2>
                   {listed.length} {listed.length === 1 ? "local" : "locales"}
                   <br />
@@ -625,7 +633,7 @@ export const LandingExperience: React.FC = () => {
                 </Link>
                 <SofaScene />
               </div>
-              <div className="gl-locales-list" data-reveal style={delay(1)}>
+              <div className="gl-locales-list">
                 <RestaurantCarousel restaurants={listed} />
               </div>
             </div>
@@ -647,11 +655,11 @@ export const LandingExperience: React.FC = () => {
         {collage.length === 3 && (
           <section className="gl-loose" id="antojos">
             {collage.map((r, i) => (
-              <div key={r.id} className={`gl-loose-photo is-${i + 1}`} data-parallax={[0.1, -0.06, 0][i]}>
-                <img src={safeImage(r.coverImage) || ""} alt="" loading="lazy" />
+              <div key={r.id} className={`gl-loose-photo is-${i + 1}`} data-drift={["fast", "slow", undefined][i]}>
+                <img src={safeImage(r.coverImage) || ""} alt="" loading="lazy" decoding="async" />
               </div>
             ))}
-            <h2 data-reveal>
+            <h2>
               Un antojo
               <br />
               para cada
@@ -665,14 +673,14 @@ export const LandingExperience: React.FC = () => {
         <section className="gl-app" id="seguimiento">
           <div className={`gl-app-photo${trackPhoto ? "" : " is-empty"}`}>
             {trackPhoto ? (
-              <img src={safeImage(trackPhoto.coverImage) || ""} alt="" loading="lazy" />
+              <img src={safeImage(trackPhoto.coverImage) || ""} alt="" loading="lazy" decoding="async" />
             ) : (
               <RiderIllustration />
             )}
           </div>
           <div className="gl-app-side">
-            <h2 data-reveal>Sigue tu pedido paso a paso, desde la cocina hasta tu puerta.</h2>
-            <div data-reveal style={delay(1)}>
+            <h2>Sigue tu pedido paso a paso, desde la cocina hasta tu puerta.</h2>
+            <div>
               <TrackDemo />
             </div>
           </div>
@@ -680,7 +688,7 @@ export const LandingExperience: React.FC = () => {
 
         {/* Para repartidores (9.8): texto a la izquierda y la moto dando la vuelta a Loja */}
         <section className="gl-fleet" id="repartidores">
-          <div className="gl-fleet-text" data-reveal>
+          <div className="gl-fleet-text">
             <h2>
               Reparte
               <br />
@@ -701,12 +709,12 @@ export const LandingExperience: React.FC = () => {
         <section className="gl-guides" id="restaurantes">
           <div className="gl-guides-photo">
             {guidesPhoto ? (
-              <img src={safeImage(guidesPhoto.coverImage) || ""} alt="" loading="lazy" />
+              <img src={safeImage(guidesPhoto.coverImage) || ""} alt="" loading="lazy" decoding="async" />
             ) : (
               <ChefIllustration />
             )}
           </div>
-          <div className="gl-guides-text" data-reveal>
+          <div className="gl-guides-text">
             <h2>
               Tu local
               <br />
@@ -720,7 +728,7 @@ export const LandingExperience: React.FC = () => {
             </button>
           </div>
           <ul className="gl-papers">
-            <li className="gl-paper is-1" data-parallax="-0.08">
+            <li className="gl-paper is-1" data-drift="slow">
               <span className="gl-paper-top is-red">Cocina</span>
               <h3>Mesa 4</h3>
               <ul className="gl-paper-list">
@@ -730,13 +738,13 @@ export const LandingExperience: React.FC = () => {
               </ul>
               <p>La web, las mesas y para llevar llegan a una sola pantalla, con sus tiempos.</p>
             </li>
-            <li className="gl-paper is-2" data-parallax="0.1">
+            <li className="gl-paper is-2" data-drift="fast">
               <span className="gl-paper-top is-yellow">Carta</span>
               <h3>Con QR</h3>
               <QrCode className="gl-paper-qr" size={92} strokeWidth={1.6} aria-hidden="true" />
               <p>Un código en cada mesa: el cliente mira la carta y pide desde su celular.</p>
             </li>
-            <li className="gl-paper is-3" data-parallax="-0.04">
+            <li className="gl-paper is-3" data-drift="far">
               <span className="gl-paper-top is-orange">Caja</span>
               <h3>Cierre del día</h3>
               <ul className="gl-paper-list">

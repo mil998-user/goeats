@@ -75,8 +75,11 @@ html.gl-root::-webkit-scrollbar {
 /* Como en la plantilla: arriba del todo es alta y del color del inicio;
    al bajar se achica, se vuelve blanca y lleva sombra. Siempre opaca */
 .gl-header {
-  position: sticky;
+  /* Fija y fuera del flujo: al achicarse no empuja el resto de la pagina */
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 50;
   background: var(--gl-coral);
   border-bottom: 1px solid transparent;
@@ -146,6 +149,10 @@ html.gl-root::-webkit-scrollbar {
   cursor: pointer;
 }
 
+.gl main {
+  padding-top: var(--gl-header-h);
+}
+
 /* ---------- Inicio ----------
    Igual que la plantilla: un solo campo coral de borde a borde (la cabecera es del mismo color),
    la escena de la caja abierta saliendo por la esquina de abajo a la izquierda y el titular grande
@@ -167,10 +174,10 @@ html.gl-root::-webkit-scrollbar {
   margin-left: -3%;
 }
 .gl-hero-scene {
-  display: block;
+  position: relative;
   width: 106%;
   max-width: 1080px;
-  height: auto;
+  aspect-ratio: 1000 / 820;
   margin-bottom: -2px;
   animation: gl-scene-in 1.1s 0.1s var(--gl-ease) both;
 }
@@ -178,15 +185,23 @@ html.gl-root::-webkit-scrollbar {
 .hs-shadow {
   fill: color-mix(in srgb, var(--brand-red) 32%, var(--gl-coral));
 }
+.gl-hero-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
 .hs-word {
   font-family: var(--brand-font-logo);
 }
 /* La comida sube y baja un poco y la tapa se mece */
 .hs-food {
+  will-change: transform;
   animation: hs-bob 2.6s ease-in-out infinite alternate;
 }
 .hs-lid {
-  transform-origin: 645px 455px;
+  transform-origin: 64.5% 55.5%;
+  will-change: transform;
   animation: hs-lid 3.4s ease-in-out infinite alternate;
 }
 
@@ -297,7 +312,7 @@ html.gl-root::-webkit-scrollbar {
 }
 @keyframes hs-bob {
   from { transform: translateY(0); }
-  to { transform: translateY(-10px); }
+  to { transform: translateY(-1.2%); }
 }
 @keyframes hs-lid {
   from { transform: rotate(0deg); }

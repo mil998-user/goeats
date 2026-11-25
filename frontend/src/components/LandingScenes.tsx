@@ -121,8 +121,9 @@ const HILL: React.ReactNode[] = [
 
 // La moto de GoEats da la vuelta a Loja sobre una pizza que gira despacio debajo de ella
 export const LojaScene: React.FC = () => (
-  <svg viewBox="0 0 640 540" className="gs-loja" role="img" aria-label="Un motorizado de GoEats recorriendo Loja">
-    <g className="gs-loja-ground">
+  <div className="gs-loja" role="img" aria-label="Un motorizado de GoEats recorriendo Loja">
+    {/* El suelo gira entero como una sola imagen: es lo que menos le cuesta al navegador */}
+    <svg viewBox="-110 80 860 860" className="gs-loja-ground" aria-hidden="true">
       {HILL.map((item, i) => (
         <g key={i} transform={`rotate(${i * 30 + 12} 320 510) translate(320 214)`}>
           {item}
@@ -141,17 +142,18 @@ export const LojaScene: React.FC = () => (
           <path d="M392 352 q22 -22 44 0 q-22 22 -44 0 z M400 352 h26" fill={LEAF} strokeWidth="4" />
         </g>
       ))}
-    </g>
-
-    <g className="gs-float">
-      <image href="/brand/boca-roja.png" x="240" y="46" width="40" height="35" />
-      <image href="/brand/boca-roja.png" x="204" y="12" width="28" height="25" />
-      <image href="/brand/boca-negra.png" x="262" y="0" width="22" height="19" />
-    </g>
-    <g transform="translate(146 12) scale(0.59)">
-      <RiderScooter />
-    </g>
-  </svg>
+    </svg>
+    <svg viewBox="0 0 640 540" className="gs-loja-rider" aria-hidden="true">
+      <g className="gs-float">
+        <image href="/brand/boca-roja.png" x="240" y="46" width="40" height="35" />
+        <image href="/brand/boca-roja.png" x="204" y="12" width="28" height="25" />
+        <image href="/brand/boca-negra.png" x="262" y="0" width="22" height="19" />
+      </g>
+      <g transform="translate(146 12) scale(0.59)">
+        <RiderScooter />
+      </g>
+    </svg>
+  </div>
 );
 
 // Dibujos de linea a los lados del celular

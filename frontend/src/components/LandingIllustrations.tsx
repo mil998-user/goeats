@@ -336,28 +336,35 @@ export const RiderIllustration: React.FC = () => (
 const KRAFT = "#c98a4b";
 const KRAFT_DARK = "#a86d34";
 const KRAFT_TOP = "#e0a050";
+// Cada parte que se mueve va en su propia capa: asi la mueve la tarjeta grafica y el scroll no se traba
+const HeroLayer: React.FC<{ className?: string; children: React.ReactNode }> = ({ className = "", children }) => (
+  <svg viewBox="0 0 1000 820" className={`gl-hero-layer ${className}`.trim()}>
+    {children}
+  </svg>
+);
+
 export const HeroScene: React.FC = () => (
-  <svg viewBox="0 0 1000 820" className="gl-hero-scene" preserveAspectRatio="xMinYMax meet" aria-hidden="true">
-    {/* Sombras planas, como la luz de la foto de la plantilla */}
-    <g className="hs-shadow">
-      <path d="M-40 300 L250 300 L330 330 L330 820 L-40 820 Z" />
-      <path d="M300 480 L380 120 L820 80 L860 400 L840 820 L300 820 Z" />
-    </g>
+  <div className="gl-hero-scene" aria-hidden="true">
+    <HeroLayer>
+      {/* Sombras planas, como la luz de la foto de la plantilla */}
+      <g className="hs-shadow">
+        <path d="M-40 300 L250 300 L330 330 L330 820 L-40 820 Z" />
+        <path d="M300 480 L380 120 L820 80 L860 400 L840 820 L300 820 Z" />
+      </g>
 
-    {/* Bolsa de papel con la boca y GOEATS */}
-    <g className="hs-bag">
-      <polygon points="40,380 330,380 400,410 110,410" fill={KRAFT_TOP} stroke={INK} strokeWidth="5" strokeLinejoin="round" />
-      <polygon points="330,380 400,410 400,840 330,820" fill={KRAFT_DARK} stroke={INK} strokeWidth="5" strokeLinejoin="round" />
-      <rect x="40" y="410" width="290" height="420" fill={KRAFT} stroke={INK} strokeWidth="5" />
-      <ellipse cx="220" cy="396" rx="42" ry="8" fill={INK} />
-      <image href="/brand/boca-negra.png" x="100" y="450" width="170" height="150" />
-      <text x="185" y="680" textAnchor="middle" fontSize="64" fontWeight="900" fill={INK} letterSpacing="2" className="hs-word">
-        GOEATS
-      </text>
-    </g>
-
-    {/* Caja abierta */}
-    <g className="hs-box">
+      {/* Bolsa de papel con la boca y GOEATS */}
+      <g className="hs-bag">
+        <polygon points="40,380 330,380 400,410 110,410" fill={KRAFT_TOP} stroke={INK} strokeWidth="5" strokeLinejoin="round" />
+        <polygon points="330,380 400,410 400,840 330,820" fill={KRAFT_DARK} stroke={INK} strokeWidth="5" strokeLinejoin="round" />
+        <rect x="40" y="410" width="290" height="420" fill={KRAFT} stroke={INK} strokeWidth="5" />
+        <ellipse cx="220" cy="396" rx="42" ry="8" fill={INK} />
+        <image href="/brand/boca-negra.png" x="100" y="450" width="170" height="150" />
+        <text x="185" y="680" textAnchor="middle" fontSize="64" fontWeight="900" fill={INK} letterSpacing="2" className="hs-word">
+          GOEATS
+        </text>
+      </g>
+    </HeroLayer>
+    <HeroLayer className="hs-lid">
       {/* Tapa abierta por dentro, con la frase impresa */}
       <g className="hs-lid">
         <polygon points="430,470 860,440 885,150 455,190" fill="var(--brand-orange)" stroke={INK} strokeWidth="5" strokeLinejoin="round" />
@@ -370,9 +377,12 @@ export const HeroScene: React.FC = () => (
           </text>
         </g>
       </g>
+    </HeroLayer>
+    <HeroLayer>
       {/* Fondo de la caja por dentro */}
       <polygon points="370,565 900,525 860,440 430,470" fill="var(--brand-cream)" stroke={INK} strokeWidth="5" strokeLinejoin="round" />
-
+    </HeroLayer>
+    <HeroLayer className="hs-food">
       {/* Comida asomando: hamburguesa, papas y bebida */}
       <g className="hs-food">
         {/* Hamburguesa */}
@@ -403,7 +413,8 @@ export const HeroScene: React.FC = () => (
         <path d="M758 376 L838 376 L826 540 L770 540 Z" fill="var(--brand-white)" stroke={INK} strokeWidth="5" strokeLinejoin="round" />
         <path d="M764 430 L832 430 L828 470 L768 470 Z" fill="var(--brand-yellow)" stroke={INK} strokeWidth="4" strokeLinejoin="round" />
       </g>
-
+    </HeroLayer>
+    <HeroLayer>
       {/* Frente de la caja */}
       <polygon points="370,565 900,525 935,790 400,840" fill="var(--brand-red)" stroke={INK} strokeWidth="5" strokeLinejoin="round" />
       <g transform="rotate(-4 660 690)">
@@ -415,29 +426,28 @@ export const HeroScene: React.FC = () => (
           A TU PUERTA
         </text>
       </g>
-    </g>
-
-    {/* Tickets del pedido, como las guias de la plantilla */}
-    <g className="hs-tickets">
-      <g transform="rotate(-12 300 790)">
-        <rect x="210" y="730" width="170" height="130" rx="8" fill="var(--brand-white)" stroke={INK} strokeWidth="4" />
-        <rect x="210" y="730" width="170" height="30" rx="8" fill="var(--brand-red)" stroke={INK} strokeWidth="4" />
-        <text x="295" y="752" textAnchor="middle" fontSize="16" fontWeight="900" fill="var(--brand-white)" letterSpacing="2">TU PEDIDO</text>
-        <g stroke={INK} strokeWidth="4" strokeLinecap="round">
-          <line x1="228" y1="782" x2="330" y2="782" />
-          <line x1="228" y1="802" x2="360" y2="802" />
-          <line x1="228" y1="822" x2="310" y2="822" />
+      {/* Tickets del pedido, como las guias de la plantilla */}
+      <g className="hs-tickets">
+        <g transform="rotate(-12 300 790)">
+          <rect x="210" y="730" width="170" height="130" rx="8" fill="var(--brand-white)" stroke={INK} strokeWidth="4" />
+          <rect x="210" y="730" width="170" height="30" rx="8" fill="var(--brand-red)" stroke={INK} strokeWidth="4" />
+          <text x="295" y="752" textAnchor="middle" fontSize="16" fontWeight="900" fill="var(--brand-white)" letterSpacing="2">TU PEDIDO</text>
+          <g stroke={INK} strokeWidth="4" strokeLinecap="round">
+            <line x1="228" y1="782" x2="330" y2="782" />
+            <line x1="228" y1="802" x2="360" y2="802" />
+            <line x1="228" y1="822" x2="310" y2="822" />
+          </g>
+        </g>
+        <g transform="rotate(8 470 800)">
+          <rect x="400" y="752" width="150" height="120" rx="8" fill="var(--brand-cream)" stroke={INK} strokeWidth="4" />
+          <rect x="400" y="752" width="150" height="28" rx="8" fill="var(--brand-yellow)" stroke={INK} strokeWidth="4" />
+          <text x="475" y="772" textAnchor="middle" fontSize="15" fontWeight="900" fill={INK} letterSpacing="2">EN CAMINO</text>
+          <g stroke={INK} strokeWidth="4" strokeLinecap="round">
+            <line x1="416" y1="802" x2="520" y2="802" />
+            <line x1="416" y1="822" x2="490" y2="822" />
+          </g>
         </g>
       </g>
-      <g transform="rotate(8 470 800)">
-        <rect x="400" y="752" width="150" height="120" rx="8" fill="var(--brand-cream)" stroke={INK} strokeWidth="4" />
-        <rect x="400" y="752" width="150" height="28" rx="8" fill="var(--brand-yellow)" stroke={INK} strokeWidth="4" />
-        <text x="475" y="772" textAnchor="middle" fontSize="15" fontWeight="900" fill={INK} letterSpacing="2">EN CAMINO</text>
-        <g stroke={INK} strokeWidth="4" strokeLinecap="round">
-          <line x1="416" y1="802" x2="520" y2="802" />
-          <line x1="416" y1="822" x2="490" y2="822" />
-        </g>
-      </g>
-    </g>
-  </svg>
+    </HeroLayer>
+  </div>
 );

@@ -356,7 +356,6 @@
 .gl-loose-photo {
   position: absolute;
   overflow: hidden;
-  will-change: translate;
 }
 .gl-loose-photo img {
   width: 100%;
@@ -384,8 +383,11 @@
   border-radius: 50%;
   border: 14px solid var(--brand-white);
   box-shadow: 0 30px 50px rgba(60, 20, 5, 0.28);
+  overflow: visible;
 }
 .gl-loose-photo.is-3 img {
+  border-radius: 50%;
+  will-change: transform;
   animation: gs-plate 40s linear infinite;
 }
 .gl .gl-loose h2 {
@@ -527,15 +529,25 @@
   margin-top: 16px;
 }
 .gs-loja {
-  display: block;
+  position: relative;
   width: 100%;
-  height: auto;
-  /* Las casas que giran salen un poco del dibujo; la franja las recorta, no el svg */
-  overflow: visible;
+  aspect-ratio: 640 / 540;
 }
+/* El circulo completo, con el centro debajo del borde de la franja */
 .gs-loja-ground {
-  transform-origin: 320px 510px;
+  position: absolute;
+  left: -17.1875%;
+  top: 14.8148%;
+  width: 134.375%;
+  height: auto;
+  will-change: transform;
   animation: gs-ground 60s linear infinite;
+}
+.gs-loja-rider {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 @keyframes gs-ground {
   to { transform: rotate(-360deg); }
@@ -610,7 +622,6 @@
   border: 2px solid var(--brand-black);
   box-shadow: 14px 18px 0 color-mix(in srgb, var(--brand-black) 14%, transparent);
   text-align: center;
-  will-change: translate;
 }
 .gl-paper.is-1 { right: 38%; top: 5%; transform: rotate(7deg); z-index: 1; }
 .gl-paper.is-2 { right: 5%; top: 24%; transform: rotate(-3deg); z-index: 2; }
@@ -677,6 +688,25 @@
 }
 .gl .gl-footer-cols {
   align-self: start;
+}
+
+/* ---------- Fotos y hojas que se mueven distinto al bajar ----------
+   Lo hace el navegador junto con el scroll (sin JavaScript), por eso no tiembla.
+   Donde no existe animation-timeline quedan quietas */
+@media (min-width: 861px) and (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    [data-drift] {
+      animation: gl-drift linear both;
+      animation-timeline: view();
+    }
+  }
+}
+[data-drift="slow"] { --drift: 46px; }
+[data-drift="fast"] { --drift: -38px; }
+[data-drift="far"] { --drift: 70px; }
+@keyframes gl-drift {
+  from { translate: 0 var(--drift); }
+  to { translate: 0 calc(-1 * var(--drift)); }
 }
 
 @media (prefers-reduced-motion: reduce) {
