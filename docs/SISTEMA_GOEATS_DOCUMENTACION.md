@@ -489,6 +489,15 @@ SISTEMA ACTUAL (Single-Tenant)          SISTEMA NUEVO (Multi-Tenant SaaS)
 
 ## 📝 Historial de Cambios
 
+### v0.7.40 — 2026-11-25 (Scroll fluido en la landing)
+El scroll se trababa. Se midió con el procesador 4 veces más lento, alternando la versión publicada y la nueva en el mismo equipo: en computadora de 45–50 a 95–142 cuadros por segundo; en tamaño de celular (6 veces más lento) de 46–76 a 72–112.
+- **Dibujos animados:** el navegador los redibujaba enteros en cada cuadro. Ahora se congelan mientras se baja y cuando no se ven (`utils/useCalmScroll.ts`, reemplaza a `useParallax.ts`).
+- **Escena del inicio y pizza:** cada parte que se mueve es su propio svg, así la mueve la tarjeta gráfica.
+- **Fotos y hojas que se mueven al bajar:** ahora con CSS (`animation-timeline: view()`), sin JavaScript. Donde el navegador no lo tiene, quedan quietas.
+- **Cabecera:** es fija y está en su propio componente; antes empujaba la página y volvía a dibujarla entera.
+- **Se quitó el efecto de aparecer al bajar** en la landing. La plantilla tampoco lo tiene.
+- Probado en la copia aislada: 63 de 63. No se probó en celular real.
+
 ### v0.7.39 — 2026-11-25 (Landing con la estructura y el movimiento de la plantilla)
 Solo la página de inicio. Sin dependencias nuevas, sin cambios en el servidor. Textos, dibujos y fotos propios.
 - **Cabecera:** se esconde al bajar y vuelve al subir o con el teclado. Debajo sale una barra amarilla de promo (Envío $0 con Plus) que se puede cerrar (`sessionStorage`).
