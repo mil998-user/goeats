@@ -29,6 +29,7 @@ export async function emitSale(req: Request, res: Response, next: NextFunction) 
       docTypeId, // ID from DocumentType model
       fiscalEmit, // boolean: emit electronic invoice
       tip, // Optional tip for the waiter: charged with the bill, outside the invoice and the IVA
+      discountReason,
     } = req.body;
 
     if (!orderId || !docTypeId || !paymentMethod) {
@@ -95,6 +96,14 @@ export async function emitSale(req: Request, res: Response, next: NextFunction) 
     const saleTotal = roundMoney(order.total - disc);
     if (saleTotal < 0) {
       return res.status(400).json({ success: false, message: "El descuento no puede superar el total del pedido" });
+    }
+    // A discount says why, and the cashier can give up to 20 % (provisional, 25 nov)
+    const reasonText = typeof discountReason === "string" ? discountReason.replace(/\s+/g, " ").trim().slice(0, 80) : "";
+    if (disc > 0 && reasonText.length < 3) {
+      return res.status(400).json({ success: false, message: "Escribe el motivo del descuento." });
+    }
+    if (disc > 0 && req.user?.role === "CAJERO" && disc > roundMoney(order.total * 0.2)) {
+      return res.status(403).json({ success: false, message: `El cajero puede descontar hasta el 20 % ($${(order.total * 0.2).toFixed(2)}). Para más, pídeselo al dueño.` });
     }
 
     // The register always records the amount owed, never what the browser says
@@ -217,6 +226,14 @@ export async function emitSale(req: Request, res: Response, next: NextFunction) 
       }
     }
 
+    // The discount lowers the base and the IVA in the same proportion: the invoice adds up to what was charged
+    const itemsTotal = order.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    if (disc > 0 && itemsTotal > 0) {
+      const factor = Math.max(0, (itemsTotal - disc) / itemsTotal);
+      subtotalTaxTotal *= factor;
+      subtotal0Total *= factor;
+      taxValueTotal *= factor;
+    }
     subtotalTaxTotal = roundMoney(subtotalTaxTotal);
     subtotal0Total = roundMoney(subtotal0Total);
     taxValueTotal = roundMoney(taxValueTotal);
@@ -310,6 +327,8 @@ export async function emitSale(req: Request, res: Response, next: NextFunction) 
           status: targetStatus,
           paymentStatus: "APPROVED",
           tipAmount: tipValue,
+          // The reason of the discount stays with the order
+          comments: disc > 0 ? [order.comments, `Descuento $${disc.toFixed(2)}: ${reasonText}`].filter(Boolean).join(" · ").slice(0, 191) : undefined,
         },
       });
 

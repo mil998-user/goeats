@@ -4,7 +4,15 @@ import { prisma } from "../../config/database";
 // The owner picks whole days of Ecuador (UTC-5, no daylight saving).
 // "2026-11-08" goes from 00:00 to 23:59:59.999 of that day there, whatever the server time zone
 const ECUADOR_OFFSET = "-05:00";
-const DAY_RE = /^d{4}-d{2}-d{2}$/;
+const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const ECUADOR_MS = 5 * 60 * 60 * 1000;
+// Midnight of Ecuador of the day of `date`
+function ecuadorDayStart(date: Date) {
+  const local = new Date(date.getTime() - ECUADOR_MS);
+  return new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()) + ECUADOR_MS);
+}
+
 function getReportRange(startDate: unknown, endDate: unknown) {
   const day = (value: unknown, time: string) =>
     typeof value === "string" && DAY_RE.test(value) ? new Date(`${value}T${time}${ECUADOR_OFFSET}`) : null;
@@ -20,12 +28,9 @@ export async function getDashboardData(req: Request, res: Response, next: NextFu
       return res.status(400).json({ success: false, message: "Restaurant context is required" });
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(today.getDate() - 7);
-    sevenDaysAgo.setHours(0, 0, 0, 0);
+    // Days of Ecuador, whatever the time zone of the server (Render runs in UTC)
+    const today = ecuadorDayStart(new Date());
+    const sevenDaysAgo = new Date(today.getTime() - 7 * DAY_MS);
 
     // 1. Sales last 7 days
     const salesLast7Days = await prisma.sale.findMany({
@@ -60,20 +65,20 @@ export async function getDashboardData(req: Request, res: Response, next: NextFu
 
     // Group sales by day of week
     const salesByDay = Array.from({ length: 7 }).map((_, i) => {
-      const d = new Date();
-      d.setDate(today.getDate() - i);
-      const dayOfWeek = d.getDay(); // 0 (Sun) - 6 (Sat)
-      const dayName = d.toLocaleDateString("es-EC", { weekday: "short" });
+      const start = new Date(today.getTime() - i * DAY_MS);
+      const d = new Date(start.getTime() + 12 * 60 * 60 * 1000);
+      const dayOfWeek = new Date(start.getTime() - ECUADOR_MS).getUTCDay(); // 0 (Sun) - 6 (Sat)
+      const dayName = d.toLocaleDateString("es-EC", { weekday: "short", timeZone: "America/Guayaquil" });
 
       const total = salesLast7Days
-        .filter((s) => s.createdAt.toDateString() === d.toDateString())
+        .filter((s) => s.createdAt >= start && s.createdAt.getTime() < start.getTime() + DAY_MS)
         .reduce((sum, s) => sum + s.total, 0);
 
       return {
         dayName,
         dayOfWeek,
-        dateString: d.toLocaleDateString("es-EC"),
-        total,
+        dateString: d.toLocaleDateString("es-EC", { timeZone: "America/Guayaquil" }),
+        total: Math.round(total * 100) / 100,
       };
     }).reverse();
 
@@ -91,9 +96,7 @@ export async function getDashboardData(req: Request, res: Response, next: NextFu
     });
 
     // 3. Key indicators (today's sales, active tables count, pending orders)
-    const todaySales = salesLast7Days
-      .filter((s) => s.createdAt.toDateString() === today.toDateString())
-      .reduce((sum, s) => sum + s.total, 0);
+    const todaySales = Math.round(salesLast7Days.filter((s) => s.createdAt >= today).reduce((sum, s) => sum + s.total, 0) * 100) / 100;
 
     const activeTablesCount = await prisma.table.count({
       where: { diningArea: { restaurantId }, status: "OCCUPIED" },
@@ -179,11 +182,22 @@ export async function getSalesReport(req: Request, res: Response, next: NextFunc
     const totalDiscounts = sales.reduce((sum, s) => sum + s.discount, 0);
     const totalTaxes = sales.reduce((sum, s) => sum + s.taxValue, 0);
 
+    // Online orders already delivered never go through the register: they count too, apart (same as the dashboard)
+    const online = await prisma.order.findMany({
+      where: { restaurantId, status: "DELIVERED", sale: null, type: { in: ["DELIVERY", "TAKEOUT"] }, updatedAt: { gte: start, lte: end } },
+      select: { total: true, shippingCost: true },
+    });
+    const onlineTotal = Math.round(online.reduce((sum, o) => sum + Math.max(0, o.total - (o.shippingCost || 0)), 0) * 100) / 100;
+
     return res.status(200).json({
       success: true,
       summary: {
-        count: sales.length,
-        total: totalSales,
+        count: sales.length + online.length,
+        registerCount: sales.length,
+        registerTotal: Math.round(totalSales * 100) / 100,
+        onlineCount: online.length,
+        onlineTotal,
+        total: Math.round((totalSales + onlineTotal) * 100) / 100,
         discounts: totalDiscounts,
         taxes: totalTaxes,
       },

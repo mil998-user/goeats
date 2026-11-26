@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { prisma } from "../../config/database";
 import { safeDeleteUser } from "../auth/user-cleanup.service";
-import { parseAmount, simulatedPaymentsAllowed } from "../../utils/validation";
+import { getReceiptError, parseAmount, simulatedPaymentsAllowed } from "../../utils/validation";
 import { notifySaasOrder, notifyWallet } from "../../config/realtime";
 
 const PURCHASE_ROLE_BY_TYPE: Record<string, string> = {
@@ -92,8 +92,14 @@ export async function submitSaaSOrder(req: Request, res: Response, next: NextFun
 
     // If Transfer -> Keep PENDING, await SuperAdmin approval
     if (paymentMethod === "TRANSFER") {
-      if (!paymentReceipt) {
-        return res.status(400).json({ success: false, message: "Comprobante de transferencia requerido" });
+      const receiptError = getReceiptError(paymentReceipt);
+      if (receiptError) {
+        return res.status(400).json({ success: false, message: receiptError });
+      }
+      // One request at a time: the same receipt can't be sent twice while it waits
+      const waiting = await prisma.saaSOrder.count({ where: { userId, type, status: "PENDING" } });
+      if (waiting > 0) {
+        return res.status(409).json({ success: false, message: "Ya tienes una solicitud esperando revisión. Espera la respuesta antes de enviar otra." });
       }
 
       const order = await prisma.saaSOrder.create({
@@ -247,11 +253,11 @@ export async function rejectSaaSOrder(req: Request, res: Response, next: NextFun
       return res.status(400).json({ success: false, message: "El pedido ya no está pendiente" });
     }
 
-    // Mark order as REJECTED
-    await prisma.saaSOrder.update({
-      where: { id: orderId },
-      data: { status: "REJECTED" }
-    });
+    // Only once, even if someone approves it at the same time
+    const marked = await prisma.saaSOrder.updateMany({ where: { id: orderId, status: "PENDING" }, data: { status: "REJECTED" } });
+    if (marked.count === 0) {
+      return res.status(400).json({ success: false, message: "El pedido ya no está pendiente" });
+    }
 
     notifySaasOrder(req.app.get("io"), order.userId);
     return res.status(200).json({ success: true, message: "Pedido rechazado con éxito." });
@@ -516,6 +522,7 @@ export async function deleteCustomer(req: Request, res: Response, next: NextFunc
 
     const result = await safeDeleteUser(customerId);
     if (!result.success) {
+      if (result.blocked) return res.status(409).json({ success: false, message: result.error });
       return res.status(500).json({ success: false, message: result.error || "Error al eliminar el cliente" });
     }
 

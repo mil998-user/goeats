@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import { env } from "../config/env";
 import { prisma } from "../config/database";
 import { Role } from "@prisma/client";
-import { isTokenRevoked } from "../config/session";
+import { isTokenRevoked, passwordStamp } from "../config/session";
 
 export interface TokenPayload {
   userId: number;
@@ -26,18 +26,32 @@ declare global {
 // Role and restaurant come from the database, so changes apply right away.
 export async function getSessionUser(token: string): Promise<TokenPayload | null> {
   if (isTokenRevoked(token)) return null;
-  let decoded: TokenPayload;
+  let decoded: TokenPayload & { pv?: string };
   try {
-    decoded = jwt.verify(token, env.JWT_SECRET) as TokenPayload;
+    decoded = jwt.verify(token, env.JWT_SECRET) as TokenPayload & { pv?: string };
   } catch (error) {
     return null;
   }
 
   const user = await prisma.user.findUnique({
     where: { id: decoded.userId },
-    select: { id: true, username: true, role: true, restaurantId: true, isActive: true },
+    select: {
+      id: true,
+      username: true,
+      role: true,
+      restaurantId: true,
+      isActive: true,
+      password: true,
+      restaurant: { select: { isActive: true, status: true } },
+    },
   });
   if (!user || !user.isActive) return null;
+  // The password changed after this session started
+  if (decoded.pv !== passwordStamp(user.password)) return null;
+  // A rejected, suspended or switched-off restaurant closes the sessions of all its people
+  if (user.restaurant && (!user.restaurant.isActive || user.restaurant.status === "REJECTED" || user.restaurant.status === "SUSPENDED")) {
+    return null;
+  }
 
   return { userId: user.id, username: user.username, role: user.role, restaurantId: user.restaurantId };
 }

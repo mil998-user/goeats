@@ -207,6 +207,12 @@ export async function logManualMovement(req: Request, res: Response, next: NextF
     const parsedSupplyId = parseInt(supplyId, 10);
     const parsedQuantity = parseFloat(quantity);
     const parsedCostUnit = costUnit ? parseFloat(costUnit) : 0.0;
+    if (!Number.isFinite(parsedQuantity) || parsedQuantity <= 0 || parsedQuantity > 100000) {
+      return res.status(400).json({ success: false, message: "La cantidad debe ser mayor a 0." });
+    }
+    if (!Number.isFinite(parsedCostUnit) || parsedCostUnit < 0) {
+      return res.status(400).json({ success: false, message: "El costo no puede ser negativo." });
+    }
 
     // Verify supply belongs to restaurant
     const supply = await prisma.supply.findFirst({

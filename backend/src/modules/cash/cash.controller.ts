@@ -199,8 +199,16 @@ export async function openCashSession(req: Request, res: Response, next: NextFun
       return res.status(404).json({ success: false, message: "Cash register not found" });
     }
 
+    // One open session per register, even with two clicks at the same time: the register row is locked
+    const opened = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM CashRegister WHERE id = ${parsedRegisterId} FOR UPDATE`;
+      const already = await tx.cashSession.findFirst({ where: { cashRegisterId: parsedRegisterId, status: "OPEN" }, select: { id: true } });
+      if (already) return null;
+      return tx.cashSession.create({ data: { cashRegisterId: parsedRegisterId, userId, openAmount: parsedOpenAmount, status: "OPEN" }, select: { id: true } });
+    });
+
     // Check if the register already has an open session (e.g. opened by Admin/Owner)
-    const existingRegisterSession = await prisma.cashSession.findFirst({
+    const existingRegisterSession = opened ? null : await prisma.cashSession.findFirst({
       where: { cashRegisterId: parsedRegisterId, status: "OPEN" },
       include: {
         cashRegister: true,
@@ -217,13 +225,8 @@ export async function openCashSession(req: Request, res: Response, next: NextFun
       });
     }
 
-    const session = await prisma.cashSession.create({
-      data: {
-        cashRegisterId: parsedRegisterId,
-        userId,
-        openAmount: parsedOpenAmount,
-        status: "OPEN",
-      },
+    const session = await prisma.cashSession.findUniqueOrThrow({
+      where: { id: opened!.id },
       include: {
         cashRegister: true,
         user: { select: { id: true, name: true, role: true } },
@@ -263,13 +266,40 @@ export async function closeCashSession(req: Request, res: Response, next: NextFu
       return res.status(400).json({ success: false, message: "closeAmount must be a valid amount" });
     }
 
+    // The cashier closes their own session; the owner can close any of the restaurant
+    const ownOnly = req.user?.role === "CAJERO";
+    const sessionWhere = {
+      id: sessionId ? parseInt(sessionId, 10) : undefined,
+      status: "OPEN",
+      cashRegister: { restaurantId },
+      ...(ownOnly ? { userId } : {}),
+    };
+    const mine = !sessionId && !ownOnly ? await prisma.cashSession.findFirst({ where: { ...sessionWhere, userId }, select: { id: true } }) : null;
+
+    // Orders still to charge are not lost, but the cashier should know before closing
+    if (req.body?.force !== true) {
+      const unpaid = await prisma.order.count({
+        where: {
+          restaurantId,
+          status: { notIn: ["CANCELLED", "DELIVERED"] },
+          type: { in: ["DINE_IN", "TAKEOUT"] },
+          sale: null,
+          paymentStatus: { not: "APPROVED" },
+          payphoneTransactionId: null,
+        },
+      });
+      if (unpaid > 0) {
+        return res.status(409).json({
+          success: false,
+          openOrders: unpaid,
+          message: `Hay ${unpaid} pedido${unpaid === 1 ? "" : "s"} de mesa o para llevar sin cobrar. ¿Cerrar la caja igual?`,
+        });
+      }
+    }
+
     // Find the active open session
     const session = await prisma.cashSession.findFirst({
-      where: {
-        id: sessionId ? parseInt(sessionId, 10) : undefined,
-        status: "OPEN",
-        cashRegister: { restaurantId },
-      },
+      where: mine ? { id: mine.id } : sessionWhere,
       orderBy: { openTime: "desc" },
       include: {
         sales: { include: { order: { select: { tipAmount: true } } } },
@@ -297,6 +327,9 @@ export async function closeCashSession(req: Request, res: Response, next: NextFu
 
     const systemAmount = session.openAmount + cashSalesTotal + cashTipsTotal - expensesTotal + incomesTotal;
 
+    // Closed only once, even with two clicks
+    const closing = await prisma.cashSession.updateMany({ where: { id: session.id, status: "OPEN" }, data: { status: "CLOSING" } });
+    if (closing.count === 0) return res.status(409).json({ success: false, message: "Esta caja ya se cerró." });
     const updatedSession = await prisma.cashSession.update({
       where: { id: session.id },
       data: {
@@ -356,14 +389,10 @@ export async function createExpense(req: Request, res: Response, next: NextFunct
       return res.status(400).json({ success: false, message: "Amount, description, and category are required" });
     }
 
-    // Must have an active open session in this restaurant
-    const session = await prisma.cashSession.findFirst({
-      where: {
-        status: "OPEN",
-        cashRegister: { restaurantId },
-      },
-      orderBy: { openTime: "desc" },
-    });
+    // The session of whoever registers it; otherwise the newest open one of the restaurant
+    const session =
+      (await prisma.cashSession.findFirst({ where: { status: "OPEN", userId, cashRegister: { restaurantId } }, orderBy: { openTime: "desc" } })) ??
+      (await prisma.cashSession.findFirst({ where: { status: "OPEN", cashRegister: { restaurantId } }, orderBy: { openTime: "desc" } }));
     if (!session) {
       return res.status(400).json({ success: false, message: "You must have an open cash session to register expenses" });
     }
@@ -401,14 +430,10 @@ export async function createIncome(req: Request, res: Response, next: NextFuncti
       return res.status(400).json({ success: false, message: "Amount and description are required" });
     }
 
-    // Must have an active open session in this restaurant
-    const session = await prisma.cashSession.findFirst({
-      where: {
-        status: "OPEN",
-        cashRegister: { restaurantId },
-      },
-      orderBy: { openTime: "desc" },
-    });
+    // The session of whoever registers it; otherwise the newest open one of the restaurant
+    const session =
+      (await prisma.cashSession.findFirst({ where: { status: "OPEN", userId, cashRegister: { restaurantId } }, orderBy: { openTime: "desc" } })) ??
+      (await prisma.cashSession.findFirst({ where: { status: "OPEN", cashRegister: { restaurantId } }, orderBy: { openTime: "desc" } }));
     if (!session) {
       return res.status(400).json({ success: false, message: "You must have an open cash session to register incomes" });
     }

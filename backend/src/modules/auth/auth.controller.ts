@@ -20,6 +20,13 @@ import {
 } from "../../utils/validation";
 import { saveProfileAddressAsDefault } from "../orders/addresses.controller";
 
+// One account per e-mail: someone else's address can't be used to register
+async function isEmailTaken(email: unknown) {
+  if (typeof email !== "string" || !email.trim()) return false;
+  return !!(await prisma.user.findFirst({ where: { email: email.trim() }, select: { id: true } }));
+}
+const EMAIL_TAKEN = "Ya existe una cuenta con este correo. Inicia sesión o usa otro correo.";
+
 // One account per person: an ID and the RUC built from it count as the same person
 async function isIdentificationTaken(identification: string, exceptUserId?: number) {
   const taken = await prisma.user.findFirst({
@@ -84,14 +91,26 @@ export async function login(req: Request, res: Response, next: NextFunction) {
     loginByUser.reset(userKey);
     loginByConnection.forgive(connectionKey);
 
-    // Verificación de aprobación según el rol
+    // Pending, rejected and suspended accounts each get their own message
     if (!user.isActive) {
       if (user.role === Role.MOTORIZADO) {
-        return res.status(403).json({
-          success: false,
-          pendingApproval: true,
-          message: "Tu cuenta de repartidor está en proceso de revisión por el equipo administrativo. Te notificaremos por correo electrónico una vez aprobada.",
-        });
+        // Someone who already worked was approved before: now the account is paused
+        const worked = await prisma.walletTransaction.count({ where: { userId: user.id } });
+        return res.status(403).json(
+          worked > 0
+            ? { success: false, message: "Tu cuenta de repartidor está suspendida. Comunícate con GoEats para saber el motivo." }
+            : {
+                success: false,
+                pendingApproval: true,
+                message: "Tu cuenta de repartidor está en revisión. Te avisaremos por correo cuando la aprueben.",
+              }
+        );
+      }
+      if (user.role === Role.RESTAURANT_OWNER && user.restaurant?.status === "REJECTED") {
+        return res.status(403).json({ success: false, message: "La solicitud de tu restaurante fue rechazada por el equipo administrativo." });
+      }
+      if (user.role === Role.RESTAURANT_OWNER && user.restaurant && user.restaurant.status !== "PENDING" && user.restaurant.status !== "UNDER_REVIEW") {
+        return res.status(403).json({ success: false, message: "Tu cuenta está suspendida. Comunícate con GoEats." });
       }
       if (user.role === Role.RESTAURANT_OWNER) {
         return res.status(403).json({
@@ -106,6 +125,13 @@ export async function login(req: Request, res: Response, next: NextFunction) {
       });
     }
 
+    // Everyone of a rejected, suspended or switched-off restaurant stays out
+    if (user.restaurant && user.role !== Role.RESTAURANT_OWNER && (!user.restaurant.isActive || ["REJECTED", "SUSPENDED", "PENDING", "UNDER_REVIEW"].includes(user.restaurant.status))) {
+      return res.status(403).json({ success: false, message: "Tu restaurante no está activo en GoEats. Pregúntale al dueño." });
+    }
+    if (user.role === Role.RESTAURANT_OWNER && user.restaurant && (user.restaurant.status === "SUSPENDED" || !user.restaurant.isActive) && user.restaurant.status !== "PENDING" && user.restaurant.status !== "UNDER_REVIEW") {
+      return res.status(403).json({ success: false, message: "Tu restaurante está suspendido o desactivado. Comunícate con GoEats." });
+    }
     if (user.role === Role.RESTAURANT_OWNER && user.restaurant) {
       if (user.restaurant.status === "PENDING" || user.restaurant.status === "UNDER_REVIEW") {
         return res.status(403).json({
@@ -123,12 +149,15 @@ export async function login(req: Request, res: Response, next: NextFunction) {
     }
 
     // Generate JWT token
-    const token = signSessionToken({
+    const token = signSessionToken(
+      {
         userId: user.id,
         username: user.username,
         role: user.role,
         restaurantId: user.restaurantId,
-      });
+      },
+      user.password
+    );
 
     const rawPreferences = (user as any).preferencesJson;
     let preferences: string[] = [];
@@ -188,7 +217,10 @@ export async function registerOwner(req: Request, res: Response, next: NextFunct
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({ where: { username } });
     if (existingUser) {
-      return res.status(400).json({ success: false, message: "Username is already taken" });
+      return res.status(400).json({ success: false, message: "El nombre de usuario ya está en uso." });
+    }
+    if (await isEmailTaken(email)) {
+      return res.status(409).json({ success: false, message: EMAIL_TAKEN });
     }
 
     // Check if restaurant slug already exists
@@ -320,7 +352,8 @@ export async function registerStaff(req: Request, res: Response, next: NextFunct
       return res.status(400).json({ success: false, message: accountError });
     }
 
-    if (!Object.values(Role).includes(role) || role === Role.SUPER_ADMIN || role === Role.RESTAURANT_OWNER) {
+    // Restaurant staff only: drivers and customers have their own sign-up and approval
+    if (![Role.CAJERO, Role.PRODUCCION, Role.MOZO].includes(role)) {
       return res.status(400).json({ success: false, message: "Invalid staff role specified" });
     }
 
@@ -331,7 +364,10 @@ export async function registerStaff(req: Request, res: Response, next: NextFunct
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({ where: { username } });
     if (existingUser) {
-      return res.status(400).json({ success: false, message: "Username is already taken" });
+      return res.status(400).json({ success: false, message: "El nombre de usuario ya está en uso." });
+    }
+    if (await isEmailTaken(email)) {
+      return res.status(409).json({ success: false, message: EMAIL_TAKEN });
     }
 
     const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
@@ -429,6 +465,7 @@ export async function updateProfile(req: Request, res: Response, next: NextFunct
       phone,
       cedula,
       password,
+      currentPassword,
       deliveryAddress,
       deliveryLatitude,
       deliveryLongitude,
@@ -454,6 +491,10 @@ export async function updateProfile(req: Request, res: Response, next: NextFunct
       const passwordError = getPasswordError(password);
       if (passwordError) {
         return res.status(400).json({ success: false, message: passwordError });
+      }
+      // Whoever has the open session must also know the current password
+      if (typeof currentPassword !== "string" || !(await bcrypt.compare(currentPassword, existingUser.password))) {
+        return res.status(400).json({ success: false, message: "La contraseña actual no es correcta." });
       }
     }
 
@@ -523,8 +564,17 @@ export async function updateProfile(req: Request, res: Response, next: NextFunct
       }
     }
 
+    // The other sessions close; this one gets a new token
+    const newToken = dataToUpdate.password
+      ? signSessionToken(
+          { userId: updatedUser.id, username: updatedUser.username, role: updatedUser.role, restaurantId: updatedUser.restaurantId },
+          updatedUser.password
+        )
+      : undefined;
+
     return res.status(200).json({
       success: true,
+      token: newToken,
       message: "Perfil actualizado exitosamente",
       user: {
         id: updatedUser.id,
@@ -586,6 +636,9 @@ export async function registerCustomer(req: Request, res: Response, next: NextFu
     if (existingUser) {
       return res.status(400).json({ success: false, message: "El nombre de usuario ya está en uso." });
     }
+    if (await isEmailTaken(email)) {
+      return res.status(409).json({ success: false, message: EMAIL_TAKEN });
+    }
 
     const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
@@ -603,12 +656,15 @@ export async function registerCustomer(req: Request, res: Response, next: NextFu
       },
     });
 
-    const token = signSessionToken({
+    const token = signSessionToken(
+      {
         userId: user.id,
         username: user.username,
         role: user.role,
         restaurantId: user.restaurantId,
-      });
+      },
+      user.password
+    );
 
     if (user.email) {
       NotificationService.notifyCustomerWelcome({ id: user.id, name: user.name, email: user.email })
@@ -670,6 +726,9 @@ export async function registerDriver(req: Request, res: Response, next: NextFunc
     const existingUser = await prisma.user.findUnique({ where: { username } });
     if (existingUser) {
       return res.status(400).json({ success: false, message: "El nombre de usuario ya está en uso." });
+    }
+    if (await isEmailTaken(email)) {
+      return res.status(409).json({ success: false, message: EMAIL_TAKEN });
     }
 
     const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
@@ -958,6 +1017,10 @@ export async function socialLogin(req: Request, res: Response, next: NextFunctio
       include: { restaurant: true },
     });
 
+    if (user && !user.isActive) {
+      return res.status(403).json({ success: false, message: "Tu cuenta se encuentra suspendida. Comunícate con GoEats." });
+    }
+
     if (user && user.role !== Role.CUSTOMER) {
       return res.status(403).json({
         success: false,
@@ -999,12 +1062,15 @@ export async function socialLogin(req: Request, res: Response, next: NextFunctio
       NotificationService.notifyCustomerWelcome({ id: user.id, name: user.name, email: user.email }).catch(() => {});
     }
 
-    const token = signSessionToken({
+    const token = signSessionToken(
+      {
         userId: user.id,
         username: user.username,
         role: user.role,
         restaurantId: user.restaurantId,
-      });
+      },
+      user.password
+    );
 
     const rawPreferences = (user as any).preferencesJson;
     let preferences: string[] = [];
@@ -1140,6 +1206,7 @@ export async function deleteMyAccount(req: Request, res: Response, next: NextFun
 
     const result = await safeDeleteUser(userId);
     if (!result.success) {
+      if (result.blocked) return res.status(409).json({ success: false, message: result.error });
       return res.status(500).json({ success: false, message: result.error || "Error al eliminar la cuenta" });
     }
 

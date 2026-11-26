@@ -12,8 +12,13 @@ interface SessionPayload {
   restaurantId: number | null;
 }
 
-export function signSessionToken(payload: SessionPayload): string {
-  return jwt.sign(payload, env.JWT_SECRET, { expiresIn: SESSION_TTL_SECONDS });
+// Short fingerprint of the password hash: changing the password closes every other session
+export function passwordStamp(passwordHash: string) {
+  return crypto.createHash("sha256").update(passwordHash).digest("hex").slice(0, 16);
+}
+
+export function signSessionToken(payload: SessionPayload, passwordHash: string): string {
+  return jwt.sign({ ...payload, pv: passwordStamp(passwordHash) }, env.JWT_SECRET, { expiresIn: SESSION_TTL_SECONDS });
 }
 
 // Tokens cerrados con "Cerrar sesion". Se guarda solo el hash y se borra al vencer.
