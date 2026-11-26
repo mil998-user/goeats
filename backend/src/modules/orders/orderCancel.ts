@@ -14,6 +14,7 @@ export const CANCELLED_BY = {
   customer: "Cancelado por el cliente",
   admin: "Cancelado por GoEats",
   timeout: "El local no respondió a tiempo",
+  noDriver: "Ningún motorizado lo tomó a tiempo",
 } as const;
 
 const REASON_MIN = 5;

@@ -7,8 +7,6 @@ import { cancelOrderAndNotify } from "./orderCancel";
 // Without an answer: the restaurant is warned, and later the order is cancelled so the customer isn't left waiting.
 export const ACCEPT_WARN_MIN = 5;
 export const ACCEPT_LIMIT_MIN = 15;
-// Older orders are left alone: they are from before this rule, or the server was off
-const IGNORE_AFTER_MIN = 6 * 60;
 const WATCH_EVERY_MS = 30 * 1000;
 const MINUTE = 60 * 1000;
 
@@ -22,7 +20,8 @@ export async function checkWaitingOrders(io: Server | undefined, now = Date.now(
       paymentStatus: { not: "APPROVED" },
       // Only orders sent by customers: the register doesn't wait for itself
       customerId: { not: null },
-      createdAt: { lte: new Date(now - ACCEPT_WARN_MIN * MINUTE), gte: new Date(now - IGNORE_AFTER_MIN * MINUTE) },
+      // Old ones too: an order nobody accepted must not stay open forever
+      createdAt: { lte: new Date(now - ACCEPT_WARN_MIN * MINUTE) },
     },
     take: 100,
   });

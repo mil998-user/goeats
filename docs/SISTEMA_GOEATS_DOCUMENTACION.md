@@ -489,6 +489,14 @@ SISTEMA ACTUAL (Single-Tenant)          SISTEMA NUEVO (Multi-Tenant SaaS)
 
 ## 📝 Historial de Cambios
 
+### v0.8.1 — 2026-11-26 (Pedidos viejos vencen)
+Sin migraciones. Al probar se vio que un pedido listo de la revisión anterior seguía ofreciéndose al motorizado.
+- Un domicilio **listo que nadie toma en 60 min** se cancela solo con el motivo "Ningún motorizado lo tomó a tiempo" (`NO_DRIVER_LIMIT_MIN` en `delivery/dispatch.ts`, revisión cada 30 s). Si estaba pagado queda "devolución pendiente". Avisa al cliente y al local.
+- El motorizado ya no ve esos pedidos aunque el vigilante todavía no los cancele (`freshReadyWhere`). Los viejos sin hora de listo usan su último cambio.
+- Los pedidos que esperan que la caja acepte ya no se ignoran por tener más de 6 h: también se cancelan.
+- **Al publicar:** los pedidos viejos que sigan abiertos en la base se cancelarán solos en el primer minuto.
+- Pruebas en la copia aislada: vencimiento 7 de 7 (revisado a mano el texto con tildes), pedidos del repositorio 7 de 7.
+
 ### v0.8.0 — 2026-11-25 noche (Lógica para la revisión del 27: respuestas de los ingenieros)
 Sin migraciones ni librerías nuevas. Plan en `practicas/PLAN_UNICO_GOEATS.md` (privado).
 

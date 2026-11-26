@@ -3,6 +3,7 @@ import { OrderStatus, OrderType } from "@prisma/client";
 import type { Server } from "socket.io";
 import { prisma } from "../../config/database";
 import { getShippingDistanceKm } from "../../utils/shipping";
+import { cancelOrderAndNotify } from "../orders/orderCancel";
 
 // A driver location older than this doesn't count as "nearby"
 export const LOCATION_FRESH_MS = 10 * 60 * 1000;
@@ -118,10 +119,37 @@ export async function warnDelayedDeliveries(io: Server | undefined, now = new Da
   }
 }
 
+// A ready order nobody took in this time is cancelled: the food is no longer good to deliver
+export const NO_DRIVER_LIMIT_MIN = 60;
+
+// Ready orders still inside the limit (old ones without readyAt use their last change)
+export function freshReadyWhere(now = new Date()) {
+  const since = new Date(now.getTime() - NO_DRIVER_LIMIT_MIN * 60 * 1000);
+  return { OR: [{ readyAt: { gt: since } }, { readyAt: null, updatedAt: { gt: since } }] };
+}
+
+export async function expireUnclaimedDeliveries(io: Server | undefined, now = new Date()) {
+  const since = new Date(now.getTime() - NO_DRIVER_LIMIT_MIN * 60 * 1000);
+  const expired = await prisma.order.findMany({
+    where: {
+      type: OrderType.DELIVERY,
+      status: OrderStatus.READY,
+      deliveryDriverId: null,
+      OR: [{ readyAt: { lte: since } }, { readyAt: null, updatedAt: { lte: since } }],
+    },
+    take: 50,
+  });
+  for (const order of expired) {
+    await cancelOrderAndNotify(io, order, { by: "noDriver", reason: `pasó más de ${NO_DRIVER_LIMIT_MIN} min listo sin motorizado` });
+  }
+  return expired.length;
+}
+
 export function startDispatchWatcher(io: Server) {
   const timer = setInterval(() => {
     warnDelayedDeliveries(io).catch((error) => console.error("[Dispatch] Could not warn delayed orders:", error));
     alertUnassignedDeliveries(io).catch((error) => console.error("[Dispatch] Could not check unassigned orders:", error));
+    expireUnclaimedDeliveries(io).catch((error) => console.error("[Dispatch] Could not expire old orders:", error));
   }, WATCH_EVERY_MS);
   timer.unref();
   return timer;

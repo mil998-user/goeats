@@ -9,7 +9,7 @@ import { canCoverOrder, getCashHoldback, getInsufficientBalanceMessage, refundTa
 import { calculateShippingCost, getShippingDistanceKm } from "../../utils/shipping";
 import { readReason } from "./deliveryIncidents.controller";
 import { getDriverAverages } from "../ratings/ratings.controller";
-import { getDispatchView } from "./dispatch";
+import { freshReadyWhere, getDispatchView } from "./dispatch";
 import { notifyDeliveryBoard, notifyWallet } from "../../config/realtime";
 import { cancelOrderAndNotify, CANCEL_REASON_MESSAGE, readCancelReason } from "../orders/orderCancel";
 
@@ -176,6 +176,8 @@ export async function getAvailableOrders(req: Request, res: Response, next: Next
         type: "DELIVERY",
         status: OrderStatus.READY,
         deliveryDriverId: null,
+        // Old ready orders are not offered: the watcher cancels them
+        ...freshReadyWhere(),
       },
       include: {
         restaurant: {
