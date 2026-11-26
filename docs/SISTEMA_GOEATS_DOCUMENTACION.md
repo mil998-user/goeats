@@ -489,6 +489,63 @@ SISTEMA ACTUAL (Single-Tenant)          SISTEMA NUEVO (Multi-Tenant SaaS)
 
 ## 📝 Historial de Cambios
 
+### v0.8.0 — 2026-11-25 noche (Lógica para la revisión del 27: respuestas de los ingenieros)
+Sin migraciones ni librerías nuevas. Plan en `practicas/PLAN_UNICO_GOEATS.md` (privado).
+
+**Reglas de los ingenieros (25 nov)**
+- **Caja acepta:** efectivo y transferencia quedan "Por aceptar" hasta que la caja (o el dueño) acepta o rechaza con motivo. Con tarjeta va directo a cocina. Cocina no ve ni mueve lo que no está aceptado. Aviso a los 5 min; a los 15 se cancela solo (`orders/acceptanceWatcher.ts`; ignora pedidos de más de 6 h).
+- **El dinero va al local:** en transferencia o tarjeta el motorizado paga $0 en el local y no cobra al cliente. Al entregar recibe envío, bono y propina. Los pedidos tomados antes del cambio terminan con la regla vieja.
+- **Más de 2 pedidos:** hasta 2 sin preguntar; desde el 3.º confirma; tope 4. Se cuenta con el motorizado bloqueado en la base.
+- **Cliente que no sale:** el caso queda con su valor y el admin lo marca "resuelto entre motorizados".
+- **Pedir sin mesero:** interruptor por local, también para el admin.
+
+**Cancelar** (`orders/orderCancel.ts`)
+- Siempre con motivo, guardado en el pedido y enviado al cliente.
+- El cliente cancela mientras la caja no acepte (`POST /orders/customer/:id/cancel`).
+- El mesero solo cancela mesas. Nadie del local cancela lo que el motorizado ya retiró; GoEats sí.
+- Transferencia cancelada queda "devolución pendiente" y la caja la marca como devuelta (`POST /orders/:id/refund-done`).
+
+**Motorizado y admin** (`delivery.controller.ts`)
+- No se entrega sin "Empezar traslado".
+- Sin código, lo que se le debe queda retenido hasta que el admin elija **Pagar** o **No pagar**. La cartera lo muestra.
+- Admin: **Asignar** un pedido listo, **Liberar** (antes de retirar) y **Cancelar**; nueva lista "En camino".
+- No se pausa a un motorizado con pedidos.
+- Liquidar paga solo lo libre, sin lo apartado ni lo retenido.
+- "Por cobrar a los locales": comisión, envío y propina de lo pagado al local.
+- Comisión por local (0 a 50 %) que solo cambia el admin.
+- A los 10 min sin motorizado se avisa al local, al cliente y al admin.
+
+**Accesos y datos**
+- Personal solo cajero, cocina y mesero.
+- Cambiar la clave pide la actual y cierra las demás sesiones (huella de la clave en el token). **Al publicar, todos deberán volver a entrar una vez.**
+- Domicilio y para llevar exigen sesión de cliente. Domicilio exige ubicación y hasta 10 km (`DELIVERY_MAX_KM`).
+- Comprobantes: solo foto y hasta 5 MB; ya no viajan en el aviso de pedido nuevo.
+- Caja: cantidades enteras de 1 a 99; domicilio con dirección y teléfono; envío de $0 a $20.
+- Editar: no pisa el estado; el mesero solo edita mesas; un domicilio listo no se edita.
+- No se borra una cuenta con pedido en curso o con saldo.
+- Inventario con cantidad mayor a 0.
+- Descuento con motivo, tope de 20 % para el cajero e IVA sobre lo cobrado.
+- Caja: una sesión por caja aunque se abra dos veces a la vez; gastos e ingresos a la sesión de quien los registra; cerrar avisa los pedidos sin cobrar.
+- Mensajes distintos para cuenta pendiente, rechazada y suspendida.
+- Correo único al registrarse; usuario de hasta 30 letras.
+- Local rechazado, suspendido o apagado: su gente no entra.
+- Rechazar un local exige motivo.
+
+**Reportes y Plus**
+- Los reportes ya filtran por fecha (la expresión no tenía `\d`) y usan el día de Ecuador.
+- El reporte suma caja y pedidos en línea, separados, igual que el panel.
+- Plus vence según el plan comprado (`utils/plus.ts`, revisión cada hora); el dado a mano no vence.
+- Recargas y Plus: una solicitud pendiente a la vez; aprobar y rechazar no chocan.
+
+**Pruebas (copia aislada, MySQL 9.4):** reglas nuevas 61 de 61, pantallas 18 de 18 (390 y 1366 px), repositorio 19 de 19 (reservas por separado por el límite de registros), reservas dobles 30 de 30, mesas 48 de 48.
+
+**Pendiente:**
+- Recuperar la clave por correo.
+- Confirmación del total si cambia el precio (el servidor ya lo admite; la pantalla no lo envía).
+- Admin que se actualiza solo.
+- Pestañas del cliente.
+- Sin probar en celular real ni contra TiDB.
+
 ### v0.7.41 — 2026-11-25 (Landing con las medidas de la plantilla)
 Se midieron tamaños y espacios de la plantilla y se ajustó la landing. Solo diseño de la página de inicio.
 - **Letra de los títulos:** la del manual (TAN St Canard) va primero. Como faltan sus archivos, se usa una negra y angosta que ya trae cada equipo (Impact en Windows; otra parecida en iPhone y Android), sin descargar nada. Los títulos anchos usan More Sugar primero. Al llegar las fuentes hay que revisar los tamaños.
