@@ -5,12 +5,13 @@ import { NotificationService } from "../notifications/notification.service";
 import { parseAmount } from "../../utils/validation";
 import { AttemptLimiter, sendTooManyAttempts } from "../../utils/rateLimit";
 import { getTakeCommissionDescription, hideDeliveryPin } from "../../utils/orderRules";
-import { canCoverOrder, getCashHoldback, getInsufficientBalanceMessage } from "./deliveryWallet";
+import { canCoverOrder, getCashHoldback, getInsufficientBalanceMessage, refundTakeCommission } from "./deliveryWallet";
 import { calculateShippingCost, getShippingDistanceKm } from "../../utils/shipping";
 import { readReason } from "./deliveryIncidents.controller";
 import { getDriverAverages } from "../ratings/ratings.controller";
 import { getDispatchView } from "./dispatch";
 import { notifyDeliveryBoard, notifyWallet } from "../../config/realtime";
+import { cancelOrderAndNotify, CANCEL_REASON_MESSAGE, readCancelReason } from "../orders/orderCancel";
 
 const MAX_PIN_ATTEMPTS = 5;
 const pinAttempts = new AttemptLimiter(MAX_PIN_ATTEMPTS, 15 * 60 * 1000);
@@ -41,6 +42,7 @@ async function getPendingCashHoldback(db: Db, driverId: number) {
 const round2 = (value: number) => Math.round(value * 100) / 100;
 
 interface PayoutOrder {
+  paymentMethodString?: string | null;
   total: number;
   shippingCost: number | null;
   tipAmount?: number | null;
@@ -56,6 +58,11 @@ export function isPlusDelivery(order: { shippingCost: number | null; customer?: 
 
 // One place for the money of a delivery: what the restaurant gets, what GoEats keeps and what the driver earns.
 // On a Plus order the customer paid no shipping, so GoEats pays the driver the fare of the real distance.
+// Paid by card or transfer: the money went straight to the restaurant (engineers, 25 nov)
+export function isPrepaidOrder(order: { paymentMethodString?: string | null }) {
+  return !!order.paymentMethodString && order.paymentMethodString !== "CASH";
+}
+
 export function getDeliveryPayout(
   order: PayoutOrder,
   rate: { basePrice: number; pricePerKm: number; plusDriverBonus: number },
@@ -64,7 +71,9 @@ export function getDeliveryPayout(
   const commissionPct = order.restaurant?.deliveryCommissionPercentage ?? 10.0;
   const foodSubtotal = Math.max(0, order.total - (order.shippingCost || 0));
   const appCommission = round2((foodSubtotal * commissionPct) / 100);
-  const providerPay = round2(foodSubtotal - appCommission);
+  // Already paid to the restaurant: the driver pays nothing there
+  const prepaid = isPrepaidOrder(order);
+  const providerPay = prepaid ? 0 : round2(foodSubtotal - appCommission);
   const fare = isPlusOrder
     ? calculateShippingCost(
         rate,
@@ -73,8 +82,65 @@ export function getDeliveryPayout(
     : order.shippingCost || 0;
   const bonus = isPlusOrder ? rate.plusDriverBonus || 0 : rate.plusDriverBonus || 0.10;
   const tip = round2(order.tipAmount || 0);
-  return { commissionPct, foodSubtotal, appCommission, providerPay, fare, bonus, tip, driverEarnings: round2(fare + bonus) };
+  return { commissionPct, foodSubtotal, appCommission, providerPay, fare, bonus, tip, prepaid, driverEarnings: round2(fare + bonus) };
 }
+
+type SettleOrder = PayoutOrder & {
+  id: number;
+  providerPayAmount: number | null;
+  driverEarnings: number | null;
+  customer?: { isPlus?: boolean | null } | null;
+};
+
+// What a delivered order moves in the driver's wallet. One rule for delivery and for the later review
+export function getSettlement(order: SettleOrder, rate: { basePrice: number; pricePerKm: number; plusDriverBonus: number }) {
+  const isPlusOrder = isPlusDelivery({ shippingCost: order.shippingCost, customer: order.customer });
+  const payout = getDeliveryPayout(order, rate, isPlusOrder);
+  // The amounts fixed when the driver took the order are kept
+  const providerPay = order.providerPayAmount ?? payout.providerPay;
+  const driverEarnings = order.driverEarnings ?? payout.driverEarnings;
+  const tip = payout.tip;
+
+  if ((order.paymentMethodString || "CASH") === "CASH") {
+    // He paid the restaurant and collected the total: what he kept beyond his earnings belongs to GoEats
+    const debt = round2(order.total - providerPay - driverEarnings);
+    if (debt > 0) {
+      return {
+        amount: -debt,
+        type: "CASH_COLLECTED_DEDUCTION",
+        description: `Comisión retenida de Pedido #${order.id} (Cobró $${order.total.toFixed(2)} efectivo, pagó $${providerPay.toFixed(2)} en local, ganancia $${driverEarnings.toFixed(2)})`,
+      };
+    }
+    return {
+      amount: Math.abs(debt),
+      type: isPlusOrder ? "PLUS_BONUS" : "DELIVERY_EARNINGS",
+      description: isPlusOrder
+        ? `Tarifa y bono GoEats Plus por Pedido #${order.id} (ganancia $${driverEarnings.toFixed(2)} menos la comisión retenida en efectivo)`
+        : `Bono neto a favor por Pedido #${order.id}`,
+    };
+  }
+  // Paid online: what he paid at the restaurant (only in orders taken before 25 nov), his earnings and the tip
+  return {
+    amount: round2(providerPay + driverEarnings + tip),
+    type: isPlusOrder ? "PLUS_BONUS" : "DELIVERY_EARNINGS",
+    description: `${providerPay > 0 ? `Reembolso de compra ($${providerPay.toFixed(2)}) + ` : ""}Ganancia flete ($${driverEarnings.toFixed(2)})${tip > 0 ? ` + Propina ($${tip.toFixed(2)})` : ""} de Pedido #${order.id} (pagado al local)`,
+  };
+}
+
+// Money held back from deliveries without the customer's code, until GoEats reviews them
+export async function getHeldAmount(driverId: number) {
+  const pending = await prisma.deliveryIncident.findMany({
+    where: { driverId, type: "NO_CODE", reviewedAt: null },
+    select: { order: { include: { customer: { select: { isPlus: true } }, restaurant: true } } },
+  });
+  if (pending.length === 0) return 0;
+  const rate = await getActiveDeliveryRate();
+  return round2(pending.reduce((sum, row) => sum + Math.max(0, getSettlement(row.order, rate).amount), 0));
+}
+
+// Orders a driver may carry at once: 2 without asking, up to 4 if he says he can (engineers, 25 nov)
+export const DRIVER_FREE_LIMIT = 2;
+export const DRIVER_MAX_ORDERS = 4;
 
 // Get active config or default fallback values
 export async function getActiveDeliveryRate() {
@@ -162,6 +228,7 @@ export async function getAvailableOrders(req: Request, res: Response, next: Next
           openToAllAt: dispatch.openToAllAt,
         },
         financialBreakdown: {
+          prepaid: payout.prepaid,
           foodSubtotal: payout.foodSubtotal,
           commissionPct: payout.commissionPct,
           appCommissionFromProvider: payout.appCommission,
@@ -185,20 +252,45 @@ export async function getAvailableOrders(req: Request, res: Response, next: Next
   }
 }
 
+class DriverLimitError extends Error {
+  constructor(message: string, public needsConfirm: boolean) {
+    super(message);
+  }
+}
+
 // 2. Take/Accept an order
 export async function takeOrder(req: Request, res: Response, next: NextFunction) {
+  const orderId = parseInt(req.params.id, 10);
+  const userId = req.user?.userId;
+  if (isNaN(orderId) || !userId) {
+    return res.status(400).json({ success: false, message: "Invalid parameters" });
+  }
+  return performTake(req, res, next, orderId, userId, { admin: false, acceptExtra: req.body?.acceptExtra === true });
+}
+
+// Administrator: gives a ready order to a driver (skips the nearby-first wait)
+export async function assignOrderToDriver(req: Request, res: Response, next: NextFunction) {
+  const orderId = parseInt(req.params.id, 10);
+  const driverId = parseInt(req.body?.driverId, 10);
+  if (isNaN(orderId) || isNaN(driverId)) {
+    return res.status(400).json({ success: false, message: "Elige el pedido y el motorizado." });
+  }
+  return performTake(req, res, next, orderId, driverId, { admin: true, acceptExtra: true });
+}
+
+async function performTake(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+  orderId: number,
+  userId: number,
+  options: { admin: boolean; acceptExtra: boolean }
+) {
   try {
-    const orderId = parseInt(req.params.id, 10);
-    const userId = req.user?.userId;
-
-    if (isNaN(orderId) || !userId) {
-      return res.status(400).json({ success: false, message: "Invalid parameters" });
-    }
-
     // Load driver
     const driver = await prisma.user.findUnique({ where: { id: userId } });
-    if (!driver || driver.role !== Role.MOTORIZADO) {
-      return res.status(403).json({ success: false, message: "Only delivery drivers can accept orders" });
+    if (!driver || driver.role !== Role.MOTORIZADO || !driver.isActive) {
+      return res.status(403).json({ success: false, message: options.admin ? "Ese motorizado no está activo." : "Only delivery drivers can accept orders" });
     }
 
     // Verify order is still available
@@ -226,7 +318,7 @@ export async function takeOrder(req: Request, res: Response, next: NextFunction)
     const rate = await getActiveDeliveryRate();
 
     // The same rule as the list: during the wait, only drivers inside the radius can take it
-    if (!getDispatchView(order, driver, rate).visible) {
+    if (!options.admin && !getDispatchView(order, driver, rate).visible) {
       return res.status(403).json({
         success: false,
         message: `Este pedido es primero para los motorizados a ${rate.dispatchRadiusKm} km del local. Se abre para todos en menos de un minuto.`,
@@ -247,6 +339,15 @@ export async function takeOrder(req: Request, res: Response, next: NextFunction)
       // Lock the driver first: assigning the order reads the driver row for the foreign key,
       // and two takes at once by the same driver ended in a database deadlock (error 500)
       await tx.$queryRaw`SELECT id FROM User WHERE id = ${userId} FOR UPDATE`;
+
+      // How many he already carries, counted with the driver locked: two taps at once can't pass the limit
+      const carrying = await tx.order.count({ where: { deliveryDriverId: userId, status: OrderStatus.DELIVERING } });
+      if (carrying >= DRIVER_MAX_ORDERS) {
+        throw new DriverLimitError(`${options.admin ? "Ese motorizado ya lleva" : "Ya llevas"} ${carrying} pedidos, el máximo. Entrega alguno antes de tomar otro.`, false);
+      }
+      if (carrying >= DRIVER_FREE_LIMIT && !options.acceptExtra) {
+        throw new DriverLimitError(`Ya llevas ${carrying} pedidos. ¿Puedes llevar uno más a tiempo?`, true);
+      }
 
       const current = await tx.user.findUnique({ where: { id: userId }, select: { walletBalance: true } });
       const required = round2(takeCost + orderHoldback + (await getPendingCashHoldback(tx, userId)));
@@ -288,10 +389,13 @@ export async function takeOrder(req: Request, res: Response, next: NextFunction)
 
       return tx.order.findUnique({ where: { id: orderId } });
     }).catch((error) => {
-      if (error instanceof InsufficientBalanceError) return error;
+      if (error instanceof InsufficientBalanceError || error instanceof DriverLimitError) return error;
       throw error;
     });
 
+    if (updatedOrder instanceof DriverLimitError) {
+      return res.status(409).json({ success: false, needsConfirm: updatedOrder.needsConfirm, message: updatedOrder.message });
+    }
     if (updatedOrder instanceof InsufficientBalanceError) {
       return res.status(400).json({ success: false, message: getInsufficientBalanceMessage(updatedOrder.required, updatedOrder.balance) });
     }
@@ -310,6 +414,8 @@ export async function takeOrder(req: Request, res: Response, next: NextFunction)
       });
     }
     notifyWallet(io, userId);
+    // The driver sees at once the order the administrator gave him
+    if (options.admin) io?.to(`user-${userId}`).emit("delivery-board-changed");
 
     // Disparar correos a Repartidor y Cliente (Sección 2 y 3 del Plan)
     (async () => {
@@ -336,7 +442,11 @@ export async function takeOrder(req: Request, res: Response, next: NextFunction)
       }
     })();
 
-    return res.status(200).json({ success: true, message: "Pedido tomado con éxito", order: hideDeliveryPin(updatedOrder) });
+    return res.status(200).json({
+      success: true,
+      message: options.admin ? `Pedido asignado a ${driver.name}.` : "Pedido tomado con éxito",
+      order: hideDeliveryPin(updatedOrder),
+    });
   } catch (error) {
     next(error);
   }
@@ -370,6 +480,10 @@ export async function completeDelivery(req: Request, res: Response, next: NextFu
 
     if (!order) {
       return res.status(404).json({ success: false, message: "Pedido activo no encontrado" });
+    }
+    // You can't deliver what you never picked up
+    if (!order.pickedUpAt) {
+      return res.status(409).json({ success: false, message: "Primero presiona \"Empezar traslado\" cuando retires la comida del local." });
     }
 
     // Validación de PIN de entrega estilo PedidosYa / Uber Eats
@@ -408,55 +522,13 @@ export async function completeDelivery(req: Request, res: Response, next: NextFu
         });
       }
 
-      // Money of this delivery. The amounts fixed when the driver took the order are kept
-      const payout = getDeliveryPayout(order, rate, isPlusOrder);
-      const providerPay = order.providerPayAmount ?? payout.providerPay;
-      const driverEarnings = order.driverEarnings ?? payout.driverEarnings;
-      const tip = payout.tip;
-      const paymentMethod = order.paymentMethodString || "CASH";
-      const credit = async (amount: number, type: string, description: string) => {
-        if (Math.abs(amount) < 0.005) return;
-        await tx.user.update({ where: { id: userId }, data: { walletBalance: { increment: amount } } });
-        await tx.walletTransaction.create({ data: { userId, amount, type, description } });
-      };
-
-      if (paymentMethod === "CASH") {
-        // ==========================================
-        // CASO EFECTIVO (MODELO ZAYMI):
-        // - Motorizado pagó en local: providerPay
-        // - Motorizado cobró al cliente: order.total + propina; la propina es suya y queda en su bolsillo
-        // - Lo que retuvo de más pertenece a GoEats: (order.total - providerPay) - driverEarnings
-        // - En Plus el cliente no pagó envío: GoEats le debe la tarifa y el bono, menos la comisión que retuvo
-        // ==========================================
-        const cashInHand = order.total - providerPay;
-        const netDebtOwedToApp = round2(cashInHand - driverEarnings);
-        if (netDebtOwedToApp > 0) {
-          await credit(
-            -netDebtOwedToApp,
-            "CASH_COLLECTED_DEDUCTION",
-            `Comisión retenida de Pedido #${orderId} (Cobró $${order.total.toFixed(2)} efectivo, pagó $${providerPay.toFixed(2)} en local, ganancia $${driverEarnings.toFixed(2)})`
-          );
-        } else if (netDebtOwedToApp < 0) {
-          await credit(
-            Math.abs(netDebtOwedToApp),
-            isPlusOrder ? "PLUS_BONUS" : "DELIVERY_EARNINGS",
-            isPlusOrder
-              ? `Tarifa y bono GoEats Plus por Pedido #${orderId} (ganancia $${driverEarnings.toFixed(2)} menos la comisión retenida en efectivo)`
-              : `Bono neto a favor por Pedido #${orderId}`
-          );
-        }
-      } else {
-        // ==========================================
-        // CASO EN LÍNEA (TARJETA / TRANSFERENCIA):
-        // - El cliente ya pagó, el motorizado no cobra nada
-        // - Se le devuelve lo que pagó en el local, más su ganancia y la propina
-        // ==========================================
-        const totalCredit = round2(providerPay + driverEarnings + tip);
-        await credit(
-          totalCredit,
-          isPlusOrder ? "PLUS_BONUS" : "DELIVERY_EARNINGS",
-          `Reembolso de compra ($${providerPay.toFixed(2)}) + Ganancia flete ($${driverEarnings.toFixed(2)})${tip > 0 ? ` + Propina ($${tip.toFixed(2)})` : ""} de Pedido #${orderId} (Pago en Línea${isPlusOrder ? ", GoEats Plus" : ""})`
-        );
+      // Money of this delivery. Without the code, what GoEats owes him waits for the review;
+      // what he owes GoEats (cash) is taken at once
+      const settlement = getSettlement(order, rate);
+      const held = withoutPin && settlement.amount > 0;
+      if (!held && Math.abs(settlement.amount) >= 0.005) {
+        await tx.user.update({ where: { id: userId }, data: { walletBalance: { increment: settlement.amount } } });
+        await tx.walletTransaction.create({ data: { userId, amount: settlement.amount, type: settlement.type, description: settlement.description } });
       }
 
       return tx.order.findUnique({ where: { id: orderId } });
@@ -485,7 +557,11 @@ export async function completeDelivery(req: Request, res: Response, next: NextFu
       ).catch((e) => console.warn("[Email] Error customer order delivered:", e));
     }
 
-    return res.status(200).json({ success: true, message: "Pedido entregado correctamente", order: hideDeliveryPin(updatedOrder) });
+    return res.status(200).json({
+      success: true,
+      message: withoutPin ? "Entregado sin código. Tu pago queda en revisión de GoEats." : "Pedido entregado correctamente",
+      order: hideDeliveryPin(updatedOrder),
+    });
   } catch (error) {
     next(error);
   }
@@ -596,6 +672,7 @@ export async function getDriverActiveOrders(req: Request, res: Response, next: N
 
     const enrichedOrders = orders.map((order) => {
       const payout = getDeliveryPayout(order, rate, false);
+      const prepaid = payout.prepaid;
       const { commissionPct, foodSubtotal, bonus } = payout;
       const appCommission = order.appCommissionFromProvider ?? payout.appCommission;
       const providerPay = order.providerPayAmount ?? payout.providerPay;
@@ -607,6 +684,7 @@ export async function getDriverActiveOrders(req: Request, res: Response, next: N
         ...safeOrder,
         requiresPin: !!deliveryPin,
         financialBreakdown: {
+          prepaid,
           foodSubtotal,
           commissionPct,
           appCommissionFromProvider: appCommission,
@@ -647,6 +725,7 @@ export async function getDriverWalletHistory(req: Request, res: Response, next: 
     const rate = await getActiveDeliveryRate();
     // Cash of orders on the way that belongs to GoEats: part of the balance is already spoken for
     const reserved = await getPendingCashHoldback(prisma, userId);
+    const held = await getHeldAmount(userId);
     const required = round2(rate.costPerOrder + reserved);
     const canTakeOrders = canCoverOrder(balance, required);
 
@@ -654,6 +733,7 @@ export async function getDriverWalletHistory(req: Request, res: Response, next: 
       success: true,
       walletBalance: balance,
       reservedBalance: reserved,
+      heldAmount: held,
       costPerOrder: rate.costPerOrder,
       canTakeOrders,
       blockedMessage: canTakeOrders ? null : getInsufficientBalanceMessage(required, balance),
@@ -770,6 +850,17 @@ export async function toggleDriverActive(req: Request, res: Response, next: Next
     }
 
     const newActiveState = isActive !== undefined ? !!isActive : !driver.isActive;
+
+    // Nobody is paused with orders in his hands: first they are released or reassigned
+    if (!newActiveState) {
+      const carrying = await prisma.order.findMany({ where: { deliveryDriverId: driver.id, status: OrderStatus.DELIVERING }, select: { id: true } });
+      if (carrying.length > 0) {
+        return res.status(409).json({
+          success: false,
+          message: `Lleva ${carrying.length === 1 ? "el pedido" : "los pedidos"} ${carrying.map((o) => `#${o.id}`).join(", ")}. Libéralos o reasígnalos en "En camino" antes de pausarlo.`,
+        });
+      }
+    }
 
     const updated = await prisma.user.update({
       where: { id: driver.id },
@@ -909,25 +1000,16 @@ export async function settleDriverBalance(req: Request, res: Response, next: Nex
       return res.status(404).json({ success: false, message: "Conductor no encontrado" });
     }
 
-    if (targetDriver.walletBalance <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "El conductor no tiene saldo a favor pendiente de liquidar.",
-      });
-    }
-
-    const amountToSettle = targetDriver.walletBalance;
-
+    // Only what is free: the cash still on the way and the money under review stay
+    const held = await getHeldAmount(targetDriver.id);
     const result = await prisma.$transaction(async (tx) => {
-      // Reset positive balance to 0
-      const updatedUser = await tx.user.update({
-        where: { id: targetDriver.id },
-        data: {
-          walletBalance: 0.0,
-        },
-      });
-
-      const txLog = await tx.walletTransaction.create({
+      await tx.$queryRaw`SELECT id FROM User WHERE id = ${targetDriver.id} FOR UPDATE`;
+      const fresh = await tx.user.findUniqueOrThrow({ where: { id: targetDriver.id }, select: { walletBalance: true } });
+      const reserved = await getPendingCashHoldback(tx, targetDriver.id);
+      const amountToSettle = round2(fresh.walletBalance - reserved);
+      if (amountToSettle <= 0) return null;
+      const updatedUser = await tx.user.update({ where: { id: targetDriver.id }, data: { walletBalance: { decrement: amountToSettle } } });
+      await tx.walletTransaction.create({
         data: {
           userId: targetDriver.id,
           amount: -amountToSettle,
@@ -935,9 +1017,13 @@ export async function settleDriverBalance(req: Request, res: Response, next: Nex
           description: note || `Liquidación de corte (Transferencia bancaria al repartidor: $${amountToSettle.toFixed(2)})`,
         },
       });
-
-      return { updatedUser, txLog };
+      return { updatedUser, amountToSettle };
     });
+    if (!result) {
+      return res.status(400).json({ success: false, message: "El conductor no tiene saldo libre para liquidar." });
+    }
+    const amountToSettle = result.amountToSettle;
+    void held;
 
     notifyWallet(req.app.get("io"), targetDriver.id);
 
@@ -1036,6 +1122,129 @@ export async function updateDriverLocation(req: Request, res: Response, next: Ne
       orderId: targetOrderId,
       order: updatedOrder && hideDeliveryPin(updatedOrder),
     });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// ==========================================
+// ADMINISTRATOR: orders on the way, release, cancel, what restaurants owe
+// ==========================================
+
+// Orders on the way: who carries them, since when and the last location
+export async function getInProgressDeliveries(req: Request, res: Response, next: NextFunction) {
+  try {
+    const now = Date.now();
+    const orders = await prisma.order.findMany({
+      where: { type: "DELIVERY", status: OrderStatus.DELIVERING },
+      orderBy: { updatedAt: "asc" },
+      take: 100,
+      select: {
+        id: true,
+        total: true,
+        pickedUpAt: true,
+        updatedAt: true,
+        paymentMethodString: true,
+        restaurant: { select: { name: true } },
+        deliveryDriver: { select: { id: true, name: true, phone: true, lastLocationAt: true } },
+      },
+    });
+    return res.status(200).json({
+      success: true,
+      orders: orders.map((order) => ({
+        ...order,
+        minutes: Math.max(0, Math.floor((now - order.updatedAt.getTime()) / 60000)),
+        locationMinutes: order.deliveryDriver?.lastLocationAt ? Math.floor((now - order.deliveryDriver.lastLocationAt.getTime()) / 60000) : null,
+      })),
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// Before pickup, the order goes back to the list and the driver gets his commission back
+export async function releaseDelivery(req: Request, res: Response, next: NextFunction) {
+  try {
+    const orderId = parseInt(req.params.id, 10);
+    const reason = readCancelReason(req.body?.reason);
+    if (!reason) return res.status(400).json({ success: false, message: CANCEL_REASON_MESSAGE });
+    const order = await prisma.order.findFirst({ where: { id: orderId, type: "DELIVERY", status: OrderStatus.DELIVERING } });
+    if (!order || !order.deliveryDriverId) return res.status(404).json({ success: false, message: "Ese pedido no está en camino." });
+    if (order.pickedUpAt) {
+      return res.status(409).json({ success: false, message: "El motorizado ya retiró la comida. Solo se puede cancelar." });
+    }
+    const driverId = order.deliveryDriverId;
+    const done = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM User WHERE id = ${driverId} FOR UPDATE`;
+      const claimed = await tx.order.updateMany({
+        where: { id: orderId, deliveryDriverId: driverId, status: OrderStatus.DELIVERING, pickedUpAt: null },
+        data: { status: OrderStatus.READY, deliveryDriverId: null, driverLat: null, driverLng: null, providerPayAmount: null, driverEarnings: null, appCommissionFromProvider: null },
+      });
+      if (claimed.count === 0) return false;
+      await refundTakeCommission(tx, orderId, driverId, `Devolución por liberar el Pedido #${orderId}`);
+      await tx.deliveryIncident.create({
+        data: { orderId, driverId, type: "ADMIN", reason: `Liberado por GoEats: ${reason}`, reviewedAt: new Date(), reviewedById: req.user?.userId ?? null },
+      });
+      return true;
+    });
+    if (!done) return res.status(409).json({ success: false, message: "El pedido cambió. Actualiza la pantalla." });
+    const io = req.app.get("io");
+    notifyDeliveryBoard(io);
+    notifyWallet(io, driverId);
+    io?.to(`restaurant-${order.restaurantId}`).to(`order-${orderId}`).emit("order-status-updated", { orderId, status: OrderStatus.READY, driverName: null });
+    return res.status(200).json({ success: true, message: "Pedido liberado. Ya lo puede tomar otro motorizado." });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// Any delivery not finished yet, at any step
+export async function cancelDeliveryAsAdmin(req: Request, res: Response, next: NextFunction) {
+  try {
+    const orderId = parseInt(req.params.id, 10);
+    const reason = readCancelReason(req.body?.reason);
+    if (!reason) return res.status(400).json({ success: false, message: CANCEL_REASON_MESSAGE });
+    const order = await prisma.order.findFirst({
+      where: { id: orderId, status: { notIn: [OrderStatus.DELIVERED, OrderStatus.CANCELLED] } },
+      include: { sale: { select: { id: true } } },
+    });
+    if (!order) return res.status(404).json({ success: false, message: "Ese pedido ya terminó." });
+    if (order.sale) return res.status(409).json({ success: false, message: "Ese pedido ya se cobró en caja." });
+    const cancelled = await cancelOrderAndNotify(req.app.get("io"), order, { by: "admin", reason });
+    if (!cancelled) return res.status(409).json({ success: false, message: "El pedido cambió. Actualiza la pantalla." });
+    return res.status(200).json({ success: true, message: "Pedido cancelado." });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// What each restaurant owes GoEats for deliveries paid straight to it: commission, shipping and tip
+export async function getRestaurantBalances(req: Request, res: Response, next: NextFunction) {
+  try {
+    const day = (value: unknown, time: string) =>
+      typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(`${value}T${time}-05:00`) : null;
+    const start = day(req.query.from, "00:00:00.000") ?? new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const end = day(req.query.to, "23:59:59.999") ?? new Date();
+    const orders = await prisma.order.findMany({
+      where: {
+        type: "DELIVERY",
+        status: OrderStatus.DELIVERED,
+        paymentMethodString: { in: ["TRANSFER", "CARD"] },
+        updatedAt: { gte: start, lte: end },
+      },
+      select: { restaurantId: true, appCommissionFromProvider: true, shippingCost: true, tipAmount: true, restaurant: { select: { name: true } } },
+    });
+    const byRestaurant = new Map<number, { restaurantId: number; name: string; orders: number; commission: number; shipping: number; tips: number; total: number }>();
+    for (const order of orders) {
+      const row = byRestaurant.get(order.restaurantId) ?? { restaurantId: order.restaurantId, name: order.restaurant.name, orders: 0, commission: 0, shipping: 0, tips: 0, total: 0 };
+      row.orders += 1;
+      row.commission = round2(row.commission + (order.appCommissionFromProvider || 0));
+      row.shipping = round2(row.shipping + (order.shippingCost || 0));
+      row.tips = round2(row.tips + (order.tipAmount || 0));
+      row.total = round2(row.commission + row.shipping + row.tips);
+      byRestaurant.set(order.restaurantId, row);
+    }
+    return res.status(200).json({ success: true, from: start, to: end, restaurants: [...byRestaurant.values()].sort((a, b) => b.total - a.total) });
   } catch (error) {
     next(error);
   }

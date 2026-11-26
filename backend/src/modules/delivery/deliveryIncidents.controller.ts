@@ -4,7 +4,8 @@ import { prisma } from "../../config/database";
 import { NotificationService } from "../notifications/notification.service";
 import { hideDeliveryPin, isOrderPaid } from "../../utils/orderRules";
 import { refundTakeCommission } from "./deliveryWallet";
-import { notifyDeliveryBoard } from "../../config/realtime";
+import { notifyDeliveryBoard, notifyWallet } from "../../config/realtime";
+import { getActiveDeliveryRate, getSettlement } from "./delivery.controller";
 
 export const INCIDENT_TYPES = ["PASS", "CANCEL", "NO_SHOW", "NO_CODE"] as const;
 export type IncidentType = (typeof INCIDENT_TYPES)[number];
@@ -234,6 +235,10 @@ export async function getIncidents(req: Request, res: Response, next: NextFuncti
           select: {
             id: true,
             status: true,
+            shippingCost: true,
+            tipAmount: true,
+            driverEarnings: true,
+            providerPayAmount: true,
             total: true,
             paymentMethodString: true,
             paymentStatus: true,
@@ -261,14 +266,42 @@ export async function reviewIncident(req: Request, res: Response, next: NextFunc
       return res.status(400).json({ success: false, message: `La nota no puede pasar de ${REASON_MAX} letras.` });
     }
 
-    const updated = await prisma.deliveryIncident.updateMany({
-      where: { id, reviewedAt: null },
-      data: { reviewedAt: new Date(), reviewedById: req.user?.userId ?? null, reviewNote: rawNote || null },
+    const incident = await prisma.deliveryIncident.findUnique({
+      where: { id },
+      include: { order: { include: { customer: { select: { isPlus: true } }, restaurant: true } } },
     });
-    if (updated.count === 0) {
+    if (!incident || incident.reviewedAt) {
       return res.status(404).json({ success: false, message: "La incidencia no existe o ya fue revisada" });
     }
-    return res.status(200).json({ success: true, message: "Incidencia revisada" });
+
+    // Delivered without the code: GoEats decides whether the driver gets what was held back
+    const decision = req.body?.decision;
+    if (incident.type === "NO_CODE" && decision !== "PAY" && decision !== "NO_PAY") {
+      return res.status(400).json({ success: false, message: "Elige si se le paga o no al motorizado." });
+    }
+    const rate = incident.type === "NO_CODE" ? await getActiveDeliveryRate() : null;
+    const settlement = rate ? getSettlement(incident.order, rate) : null;
+    const label =
+      incident.type === "NO_CODE" ? (decision === "PAY" ? "Pagado" : "No pagado") : incident.type === "NO_SHOW" ? "Resuelto entre motorizados" : "Revisado";
+    const note = [label, rawNote].filter(Boolean).join(": ");
+
+    const done = await prisma.$transaction(async (tx) => {
+      const marked = await tx.deliveryIncident.updateMany({
+        where: { id, reviewedAt: null },
+        data: { reviewedAt: new Date(), reviewedById: req.user?.userId ?? null, reviewNote: note },
+      });
+      if (marked.count === 0) return false;
+      if (decision === "PAY" && settlement && settlement.amount > 0) {
+        await tx.user.update({ where: { id: incident.driverId }, data: { walletBalance: { increment: settlement.amount } } });
+        await tx.walletTransaction.create({
+          data: { userId: incident.driverId, amount: settlement.amount, type: settlement.type, description: `${settlement.description} · aprobado por GoEats` },
+        });
+      }
+      return true;
+    });
+    if (!done) return res.status(404).json({ success: false, message: "La incidencia ya fue revisada" });
+    notifyWallet(req.app.get("io"), incident.driverId);
+    return res.status(200).json({ success: true, message: decision === "PAY" ? "Revisada y pagada al motorizado." : "Incidencia revisada" });
   } catch (error) {
     next(error);
   }

@@ -19,6 +19,11 @@ import {
   getActiveRate,
   settleDriverBalance,
   updateDriverLocation,
+  assignOrderToDriver,
+  cancelDeliveryAsAdmin,
+  getInProgressDeliveries,
+  getRestaurantBalances,
+  releaseDelivery,
 } from "./delivery.controller";
 import {
   startTrip,
@@ -56,6 +61,11 @@ router.post("/settle", authorize([Role.SUPER_ADMIN]), settleDriverBalance);
 router.get("/rates", authorize([Role.SUPER_ADMIN]), getDeliveryRates);
 router.post("/rates", authorize([Role.SUPER_ADMIN]), saveDeliveryRate);
 router.get("/incidents", authorize([Role.SUPER_ADMIN]), getIncidents);
+router.get("/in-progress", authorize([Role.SUPER_ADMIN]), getInProgressDeliveries);
+router.post("/orders/:id(\\d+)/assign", authorize([Role.SUPER_ADMIN]), assignOrderToDriver);
+router.post("/orders/:id(\\d+)/release", authorize([Role.SUPER_ADMIN]), releaseDelivery);
+router.post("/orders/:id(\\d+)/cancel", authorize([Role.SUPER_ADMIN]), cancelDeliveryAsAdmin);
+router.get("/restaurant-balances", authorize([Role.SUPER_ADMIN]), getRestaurantBalances);
 router.get("/unassigned", authorize([Role.SUPER_ADMIN]), getUnassignedDeliveries);
 router.post("/incidents/:id/review", authorize([Role.SUPER_ADMIN]), reviewIncident);
 

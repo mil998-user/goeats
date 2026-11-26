@@ -91,8 +91,36 @@ export async function alertUnassignedDeliveries(io: Server | undefined, now = ne
   return waiting.length;
 }
 
+// After 10 minutes without a driver, the restaurant and the customer are told; GoEats decides what to do
+export const NOBODY_TOOK_MIN = 10;
+const delayWarned = new Set<number>();
+export async function warnDelayedDeliveries(io: Server | undefined, now = new Date()) {
+  const waiting = await prisma.order.findMany({
+    where: {
+      type: OrderType.DELIVERY,
+      status: OrderStatus.READY,
+      deliveryDriverId: null,
+      readyAt: { lte: new Date(now.getTime() - NOBODY_TOOK_MIN * 60 * 1000), gte: new Date(now.getTime() - 6 * 60 * 60 * 1000) },
+    },
+    select: { id: true, restaurantId: true },
+    take: 50,
+  });
+  const ids = new Set(waiting.map((order) => order.id));
+  for (const id of delayWarned) if (!ids.has(id)) delayWarned.delete(id);
+  for (const order of waiting) {
+    if (delayWarned.has(order.id)) continue;
+    delayWarned.add(order.id);
+    const payload = {
+      orderId: order.id,
+      message: `El pedido #${order.id} lleva más de ${NOBODY_TOOK_MIN} min sin motorizado. GoEats ya está buscando uno.`,
+    };
+    io?.to(`restaurant-${order.restaurantId}`).to(`order-${order.id}`).to(ADMIN_ROOM).emit("delivery-delayed", payload);
+  }
+}
+
 export function startDispatchWatcher(io: Server) {
   const timer = setInterval(() => {
+    warnDelayedDeliveries(io).catch((error) => console.error("[Dispatch] Could not warn delayed orders:", error));
     alertUnassignedDeliveries(io).catch((error) => console.error("[Dispatch] Could not check unassigned orders:", error));
   }, WATCH_EVERY_MS);
   timer.unref();
