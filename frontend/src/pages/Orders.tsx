@@ -1,4 +1,4 @@
-import { appConfirm } from "../components/AppDialogs";
+import { appAlert, appConfirm, appPrompt } from "../components/AppDialogs";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiRequest } from "../utils/api";
@@ -126,6 +126,52 @@ export const Orders: React.FC = () => {
     } catch (err) {
       alert(err instanceof Error ? err.message : "No se pudo tomar el pedido.");
       fetchOrders();
+    }
+  };
+
+  const askReason = (text: string) =>
+    appPrompt(`${text}\nEscribe el motivo: lo verá el cliente.`, { placeholder: "Ej. Se nos acabó el pollo", confirmLabel: "Confirmar" });
+
+  // Cash and transfer orders wait for the register (engineers, 25 nov)
+  const handleAccept = async (order: any) => {
+    try {
+      await apiRequest(`/orders/${order.id}/status`, { method: "PUT", body: JSON.stringify({ status: "PREPARING" }) });
+      fetchOrders();
+    } catch (err) {
+      appAlert(err instanceof Error ? err.message : "No se pudo aceptar.");
+    }
+  };
+
+  const handleReject = async (order: any) => {
+    const reason = await askReason(`Rechazar el pedido #${order.id} de ${order.customerName}`);
+    if (!reason) return;
+    try {
+      await apiRequest(`/orders/${order.id}/cancel`, { method: "POST", body: JSON.stringify({ cancelReason: reason }) });
+      fetchOrders();
+    } catch (err) {
+      appAlert(err instanceof Error ? err.message : "No se pudo rechazar.");
+    }
+  };
+
+  const handleCancel = async (order: any) => {
+    const reason = await askReason(`Cancelar el pedido #${order.id}`);
+    if (!reason) return;
+    try {
+      const res = await apiRequest(`/orders/${order.id}/cancel`, { method: "POST", body: JSON.stringify({ cancelReason: reason }) });
+      if (res.order?.paymentStatus === "REFUND_PENDING") appAlert("Pedido cancelado. El cliente ya pagó: devuélvele el dinero y márcalo como devuelto.");
+      fetchOrders();
+    } catch (err) {
+      appAlert(err instanceof Error ? err.message : "No se pudo cancelar.");
+    }
+  };
+
+  const handleRefundDone = async (order: any) => {
+    if (!(await appConfirm(`¿Ya le devolviste $${order.total.toFixed(2)} a ${order.customerName}?`, "Sí, ya devolví"))) return;
+    try {
+      await apiRequest(`/orders/${order.id}/refund-done`, { method: "POST" });
+      fetchOrders();
+    } catch (err) {
+      appAlert(err instanceof Error ? err.message : "No se pudo guardar.");
     }
   };
 
@@ -333,7 +379,12 @@ export const Orders: React.FC = () => {
             const dateStr = new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const badgeStyle = getStatusBadgeStyles(order.status);
             const isUnpaid = order.paymentStatus !== "APPROVED" && !order.payphoneTransactionId;
-            const hasTransferReceipt = order.paymentMethodString === "TRANSFER" && order.paymentReceipt;
+            const hasTransferReceipt = order.paymentMethodString === "TRANSFER" && (order.paymentReceipt || order.hasReceipt);
+            const canManage = user?.role !== "MOZO";
+            const waitsForRegister = order.status === "PENDING" && order.type !== "DINE_IN" && isUnpaid && !hasTransferReceipt;
+            const finished = order.status === "DELIVERED" || order.status === "CANCELLED";
+            const canCancel =
+              !finished && !waitsForRegister && (canManage || order.type === "DINE_IN") && !(order.status === "DELIVERING" && order.pickedUpAt);
 
             return (
               <div
@@ -402,8 +453,11 @@ export const Orders: React.FC = () => {
                     fontWeight: 700,
                     ...badgeStyle
                   }}>
-                    {getStatusText(order.status)}
+                    {order.status === "PENDING" && order.type !== "DINE_IN" && isUnpaid ? "Por aceptar" : getStatusText(order.status)}
                   </span>
+                  {order.status === "CANCELLED" && order.deliveryObservation && (
+                    <span style={{ fontSize: "13px", color: "var(--text-secondary)", maxWidth: "260px", overflowWrap: "anywhere" }}>{order.deliveryObservation}</span>
+                  )}
 
                   {/* Actions buttons panel */}
                   <div style={{ display: "flex", gap: "8px" }}>
@@ -428,7 +482,7 @@ export const Orders: React.FC = () => {
                     {/* Verify Bank Transfer Receipt */}
                     {hasTransferReceipt && isUnpaid && user?.role !== "MOZO" && (
                       <button
-                        onClick={() => setSelectedOrderForReceipt(order)}
+                        onClick={async () => { const full = order.paymentReceipt ? order : (await apiRequest(`/orders/${order.id}`)).order; setSelectedOrderForReceipt(full); }}
                         style={{
                           display: "flex",
                           alignItems: "center",
@@ -491,10 +545,34 @@ export const Orders: React.FC = () => {
                       </button>
                     )}
 
+                    {waitsForRegister && canManage && (
+                      <>
+                        <button type="button" className="glow-btn" style={{ padding: "6px 14px", fontSize: "13px" }} onClick={() => handleAccept(order)}>
+                          Aceptar
+                        </button>
+                        <button type="button" className="secondary-btn" style={{ padding: "6px 14px", fontSize: "13px", color: "var(--danger)" }} onClick={() => handleReject(order)}>
+                          Rechazar
+                        </button>
+                      </>
+                    )}
+
+                    {canCancel && (
+                      <button type="button" className="secondary-btn" style={{ padding: "6px 12px", fontSize: "13px" }} onClick={() => handleCancel(order)}>
+                        Cancelar
+                      </button>
+                    )}
+
                     {order.paymentStatus === "REFUND_PENDING" && (
-                      <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--danger)", alignSelf: "center" }}>
-                        Reembolso pendiente
-                      </span>
+                      canManage ? (
+                        <button type="button" className="secondary-btn" style={{ padding: "6px 12px", fontSize: "13px", color: "var(--danger)" }} onClick={() => handleRefundDone(order)}>
+                          Devolución pendiente: marcar devuelto
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: "13px", fontWeight: 600, color: "var(--danger)", alignSelf: "center" }}>Devolución pendiente</span>
+                      )
+                    )}
+                    {order.paymentStatus === "REFUNDED" && (
+                      <span style={{ fontSize: "13px", fontWeight: 600, alignSelf: "center" }}>Dinero devuelto</span>
                     )}
                   </div>
                 </div>

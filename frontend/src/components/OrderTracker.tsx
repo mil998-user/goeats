@@ -77,7 +77,7 @@ function getTrackerView(order: TrackableOrder, now: number): TrackerView {
 
   switch (order.status) {
     case "PENDING":
-      return { step: 0, progress: at(0, 0.4), title: "Recibimos tu pedido", eta: etaText(kitchenMin + (isDelivery ? ride : 0)), detail: "El local lo confirma en un momento" };
+      return { step: 0, progress: at(0, 0.4), title: "Recibimos tu pedido", eta: etaText(kitchenMin + (isDelivery ? ride : 0)), detail: "Esperando que el local acepte tu pedido" };
     case "PREPARING":
       return {
         step: 1,

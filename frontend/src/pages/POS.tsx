@@ -1,4 +1,4 @@
-import { appConfirm } from "../components/AppDialogs";
+import { appConfirm, appPrompt } from "../components/AppDialogs";
 import { useNow } from "../utils/useNow";
 import { getReservedSoon, getShownReservation, reservationPeople, reservationWhen, type TableReservation } from "../utils/tableReservation";
 import React, { useEffect, useState, useRef } from "react";
@@ -916,7 +916,14 @@ export const POS: React.FC = () => {
         return;
       }
       const totalAmt = Math.round((calculateTotal() + tipValue) * 100) / 100;
+      // A discount always says why (it stays with the order)
+      let discountReason: string | null = null;
+      if ((parseFloat(discount) || 0) > 0) {
+        discountReason = await appPrompt("¿Por qué el descuento?", { placeholder: "Ej. cliente frecuente", confirmLabel: "Cobrar" });
+        if (!discountReason) return;
+      }
       const body = {
+        discountReason,
         orderId: activeOrderId.toString(),
         docTypeId: selectedDocTypeId,
         paymentMethod,

@@ -163,12 +163,20 @@ export const Cash: React.FC = () => {
     if (!(await appConfirm("¿Está seguro de que desea cerrar la sesión de caja actual?"))) return;
     setLoading(true);
     try {
-      const res = await apiRequest("/cash/sessions/close", {
-        method: "POST",
-        body: JSON.stringify({
-          closeAmount: parseFloat(closeAmount)
-        })
-      });
+      const close = (force: boolean) =>
+        apiRequest("/cash/sessions/close", { method: "POST", body: JSON.stringify({ closeAmount: parseFloat(closeAmount), force }) });
+      let res;
+      try {
+        res = await close(false);
+      } catch (err: any) {
+        // Orders still to charge: the cashier decides with the number in front of them
+        if (!/sin cobrar/.test(err?.message || "")) throw err;
+        if (!(await appConfirm(err.message, "Cerrar igual"))) {
+          setLoading(false);
+          return;
+        }
+        res = await close(true);
+      }
       setCloseAmount("");
       alert(`Caja cerrada. Monto esperado por sistema: $${res.session.systemAmount.toFixed(2)}. Reportado: $${res.session.closeAmount.toFixed(2)}.`);
       await fetchSessionData();

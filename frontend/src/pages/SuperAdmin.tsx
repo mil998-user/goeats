@@ -1,4 +1,4 @@
-import { appConfirm } from "../components/AppDialogs";
+import { appConfirm, appPrompt } from "../components/AppDialogs";
 import React, { useEffect, useState } from "react";
 import { DeliveryIncidentsPanel } from "../components/DeliveryIncidentsPanel";
 import { UnassignedDeliveries } from "../components/UnassignedDeliveries";
@@ -646,6 +646,22 @@ export const SuperAdmin: React.FC = () => {
   const handleSlugChange = (val: string) => {
     const cleaned = val.toLowerCase().replace(/[^a-z0-9-]/g, "");
     setSlug(cleaned);
+  };
+
+  // Commission and "order without a waiter" of each restaurant (engineers, 25 nov)
+  const saveRestaurantOption = async (restaurant: Restaurant, data: Record<string, unknown>) => {
+    try {
+      await apiRequest(`/restaurants/${restaurant.id}`, { method: "PUT", body: JSON.stringify(data) });
+      setRestaurants((prev) => prev.map((r) => (r.id === restaurant.id ? ({ ...r, ...data } as Restaurant) : r)));
+    } catch (err: any) {
+      alert(err.message || "No se pudo guardar.");
+    }
+  };
+  const handleCommission = async (restaurant: Restaurant) => {
+    const current = (restaurant as any).deliveryCommissionPercentage ?? 10;
+    const value = await appPrompt(`Comisión de GoEats en domicilios de ${restaurant.name} (de 0 a 50 %)`, { numeric: true, placeholder: String(current), confirmLabel: "Guardar" });
+    if (value === null || value === "") return;
+    await saveRestaurantOption(restaurant, { deliveryCommissionPercentage: Number(value) });
   };
 
   const handleToggleActive = async (restaurant: Restaurant) => {
@@ -1419,6 +1435,24 @@ export const SuperAdmin: React.FC = () => {
                                     }}
                                   >
                                     {restaurant.isActive ? "Desactivar" : "Activar"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="secondary-btn"
+                                    style={{ padding: "6px 12px", fontSize: "13px" }}
+                                    onClick={() => handleCommission(restaurant)}
+                                    title="Comisión de GoEats en domicilios"
+                                  >
+                                    Comisión {(restaurant as any).deliveryCommissionPercentage ?? 10}%
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="secondary-btn"
+                                    style={{ padding: "6px 12px", fontSize: "13px" }}
+                                    onClick={() => saveRestaurantOption(restaurant, { qrOrderingEnabled: !((restaurant as any).qrOrderingEnabled ?? true) })}
+                                    title="Si está apagado, en la mesa el cliente solo ve la carta y pide al mesero"
+                                  >
+                                    Pedir sin mesero: {((restaurant as any).qrOrderingEnabled ?? true) ? "Sí" : "No"}
                                   </button>
 
                                   {restaurant.status !== "REJECTED" && (

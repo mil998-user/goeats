@@ -47,6 +47,7 @@ export const CustomerProfileView: React.FC = () => {
   // Password Change
   const [showPasswordChange, setShowPasswordChange] = useState(false);
   const [newPassword, setNewPassword] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
   // Preferences Modal
@@ -103,8 +104,12 @@ export const CustomerProfileView: React.FC = () => {
     }
 
     if (showPasswordChange && newPassword) {
-      if (newPassword.length < 6) {
-        setErrorMsg("La nueva contraseña debe tener al menos 6 caracteres.");
+      if (newPassword.length < 8 || !/[a-zA-Z]/.test(newPassword) || !/\d/.test(newPassword)) {
+        setErrorMsg("La nueva contraseña debe tener al menos 8 caracteres, con letras y números.");
+        return;
+      }
+      if (!currentPassword) {
+        setErrorMsg("Escribe tu contraseña actual.");
         return;
       }
       if (newPassword !== confirmPassword) {
@@ -120,6 +125,7 @@ export const CustomerProfileView: React.FC = () => {
         phone: string | null;
         cedula: string | null;
         password?: string;
+        currentPassword?: string;
       } = {
         name: name.trim(),
         phone: phone.trim() || null,
@@ -128,6 +134,7 @@ export const CustomerProfileView: React.FC = () => {
 
       if (showPasswordChange && newPassword) {
         payload.password = newPassword.trim();
+        payload.currentPassword = currentPassword;
       }
 
       const res = await apiRequest("/auth/profile", {
@@ -136,7 +143,9 @@ export const CustomerProfileView: React.FC = () => {
       });
 
       if (res.success) {
-        setSuccessMsg("¡Tu información ha sido guardada exitosamente!");
+        // Changing the password closes the other sessions; this one keeps going with the new token
+        if (res.token) localStorage.setItem("goeats_token", res.token);
+        setSuccessMsg(res.token ? "Contraseña cambiada. Se cerró tu sesión en los demás equipos." : "¡Tu información ha sido guardada exitosamente!");
         updateUser({
           name: res.user.name,
           phone: res.user.phone,
@@ -145,6 +154,7 @@ export const CustomerProfileView: React.FC = () => {
         if (showPasswordChange) {
           setNewPassword("");
           setConfirmPassword("");
+          setCurrentPassword("");
           setShowPasswordChange(false);
         }
         setTimeout(() => setSuccessMsg(null), 5000);
@@ -556,6 +566,20 @@ export const CustomerProfileView: React.FC = () => {
 
               {showPasswordChange && (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 240px), 1fr))", gap: "14px", marginTop: "14px" }}>
+                  <div>
+                    <label htmlFor="current-password" style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#333333", marginBottom: "4px" }}>
+                      Contraseña actual
+                    </label>
+                    <input
+                      id="current-password"
+                      type="password"
+                      autoComplete="current-password"
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      className="input-field"
+                      style={{ width: "100%" }}
+                    />
+                  </div>
                   <div>
                     <label style={{ display: "block", fontSize: "13px", fontWeight: "600", color: "#333333", marginBottom: "4px" }}>
                       Nueva Contraseña

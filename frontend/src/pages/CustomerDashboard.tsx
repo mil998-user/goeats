@@ -1,3 +1,4 @@
+import { appAlert, appConfirm } from "../components/AppDialogs";
 import React, { useEffect, useState } from "react";
 import { EmptyState } from "../components/EmptyState";
 import { PlatformBankInfo } from "../components/PlatformBankInfo";
@@ -1314,6 +1315,35 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({ defaultTab
             </p>
 
             <OrderTracker order={trackingOrder} />
+
+            {trackingOrder.status === "CANCELLED" && (trackingOrder as any).deliveryObservation && (
+              <p role="status" style={{ margin: "12px 0 0", fontSize: "14px", fontWeight: 600 }}>
+                {(trackingOrder as any).deliveryObservation}
+                {(trackingOrder as any).paymentStatus === "REFUND_PENDING" ? " · El local te devolverá tu dinero." : ""}
+                {(trackingOrder as any).paymentStatus === "REFUNDED" ? " · El local ya te devolvió tu dinero." : ""}
+              </p>
+            )}
+
+            {trackingOrder.status === "PENDING" && trackingOrder.type !== "DINE_IN" && (trackingOrder as any).paymentStatus !== "APPROVED" && (
+              <button
+                type="button"
+                className="secondary-btn"
+                data-testid="customer-cancel"
+                style={{ marginTop: "14px", width: "100%", minHeight: "48px", color: "var(--danger)" }}
+                onClick={async () => {
+                  if (!(await appConfirm("¿Cancelar tu pedido? Puedes hacerlo mientras el local no lo acepte.", "Sí, cancelar"))) return;
+                  try {
+                    const res = await apiRequest(`/orders/customer/${trackingOrder.id}/cancel`, { method: "POST", body: JSON.stringify({}) });
+                    setTrackingOrder({ ...trackingOrder, status: "CANCELLED" });
+                    appAlert(res.message || "Pedido cancelado.");
+                  } catch (err) {
+                    appAlert(err instanceof Error ? err.message : "No se pudo cancelar.");
+                  }
+                }}
+              >
+                Cancelar pedido
+              </button>
+            )}
 
             {trackingOrder.type === "DELIVERY" && trackingOrder.deliveryPin &&
               trackingOrder.status !== "DELIVERED" && trackingOrder.status !== "CANCELLED" && (

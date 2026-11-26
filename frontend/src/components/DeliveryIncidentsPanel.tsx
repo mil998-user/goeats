@@ -3,7 +3,7 @@ import { apiRequest } from "../utils/api";
 
 interface Incident {
   id: number;
-  type: "PASS" | "CANCEL" | "NO_SHOW" | "NO_CODE";
+  type: "PASS" | "CANCEL" | "NO_SHOW" | "NO_CODE" | "ADMIN";
   reason: string;
   createdAt: string;
   reviewedAt: string | null;
@@ -23,8 +23,9 @@ interface Incident {
 const typeLabel: Record<Incident["type"], string> = {
   PASS: "Pasó la orden",
   CANCEL: "Canceló la orden",
-  NO_SHOW: "Cliente no salió",
+  NO_SHOW: "Cliente no salió (el valor lo juntan y sortean los motorizados)",
   NO_CODE: "Entregó sin código",
+  ADMIN: "Liberado por GoEats",
 };
 
 const paymentLabel = (method: string | null) =>
@@ -62,13 +63,13 @@ export const DeliveryIncidentsPanel: React.FC = () => {
     };
   }, [showAll, reloadKey]);
 
-  const review = async (id: number) => {
+  const review = async (id: number, decision?: "PAY" | "NO_PAY") => {
     setBusyId(id);
     setError(null);
     try {
       await apiRequest(`/delivery/incidents/${id}/review`, {
         method: "POST",
-        body: JSON.stringify({ note: notes[id] || "" }),
+        body: JSON.stringify({ note: notes[id] || "", decision }),
       });
       setReloadKey((key) => key + 1);
     } catch (err) {
@@ -136,9 +137,20 @@ export const DeliveryIncidentsPanel: React.FC = () => {
                     onChange={(e) => setNotes((prev) => ({ ...prev, [incident.id]: e.target.value }))}
                     style={{ flex: "1 1 220px" }}
                   />
-                  <button type="button" className="glow-btn" style={{ padding: "10px 16px" }} disabled={busyId !== null} onClick={() => review(incident.id)}>
-                    {busyId === incident.id ? "Guardando..." : "Marcar como revisada"}
-                  </button>
+                  {incident.type === "NO_CODE" ? (
+                    <>
+                      <button type="button" className="glow-btn" style={{ padding: "10px 16px" }} disabled={busyId !== null} onClick={() => review(incident.id, "PAY")}>
+                        Pagar al motorizado
+                      </button>
+                      <button type="button" className="secondary-btn" style={{ padding: "10px 16px" }} disabled={busyId !== null} onClick={() => review(incident.id, "NO_PAY")}>
+                        No pagar
+                      </button>
+                    </>
+                  ) : (
+                    <button type="button" className="glow-btn" style={{ padding: "10px 16px" }} disabled={busyId !== null} onClick={() => review(incident.id)}>
+                      {busyId === incident.id ? "Guardando..." : incident.type === "NO_SHOW" ? "Resuelto entre motorizados" : "Marcar como revisada"}
+                    </button>
+                  )}
                 </div>
               )}
             </div>

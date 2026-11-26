@@ -56,6 +56,7 @@ interface Order {
     commissionPct: number;
     appCommissionFromProvider: number;
     providerPayAmount: number;
+    prepaid?: boolean;
     driverBonus: number;
     driverEarnings: number;
     tip?: number;
@@ -110,6 +111,7 @@ export const DeliveryDashboard: React.FC = () => {
   const [rechargeRequests, setRechargeRequests] = useState<any[]>([]);
   const [deliveryHistory, setDeliveryHistory] = useState<any[]>([]);
   const [reservedBalance, setReservedBalance] = useState<number>(0);
+  const [heldAmount, setHeldAmount] = useState<number>(0);
   // Comes from the server, which applies the balance rule set by the administrator
   const [canTakeOrders, setCanTakeOrders] = useState<boolean>(true);
   const [takeBlockedMessage, setTakeBlockedMessage] = useState<string | null>(null);
@@ -225,6 +227,7 @@ export const DeliveryDashboard: React.FC = () => {
       if (walletRes.success) {
         setWalletBalance(walletRes.walletBalance || 0);
         setReservedBalance(walletRes.reservedBalance || 0);
+        setHeldAmount(walletRes.heldAmount || 0);
         setCanTakeOrders(walletRes.canTakeOrders !== false);
         setTakeBlockedMessage(walletRes.blockedMessage || null);
         setCostPerOrder(Number(walletRes.costPerOrder) || 0);
@@ -305,7 +308,15 @@ export const DeliveryDashboard: React.FC = () => {
 
     setActionLoading(orderId);
     try {
-      const res = await apiRequest(`/delivery/take/${orderId}`, { method: "POST" });
+      let res;
+      try {
+        res = await apiRequest(`/delivery/take/${orderId}`, { method: "POST" });
+      } catch (err: any) {
+        // From the 3rd order on, the driver confirms he can carry one more (engineers, 25 nov)
+        if (!/¿Puedes llevar uno más/.test(err?.message || "")) throw err;
+        if (!(await appConfirm(err.message, "Sí, puedo"))) return;
+        res = await apiRequest(`/delivery/take/${orderId}`, { method: "POST", body: JSON.stringify({ acceptExtra: true }) });
+      }
       if (res.success) {
         alert("¡Pedido tomado con éxito!");
         loadData();
@@ -580,6 +591,11 @@ export const DeliveryDashboard: React.FC = () => {
                           )}
                         </div>
                       </div>
+                      {order.financialBreakdown?.prepaid && (
+                        <p data-testid="prepaid-available" style={{ margin: "10px 0 0", padding: "10px 12px", borderRadius: "8px", background: "var(--brand-black)", color: "#ffffff", fontSize: "14px", fontWeight: 600 }}>
+                          Ya está pagado: no pagas nada en el local ni le cobras al cliente.
+                        </p>
+                      )}
 
                       {/* Map Toggle Button */}
                       <div>
@@ -846,7 +862,13 @@ export const DeliveryDashboard: React.FC = () => {
                           </div>
 
                             {/* Panel estilo Zaymi */}
-                            {order.financialBreakdown && (
+                            {order.financialBreakdown?.prepaid && (
+                              <div data-testid="prepaid-note" style={{ marginTop: "14px", padding: "14px", borderRadius: "var(--radius-md)", background: "var(--brand-black)", color: "#ffffff", fontSize: "15px", lineHeight: 1.45 }}>
+                                <strong>Ya está pagado.</strong> No pagues nada en el local y no le cobres al cliente. Al entregar, GoEats te suma ${order.financialBreakdown.driverEarnings.toFixed(2)}
+                                {(order.financialBreakdown.tip || 0) > 0 ? ` más $${order.financialBreakdown.tip!.toFixed(2)} de propina` : ""} a tu saldo.
+                              </div>
+                            )}
+                            {order.financialBreakdown && !order.financialBreakdown.prepaid && (
                               <div style={{
                                 marginTop: "14px",
                                 padding: "14px",
@@ -1052,6 +1074,11 @@ export const DeliveryDashboard: React.FC = () => {
                 {walletBalance < 0 && (
                   <p style={{ margin: "0 0 12px", fontSize: "13px", color: "var(--brand-red)", fontWeight: 600 }}>
                     Tienes ${Math.abs(walletBalance).toFixed(2)} pendientes con GoEats de antes. Recarga para cubrirlos y volver a tomar pedidos.
+                  </p>
+                )}
+                {heldAmount > 0 && (
+                  <p data-testid="held-amount" style={{ margin: "6px 0 0", fontSize: "14px" }}>
+                    ${heldAmount.toFixed(2)} de entregas sin código esperan la revisión de GoEats.
                   </p>
                 )}
                 {reservedBalance > 0 && (
