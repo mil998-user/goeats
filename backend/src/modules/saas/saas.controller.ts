@@ -174,8 +174,12 @@ export async function getSaaSOrders(req: Request, res: Response, next: NextFunct
     const receipts = new Map(pending.map((order) => [order.id, order.paymentReceipt]));
 
     // Pending first, each group from newest to oldest
+    const warnings = new Map<number, string | null>();
+    for (const order of orders) {
+      if (order.status === "PENDING") warnings.set(order.id, await getApprovalWarning(order));
+    }
     const list = orders
-      .map((order) => ({ ...order, paymentReceipt: receipts.get(order.id) ?? null }))
+      .map((order) => ({ ...order, paymentReceipt: receipts.get(order.id) ?? null, warning: warnings.get(order.id) ?? null }))
       .sort((a, b) => Number(b.status === "PENDING") - Number(a.status === "PENDING"));
 
     return res.status(200).json({ success: true, orders: list });
@@ -185,6 +189,26 @@ export async function getSaaSOrders(req: Request, res: Response, next: NextFunct
 }
 
 // 3. Approve SaaS order (SuperAdmin)
+// Before giving money for a transfer: was it already given another way, or is the request very old?
+// (26 nov: a $10 request left pending after a manual $10 recharge was approved two weeks later)
+export const OLD_REQUEST_DAYS = 3;
+export async function getApprovalWarning(order: { userId: number; type: string; amount: number; createdAt: Date }, now = new Date()) {
+  if (order.type !== "RECHARGE") return null;
+  const sameMoney = await prisma.walletTransaction.findFirst({
+    where: { userId: order.userId, type: "RECHARGE", amount: order.amount, createdAt: { gte: order.createdAt } },
+    orderBy: { createdAt: "asc" },
+    select: { createdAt: true, description: true },
+  });
+  if (sameMoney) {
+    return `Después de esta solicitud ya se le acreditaron $${order.amount.toFixed(2)} el ${sameMoney.createdAt.toLocaleString("es-EC", { timeZone: "America/Guayaquil" })} (${sameMoney.description}). Si es el mismo pago, recházala para no darle el dinero dos veces.`;
+  }
+  const days = Math.floor((now.getTime() - order.createdAt.getTime()) / 86400000);
+  if (days >= OLD_REQUEST_DAYS) {
+    return `Esta solicitud tiene ${days} días. Revisa en el banco que el depósito sea real y que no se haya pagado antes.`;
+  }
+  return null;
+}
+
 export async function approveSaaSOrder(req: Request, res: Response, next: NextFunction) {
   try {
     const orderId = parseInt(req.params.id, 10);
@@ -202,6 +226,12 @@ export async function approveSaaSOrder(req: Request, res: Response, next: NextFu
 
     if (order.status !== "PENDING") {
       return res.status(400).json({ success: false, message: "El pedido ya no está pendiente" });
+    }
+
+    // A possible double payment needs the administrator to confirm it on purpose
+    const warning = await getApprovalWarning(order);
+    if (warning && req.body?.confirmWarning !== true) {
+      return res.status(409).json({ success: false, needsConfirm: true, message: warning });
     }
 
     // Start database transaction

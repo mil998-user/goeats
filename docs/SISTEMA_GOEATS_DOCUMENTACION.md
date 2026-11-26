@@ -489,6 +489,14 @@ SISTEMA ACTUAL (Single-Tenant)          SISTEMA NUEVO (Multi-Tenant SaaS)
 
 ## 📝 Historial de Cambios
 
+### v0.8.3 — 2026-11-26 (Recargas: no pagar dos veces y campanita con lista)
+Sin migraciones. En producción se aprobó una solicitud de $10 del 11 nov que ya se había pagado ese mismo día con una recarga manual, así que el motorizado recibió $10 de más.
+- **Freno al aprobar** (`getApprovalWarning` en `saas.controller.ts`): si después de la solicitud ya se le acreditó el mismo monto, o si la solicitud tiene 3 días o más, aprobar devuelve 409 con el motivo. Solo se aprueba si el admin lo confirma a propósito (`confirmWarning: true`).
+- La lista de pagos trae ese aviso (`warning`) y se muestra en rojo dentro del comprobante. Al pulsar "Aprobar y Acreditar" se pide confirmar.
+- **Recarga manual:** si el motorizado tiene una transferencia esperando, el formulario avisa que, si es por ese dinero, se apruebe en Pagos para no pagarle dos veces.
+- **Campanita:** ahora abre la lista "Notificaciones" con cada pago por revisar (usuario, monto, fecha y "Revisa antes de aprobar" si tiene aviso). Al tocar uno abre su comprobante; abajo está "Ver todos los pagos". Se abre hacia el lado con espacio.
+- Pruebas en la copia aislada: 14 de 14 (doble pago, solicitud vieja, aprobar una sola vez y pantallas a 390 y 1366 px).
+
 ### v0.8.2 — 2026-11-26 (Recargas: aviso al admin y cancelar la solicitud)
 Sin migraciones. En producción una recarga de $10 del 11 nov seguía pendiente; como solo se admite una a la vez, la nueva de $50 se rechazaba y el admin no tenía ningún aviso.
 - **Admin:** campanita con el número de pagos por revisar (lleva a la lista de pagos), aviso rojo "Hay N recargas esperando" en Saldo de Motorizados y etiqueta "Recarga por revisar · $X" en la fila del motorizado. Se actualiza en vivo (`saas-order-changed`).

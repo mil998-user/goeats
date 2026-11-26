@@ -398,9 +398,13 @@ export const SuperAdmin: React.FC = () => {
   };
 
   const handleApproveSaaSOrder = async (orderId: number) => {
+    // Possible double payment or very old request: the admin confirms on purpose
+    const warning = saasOrders.find((o) => o.id === orderId)?.warning;
+    if (warning && !(await appConfirm(warning, "Aprobar igual"))) return;
     try {
       const res = await apiRequest(`/saas/orders/${orderId}/approve`, {
-        method: "POST"
+        method: "POST",
+        body: JSON.stringify({ confirmWarning: !!warning }),
       });
       if (res.success) {
         alert("Solicitud aprobada con éxito.");
@@ -629,7 +633,13 @@ export const SuperAdmin: React.FC = () => {
   const pendingRecharges = pendingPayments.filter((o) => o.type === "RECHARGE");
   const pendingByUser = new Map<number, number>();
   pendingRecharges.forEach((o) => pendingByUser.set(o.user.id, (pendingByUser.get(o.user.id) || 0) + o.amount));
-  const goToPayments = () => setSearchParams({ tab: "saas_orders" });
+  const goToPayments = () => {
+    setBellOpen(false);
+    setSearchParams({ tab: "saas_orders" });
+  };
+  const [bellOpen, setBellOpen] = useState(false);
+  // The list opens toward the side with room: right edge on a computer, left on a phone
+  const [bellAlignRight, setBellAlignRight] = useState(true);
 
   useEffect(() => {
     if (activeTab === "restaurants" || activeTab === "approvals") {
@@ -898,9 +908,15 @@ export const SuperAdmin: React.FC = () => {
             <Flame size={14} aria-hidden="true" /> Vaciar Sistema (Reset)
           </button>}
 
+          <div style={{ position: "relative" }}>
           <button
             type="button"
-            onClick={goToPayments}
+            onClick={(e) => {
+              const box = e.currentTarget.getBoundingClientRect();
+              setBellAlignRight(box.right >= Math.min(340, window.innerWidth - 32));
+              setBellOpen((open) => !open);
+            }}
+            aria-expanded={bellOpen}
             aria-label={pendingPayments.length ? `${pendingPayments.length} pagos por revisar` : "Sin pagos por revisar"}
             title={pendingPayments.length ? `${pendingPayments.length} pagos por revisar` : "Sin pagos por revisar"}
             style={{
@@ -924,6 +940,50 @@ export const SuperAdmin: React.FC = () => {
               </span>
             )}
           </button>
+          {bellOpen && (
+            <>
+              <div onClick={() => setBellOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} aria-hidden="true" />
+              <div role="dialog" aria-label="Notificaciones" style={{ position: "absolute", top: "46px", ...(bellAlignRight ? { right: 0 } : { left: 0 }), zIndex: 41, width: "min(340px, calc(100vw - 32px))", backgroundColor: "var(--bg-secondary)", border: "1px solid var(--border-light)", borderRadius: "var(--radius-md)", boxShadow: "var(--shadow-lg, 0 12px 32px rgba(0,0,0,0.18))", overflow: "hidden" }}>
+                <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border-light)", fontWeight: 800, fontSize: "14px" }}>
+                  Notificaciones
+                </div>
+                {pendingPayments.length === 0 ? (
+                  <p style={{ margin: 0, padding: "18px 16px", fontSize: "13px", color: "var(--text-secondary)" }}>No hay pagos por revisar.</p>
+                ) : (
+                  <div style={{ maxHeight: "320px", overflowY: "auto" }}>
+                    {pendingPayments.slice(0, 8).map((o) => (
+                      <button
+                        key={o.id}
+                        type="button"
+                        onClick={() => { setBellOpen(false); setSelectedReceiptOrder(o); }}
+                        style={{ display: "block", width: "100%", textAlign: "left", padding: "12px 16px", background: "none", border: "none", borderBottom: "1px solid var(--border-light)", cursor: "pointer", color: "var(--text-primary)" }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: "8px", fontSize: "14px", fontWeight: 700 }}>
+                          <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {o.type === "RECHARGE" ? "Recarga" : "Plus"} de @{o.user.username}
+                          </span>
+                          <span style={{ flexShrink: 0, color: "var(--brand-red)" }}>${o.amount.toFixed(2)}</span>
+                        </div>
+                        <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px" }}>
+                          {new Date(o.createdAt).toLocaleString("es-EC", { dateStyle: "short", timeStyle: "short" })} · Revisar comprobante
+                        </div>
+                        {o.warning && (
+                          <div style={{ display: "flex", gap: "6px", alignItems: "flex-start", marginTop: "6px", fontSize: "12px", fontWeight: 700, color: "var(--brand-red)" }}>
+                            <AlertTriangle size={14} aria-hidden="true" style={{ flexShrink: 0, marginTop: "1px" }} />
+                            Revisa antes de aprobar
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <button type="button" onClick={goToPayments} style={{ display: "block", width: "100%", padding: "12px 16px", background: "var(--bg-tertiary)", border: "none", cursor: "pointer", fontWeight: 700, fontSize: "13px", color: "var(--text-primary)" }}>
+                  Ver todos los pagos
+                </button>
+              </div>
+            </>
+          )}
+          </div>
 
           <button
             onClick={logout}
@@ -2928,6 +2988,14 @@ export const SuperAdmin: React.FC = () => {
             </p>
 
             <form onSubmit={handleRechargeWallet}>
+              {pendingByUser.has(selectedDriver.id) && (
+                <div role="alert" style={{ display: "flex", gap: "8px", alignItems: "flex-start", marginBottom: "16px", padding: "12px 14px", borderRadius: "var(--radius-sm)", border: "1px solid var(--brand-red)", backgroundColor: "color-mix(in srgb, var(--brand-red) 10%, transparent)", color: "var(--brand-red)", fontSize: "13px", fontWeight: 700 }}>
+                  <AlertTriangle size={16} aria-hidden="true" style={{ flexShrink: 0, marginTop: "1px" }} />
+                  <span>
+                    Tiene una recarga por transferencia de ${(pendingByUser.get(selectedDriver.id) || 0).toFixed(2)} esperando revisión. Si este dinero es por esa transferencia, apruébala en Pagos en vez de recargar aquí; si no, se le pagaría dos veces.
+                  </span>
+                </div>
+              )}
               <div className="input-group">
                 <label>Motorizado Seleccionado</label>
                 <input
@@ -3024,6 +3092,13 @@ export const SuperAdmin: React.FC = () => {
               <div><strong>Valor del Plan:</strong> ${selectedReceiptOrder.amount.toFixed(2)}</div>
               <div><strong>Fecha Solicitud:</strong> {new Date(selectedReceiptOrder.createdAt).toLocaleString()}</div>
             </div>
+
+            {selectedReceiptOrder.warning && (
+              <div role="alert" style={{ display: "flex", gap: "8px", alignItems: "flex-start", marginBottom: "16px", padding: "12px 14px", borderRadius: "var(--radius-sm)", border: "1px solid var(--brand-red)", backgroundColor: "color-mix(in srgb, var(--brand-red) 10%, transparent)", color: "var(--brand-red)", fontSize: "13px", fontWeight: 700 }}>
+                <AlertTriangle size={16} aria-hidden="true" style={{ flexShrink: 0, marginTop: "1px" }} />
+                <span>{selectedReceiptOrder.warning}</span>
+              </div>
+            )}
 
             <div style={{ textAlign: "center", marginBottom: "20px", border: "1px solid var(--border-light)", borderRadius: "var(--radius-sm)", padding: "10px", backgroundColor: "var(--bg-tertiary)" }}>
               <div style={{ fontSize: "13px", fontWeight: "bold", color: "var(--text-muted)", marginBottom: "8px" }}>COMPROBANTE BANCARIO:</div>
