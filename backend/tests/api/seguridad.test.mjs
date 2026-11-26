@@ -74,3 +74,20 @@ test("un dueño no ve pedidos de otro restaurante", { skip: configError || !proc
   const byCustomer = await api("GET", `/api/orders/${orderId}/billing-customer`, { token: customer.token });
   assert.equal(byCustomer.status, 403);
 });
+
+test("cambiar la clave pide la actual y cierra las otras sesiones", { skip: configError }, async () => {
+  const person = await newCustomer("clave");
+  assert.equal((await api("PUT", "/api/auth/profile", { token: person.token, body: { password: "Nueva12345x" } })).status, 400);
+  const changed = await api("PUT", "/api/auth/profile", { token: person.token, body: { password: "Nueva12345x", currentPassword: "Prueba.1234" } });
+  assert.equal(changed.status, 200, changed.text.slice(0, 200));
+  assert.equal((await api("GET", "/api/auth/profile", { token: person.token })).status, 401);
+  assert.equal((await api("GET", "/api/auth/profile", { token: changed.json.token })).status, 200);
+});
+
+test("el dueño solo crea cajero, cocina y mesero", { skip: configError || !process.env.TEST_OWNER_USER }, async () => {
+  const res = await api("POST", "/api/auth/register-staff", {
+    token: owner.token,
+    body: { username: `moto${Date.now() % 1e7}`, password: "Prueba.1234", name: "Moto", email: `moto${Date.now()}@example.test`, role: "MOTORIZADO" },
+  });
+  assert.equal(res.status, 400);
+});
