@@ -8,7 +8,7 @@ import {
   cancelOrder,
   attendOrder,
   updateOrder,
-  getBillingCustomer,
+  getBillingCustomer, markRefunded
 } from "./orders.controller";
 import { authMiddleware } from "../../middlewares/auth";
 import { tenantMiddleware } from "../../middlewares/tenant";
@@ -30,6 +30,7 @@ router.put("/:id", authorize([Role.RESTAURANT_OWNER, Role.CAJERO, Role.MOZO]), u
 router.put("/:id/status", authorize([Role.RESTAURANT_OWNER, Role.CAJERO, Role.PRODUCCION, Role.MOZO]), updateOrderStatus);
 router.post("/:id/change-table", authorize([Role.RESTAURANT_OWNER, Role.CAJERO, Role.MOZO]), changeTable);
 router.post("/:id/attend", authorize([Role.MOZO]), attendOrder);
+router.post("/:id/refund-done", authorize([Role.RESTAURANT_OWNER, Role.CAJERO]), markRefunded);
 router.post("/:id/cancel", authorize([Role.RESTAURANT_OWNER, Role.CAJERO, Role.MOZO]), cancelOrder);
 
 export default router;

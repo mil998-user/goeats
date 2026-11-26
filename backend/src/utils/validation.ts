@@ -85,8 +85,8 @@ export function getSameIdentityValues(value: string) {
 
 // Shared by every register form. Returns the error to show, or null
 export function getAccountError({ username, password, name, email, phone }: Record<string, unknown>) {
-  if (typeof username !== "string" || !/^[\w.@+-]{3,100}$/.test(username)) {
-    return "El usuario debe tener de 3 a 100 caracteres, sin espacios.";
+  if (typeof username !== "string" || !/^[\w.@+-]{3,30}$/.test(username)) {
+    return "El usuario debe tener de 3 a 30 caracteres, sin espacios.";
   }
   if (typeof name !== "string" || !name.trim() || name.length > 150) {
     return "El nombre es requerido y no puede superar 150 caracteres.";
@@ -98,6 +98,18 @@ export function getAccountError({ username, password, name, email, phone }: Reco
     return "El teléfono no es válido.";
   }
   return getPasswordError(password);
+}
+
+// Payment receipts: a picture only, up to 5 MB once decoded
+const RECEIPT_MAX_BYTES = 5 * 1024 * 1024;
+export function getReceiptError(value: unknown) {
+  if (typeof value !== "string" || !/^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=\s]+$/.test(value)) {
+    return "El comprobante debe ser una foto (PNG, JPG o WEBP).";
+  }
+  if (Math.floor((value.length - value.indexOf(",") - 1) * 0.75) > RECEIPT_MAX_BYTES) {
+    return "La foto del comprobante no puede pasar de 5 MB.";
+  }
+  return null;
 }
 
 export function escapeHtml(value: unknown) {

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getMyOrders, getCustomerStats, togglePlusSubscription } from "./customer.controller";
+import { cancelMyOrder, getMyOrders, getCustomerStats, togglePlusSubscription } from "./customer.controller";
 import { createAddress, deleteAddress, getMyAddresses, setDefaultAddress, updateAddress } from "./addresses.controller";
 import { authMiddleware } from "../../middlewares/auth";
 import { authorize } from "../../middlewares/rbac";
@@ -13,6 +13,7 @@ router.use(authorize([Role.CUSTOMER]));
 
 router.get("/my-orders", getMyOrders);
 router.get("/stats", getCustomerStats);
+router.post("/:id(\\d+)/cancel", cancelMyOrder);
 router.post("/toggle-plus", togglePlusSubscription);
 
 router.get("/addresses", getMyAddresses);

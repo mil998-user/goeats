@@ -5,8 +5,8 @@ import { prisma } from "../../config/database";
 import { OrderType, OrderStatus, OrderItemStatus, Prisma, Role } from "@prisma/client";
 import { NotificationService } from "../notifications/notification.service";
 import { parseAmount } from "../../utils/validation";
-import { canEditOrder, getCancelError, getStatusChangeError, hideDeliveryPin, isOrderPaid } from "../../utils/orderRules";
-import { refundTakeCommission } from "../delivery/deliveryWallet";
+import { canEditOrder, getCancelError, getStatusChangeError, hideDeliveryPin, isOrderPaid, waitsForAcceptance } from "../../utils/orderRules";
+import { CANCEL_REASON_MESSAGE, cancelOrderAndNotify, readCancelReason } from "./orderCancel";
 import { OPEN_TABLE_STATUSES, releaseTable, resolveOrderTable } from "../../utils/tables";
 import { notifyDeliveryBoard } from "../../config/realtime";
 import { readItemComments, readOrderNote, splitTakeAway } from "../../utils/takeAway";
@@ -38,8 +38,15 @@ export async function createOrder(req: Request, res: Response, next: NextFunctio
     }
 
     const costEnvio = type === OrderType.DELIVERY ? parseAmount(shippingCost ?? 0, { allowZero: true }) : 0;
-    if (costEnvio === null) {
-      return res.status(400).json({ success: false, message: "Costo de envío no válido" });
+    if (costEnvio === null || costEnvio > 20) {
+      return res.status(400).json({ success: false, message: "Costo de envío no válido (de $0 a $20)" });
+    }
+    // A delivery taken by phone needs where to go and whom to call
+    if (type === OrderType.DELIVERY) {
+      const phoneText = typeof deliveryPhone === "string" ? deliveryPhone.trim() : "";
+      if (typeof deliveryAddress !== "string" || deliveryAddress.trim().length < 5 || !/^\+?\d[\d ()-]{6,19}$/.test(phoneText)) {
+        return res.status(400).json({ success: false, message: "Para un domicilio escribe la dirección y un teléfono válido." });
+      }
     }
 
     const candidateKey = [restaurantId, userId, type, tableId ?? "-", String(customerName).trim().toLowerCase(), itemsSignature(items)].join("|");
@@ -63,10 +70,10 @@ export async function createOrder(req: Request, res: Response, next: NextFunctio
 
       for (const item of items) {
         const variantId = parseInt(item.variantId, 10);
-        const quantity = parseFloat(item.quantity);
+        const quantity = Number(item.quantity);
 
-        if (isNaN(quantity) || quantity <= 0) {
-          throw new Error("Item quantity must be a positive number greater than 0");
+        if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) {
+          throw new Error("La cantidad de cada plato debe ser de 1 a 99.");
         }
 
         const variant = await tx.menuItemVariant.findFirst({
@@ -286,61 +293,6 @@ export async function getOrderById(req: Request, res: Response, next: NextFuncti
   }
 }
 
-// Cancels the order, frees its table and gives back what the driver paid to take it
-async function cancelOrderAndNotify(
-  req: Request,
-  order: { id: number; type: OrderType; status: OrderStatus; tableId: number | null; deliveryDriverId: number | null; paymentStatus: string; payphoneTransactionId: string | null },
-  rejectedPayment = false
-) {
-  const updatedOrder = await prisma.$transaction(async (tx) => {
-    const claimed = await tx.order.updateMany({
-      where: { id: order.id, status: order.status },
-      data: {
-        status: OrderStatus.CANCELLED,
-        paymentStatus: rejectedPayment ? "REJECTED" : isOrderPaid(order) ? "REFUND_PENDING" : order.paymentStatus,
-      },
-    });
-    if (claimed.count === 0) return null;
-
-    if (order.type === OrderType.DINE_IN && order.tableId) {
-      await releaseTable(tx, order.tableId, order.id);
-    }
-
-    if (order.status === OrderStatus.DELIVERING && order.deliveryDriverId) {
-      await refundTakeCommission(tx, order.id, order.deliveryDriverId, `Devolución por cancelación de Pedido #${order.id}`);
-    }
-
-    return tx.order.findUnique({
-      where: { id: order.id },
-      include: {
-        table: true,
-        items: { include: { variant: { include: { menuItem: true } } } },
-        customer: { select: { id: true, name: true, email: true } },
-      },
-    });
-  });
-
-  if (!updatedOrder) return null;
-
-  const safeOrder = hideDeliveryPin(updatedOrder);
-  const io = req.app.get("io");
-  if (io) {
-    notifyDeliveryBoard(io);
-    io.to(`restaurant-${updatedOrder.restaurantId}`).to(`order-${order.id}`).emit("order-cancelled", safeOrder);
-    io.to(`restaurant-${updatedOrder.restaurantId}`).to(`order-${order.id}`).emit("order-status-updated", safeOrder);
-  }
-
-  if (updatedOrder.customer?.email) {
-    NotificationService.notifyOrderCancelled(
-      { id: order.id },
-      { id: updatedOrder.customer.id, name: updatedOrder.customer.name, email: updatedOrder.customer.email },
-      req.body?.cancelReason
-    ).catch((e) => console.warn("[Email] Error order cancelled notification:", e));
-  }
-
-  return safeOrder;
-}
-
 export async function updateOrderStatus(req: Request, res: Response, next: NextFunction) {
   try {
     const id = parseInt(req.params.id, 10);
@@ -375,12 +327,21 @@ export async function updateOrderStatus(req: Request, res: Response, next: NextF
     }
 
     if (status === OrderStatus.CANCELLED) {
-      const cancelError = getCancelError(order, !!order.sale);
+      const cancelError = getCancelError(order, !!order.sale, req.user?.role as Role | undefined);
       if (cancelError) {
         return res.status(409).json({ success: false, message: cancelError });
       }
 
-      const cancelledOrder = await cancelOrderAndNotify(req, order, paymentStatus === "REJECTED");
+      const rejectedPayment = paymentStatus === "REJECTED";
+      const reason = readCancelReason(req.body?.cancelReason);
+      if (!reason && !rejectedPayment) {
+        return res.status(400).json({ success: false, message: CANCEL_REASON_MESSAGE });
+      }
+      const cancelledOrder = await cancelOrderAndNotify(req.app.get("io"), order, {
+        by: waitsForAcceptance(order) ? "rejected" : req.user?.role === Role.SUPER_ADMIN ? "admin" : "restaurant",
+        reason: reason ?? "El comprobante de la transferencia no es válido",
+        rejectedPayment,
+      });
       if (!cancelledOrder) {
         return res.status(409).json({ success: false, message: "El pedido cambió. Revísalo e intenta de nuevo." });
       }
@@ -525,6 +486,24 @@ export async function changeTable(req: Request, res: Response, next: NextFunctio
   }
 }
 
+// The restaurant gave the money back to the customer of a cancelled order
+export async function markRefunded(req: Request, res: Response, next: NextFunction) {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const restaurantId = req.restaurantId;
+    const done = await prisma.order.updateMany({
+      where: { id, restaurantId, status: OrderStatus.CANCELLED, paymentStatus: "REFUND_PENDING" },
+      data: { paymentStatus: "REFUNDED" },
+    });
+    if (done.count === 0) return res.status(409).json({ success: false, message: "Este pedido no tiene una devolución pendiente." });
+    const io = req.app.get("io");
+    io?.to(`restaurant-${restaurantId}`).to(`order-${id}`).emit("order-status-updated", { orderId: id, paymentStatus: "REFUNDED" });
+    return res.status(200).json({ success: true, message: "Devolución registrada." });
+  } catch (error) {
+    next(error);
+  }
+}
+
 // A waiter takes a QR order that nobody is attending yet
 export async function attendOrder(req: Request, res: Response, next: NextFunction) {
   try {
@@ -582,12 +561,19 @@ export async function cancelOrder(req: Request, res: Response, next: NextFunctio
       return res.status(404).json({ success: false, message: "Order not found" });
     }
 
-    const cancelError = getCancelError(order, !!order.sale);
+    const cancelError = getCancelError(order, !!order.sale, req.user?.role as Role | undefined);
     if (cancelError) {
       return res.status(409).json({ success: false, message: cancelError });
     }
+    const reason = readCancelReason(req.body?.cancelReason);
+    if (!reason) {
+      return res.status(400).json({ success: false, message: CANCEL_REASON_MESSAGE });
+    }
 
-    const updatedOrder = await cancelOrderAndNotify(req, order);
+    const updatedOrder = await cancelOrderAndNotify(req.app.get("io"), order, {
+      by: waitsForAcceptance(order) ? "rejected" : req.user?.role === Role.SUPER_ADMIN ? "admin" : "restaurant",
+      reason,
+    });
     if (!updatedOrder) {
       return res.status(409).json({ success: false, message: "El pedido cambió. Revísalo e intenta de nuevo." });
     }
@@ -625,10 +611,24 @@ export async function updateOrder(req: Request, res: Response, next: NextFunctio
     if (!canEditOrder(existingOrder) || existingOrder.sale || isOrderPaid(existingOrder)) {
       return res.status(409).json({ success: false, message: "Este pedido ya no se puede modificar" });
     }
+    if (req.user?.role === Role.MOZO && existingOrder.type !== OrderType.DINE_IN) {
+      return res.status(403).json({ success: false, message: "El mesero solo modifica pedidos de mesa" });
+    }
+    // A ready delivery is waiting for a driver: changing it now would change what the driver pays and collects
+    if (existingOrder.type === OrderType.DELIVERY && existingOrder.status === OrderStatus.READY) {
+      return res.status(409).json({ success: false, message: "El pedido ya está listo para el motorizado y no se puede modificar" });
+    }
 
     const canTakeAway = existingOrder.type === OrderType.DINE_IN && req.user?.role !== Role.MOZO;
 
     const updatedOrder = await prisma.$transaction(async (tx) => {
+      // Claims the order first: if a driver took it or the register charged it meanwhile, nothing is changed
+      const claimed = await tx.order.updateMany({
+        where: { id, status: existingOrder.status, deliveryDriverId: null, sale: null },
+        data: { updatedAt: new Date() },
+      });
+      if (claimed.count === 0) throw new Error("El pedido cambió mientras lo editabas. Revísalo e intenta de nuevo.");
+
       // 1. Delete existing items
       await tx.orderItem.deleteMany({
         where: { orderId: id },
@@ -641,10 +641,10 @@ export async function updateOrder(req: Request, res: Response, next: NextFunctio
 
       for (const item of items) {
         const variantId = parseInt(item.variantId, 10);
-        const quantity = parseFloat(item.quantity);
+        const quantity = Number(item.quantity);
 
-        if (!Number.isFinite(quantity) || quantity <= 0) {
-          throw new Error("Item quantity must be a positive number greater than 0");
+        if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) {
+          throw new Error("La cantidad de cada plato debe ser de 1 a 99.");
         }
 
         const alreadyInOrder = previousItems.some((previous) => previous.variantId === variantId);

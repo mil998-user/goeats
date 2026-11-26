@@ -11,7 +11,8 @@ import { NotificationService } from "../notifications/notification.service";
 import { getActiveDeliveryRate } from "../delivery/delivery.controller";
 import { calculateShippingCost, getShippingDistanceKm } from "../../utils/shipping";
 import { getRestaurantAverages } from "../ratings/ratings.controller";
-import { parseAmount, simulatedPaymentsAllowed } from "../../utils/validation";
+import { getReceiptError, parseAmount, simulatedPaymentsAllowed } from "../../utils/validation";
+import { expirePlusIfDue } from "../../utils/plus";
 import { hideRestaurantSecrets } from "../../utils/safeRestaurant";
 import { hideDeliveryPin, MAX_TIP } from "../../utils/orderRules";
 import { resolveOrderTable } from "../../utils/tables";
@@ -176,6 +177,13 @@ export async function updateRestaurant(req: Request, res: Response, next: NextFu
       return res.status(400).json({ success: false, message: "La oferta no puede superar 191 caracteres." });
     }
 
+    // GoEats commission on deliveries: only the administrator sets it, from 0 to 50 %
+    const rawCommission = req.body?.deliveryCommissionPercentage;
+    const commission = rawCommission === undefined ? undefined : Number(rawCommission);
+    if (commission !== undefined && (!Number.isFinite(commission) || commission < 0 || commission > 50)) {
+      return res.status(400).json({ success: false, message: "La comisión debe estar entre 0 y 50 %." });
+    }
+
     if (taxRate !== undefined && !(typeof taxRate === "number" && (TAX_RATES as readonly number[]).includes(taxRate))) {
       return res.status(400).json({ success: false, message: "La tasa de IVA debe ser 0, 5, 12 o 15 %." });
     }
@@ -249,6 +257,7 @@ export async function updateRestaurant(req: Request, res: Response, next: NextFu
         categories: categoryIds ? { set: categoryIds.map((cid: number) => ({ id: cid })) } : undefined,
         subcategories: subcategoryIds ? { set: subcategoryIds.map((sid: number) => ({ id: sid })) } : undefined,
         isActive: req.user?.role === "SUPER_ADMIN" ? isActive : undefined, // Only SuperAdmin can activate/deactivate
+        deliveryCommissionPercentage: req.user?.role === "SUPER_ADMIN" ? commission : undefined,
         status: (req.user?.role === "SUPER_ADMIN" && req.body.status) ? req.body.status : undefined,
       },
       include: {
@@ -494,6 +503,14 @@ export async function getPublicRestaurantList(req: Request, res: Response, next:
   }
 }
 
+// Farthest delivery accepted, in a straight line from the restaurant (provisional, 25 nov)
+const MAX_DELIVERY_KM = Number(process.env.DELIVERY_MAX_KM) || 10;
+class PriceChangedError extends Error {
+  constructor(public total: number) {
+    super("price changed");
+  }
+}
+
 export async function createPublicOrder(req: Request, res: Response, next: NextFunction) {
   let orderKey: string | null = null;
   try {
@@ -577,8 +594,9 @@ export async function createPublicOrder(req: Request, res: Response, next: NextF
       }
     }
 
-    if (typeEnum !== OrderType.DINE_IN && method === "TRANSFER" && !paymentReceipt) {
-      return res.status(400).json({ success: false, message: "Payment receipt is required" });
+    if (typeEnum !== OrderType.DINE_IN && method === "TRANSFER") {
+      const receiptError = getReceiptError(paymentReceipt);
+      if (receiptError) return res.status(400).json({ success: false, message: receiptError });
     }
 
     if (typeEnum === OrderType.DINE_IN) {
@@ -607,33 +625,40 @@ export async function createPublicOrder(req: Request, res: Response, next: NextF
       // A restaurant that charges first keeps the table order waiting for the register
       initialStatus = restaurant.payBeforeEating ? OrderStatus.PENDING : OrderStatus.PREPARING;
     } else {
-      if (method === "CASH" || method === "CARD") {
+      // Already paid: straight to the kitchen. Cash and transfer wait for the register
+      if (method === "CARD") {
         initialStatus = OrderStatus.PREPARING;
-        if (method === "CARD") {
-          finalPaymentStatus = "APPROVED";
-        }
-      } else if (method === "TRANSFER") {
-        initialStatus = OrderStatus.PENDING;
-        finalPaymentStatus = "PENDING";
+        finalPaymentStatus = "APPROVED";
       }
     }
 
-    // Optional customer token check
+    // Customer session: required for delivery and take-away, optional at the table
     let customerId: number | null = null;
     let isPlusClient = false;
 
     const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-      const session = await getSessionUser(authHeader.split(" ")[1]);
-      if (session) {
-        customerId = session.userId;
+    const session = authHeader && authHeader.startsWith("Bearer ") ? await getSessionUser(authHeader.split(" ")[1]) : null;
+    if (session && session.role === "CUSTOMER") {
+      customerId = session.userId;
+      await expirePlusIfDue(customerId);
+      const orderingUser = await prisma.user.findUnique({ where: { id: customerId }, select: { isPlus: true } });
+      isPlusClient = !!orderingUser?.isPlus;
+    }
+    if (typeEnum !== OrderType.DINE_IN && !customerId) {
+      return res.status(401).json({ success: false, message: "Inicia sesión con tu cuenta de cliente para pedir." });
+    }
 
-        const orderingUser = await prisma.user.findUnique({
-          where: { id: customerId }
+    // Delivery needs the point on the map and has to be inside the area GoEats covers
+    if (typeEnum === OrderType.DELIVERY) {
+      if (parsedDeliveryLat === null || parsedDeliveryLng === null || !Number.isFinite(parsedDeliveryLat) || !Number.isFinite(parsedDeliveryLng)) {
+        return res.status(400).json({ success: false, message: "Marca tu ubicación en el mapa para el envío." });
+      }
+      const km = getShippingDistanceKm(restaurant.mapLatitude, restaurant.mapLongitude, parsedDeliveryLat, parsedDeliveryLng);
+      if (restaurant.mapLatitude != null && restaurant.mapLongitude != null && km > MAX_DELIVERY_KM) {
+        return res.status(400).json({
+          success: false,
+          message: `Tu dirección está a ${km.toFixed(1)} km del local. Este local entrega hasta ${MAX_DELIVERY_KM} km.`,
         });
-        if (orderingUser && orderingUser.isPlus) {
-          isPlusClient = true;
-        }
       }
     }
 
@@ -665,6 +690,7 @@ export async function createPublicOrder(req: Request, res: Response, next: NextF
       for (const item of items) {
         const variantId = parseInt(item.variantId, 10);
         const quantity = Number(item.quantity);
+        if (!Number.isInteger(variantId)) throw new Error("Uno de los platos no es válido.");
 
         if (!Number.isInteger(quantity) || quantity <= 0 || quantity > 99) {
           throw new Error("Item quantity must be a whole number between 1 and 99");
@@ -691,6 +717,12 @@ export async function createPublicOrder(req: Request, res: Response, next: NextF
           comments: readItemComments(item, false),
           status: OrderItemStatus.PENDING,
         });
+      }
+
+      // The customer saw a total; if a price or a promotion changed meanwhile, they confirm the new one
+      const expected = Number(req.body?.expectedTotal);
+      if (req.body?.expectedTotal !== undefined && Number.isFinite(expected) && Math.abs(expected - (calculatedTotal + costEnvio)) > 0.009) {
+        throw new PriceChangedError(Math.round((calculatedTotal + costEnvio) * 100) / 100);
       }
 
       // Dine-in table handling. A joined table sends the order to the main table of the group
@@ -769,7 +801,9 @@ export async function createPublicOrder(req: Request, res: Response, next: NextF
     const io = req.app.get("io");
     if (io) {
       notifyDeliveryBoard(io);
-      io.to(`restaurant-${restaurant.id}`).emit("new-order", hideDeliveryPin(order));
+      // The receipt is a heavy picture: the screens ask for it when they open the order
+      const { paymentReceipt: _receipt, ...lightOrder } = order;
+      io.to(`restaurant-${restaurant.id}`).emit("new-order", { ...hideDeliveryPin(lightOrder), hasReceipt: !!_receipt });
       console.log(`[Socket] Emitted public new-order for restaurant-${restaurant.id}`);
     }
 
@@ -805,6 +839,14 @@ export async function createPublicOrder(req: Request, res: Response, next: NextF
     return res.status(201).json({ success: true, message: "Public order created successfully", order });
   } catch (error: any) {
     releaseOrderKey(orderKey);
+    if (error instanceof PriceChangedError) {
+      return res.status(409).json({
+        success: false,
+        priceChanged: true,
+        newTotal: error.total,
+        message: `El precio cambió: el total ahora es $${error.total.toFixed(2)}. Revisa tu pedido y confírmalo otra vez.`,
+      });
+    }
     // Database errors carry table names and file paths: the customer only gets a plain message
     const isDatabaseError =
       error instanceof Prisma.PrismaClientKnownRequestError ||
@@ -1131,7 +1173,10 @@ export async function rejectRestaurant(req: Request, res: Response, next: NextFu
       return res.status(400).json({ success: false, message: "ID de restaurante inválido" });
     }
 
-    const { reason } = req.body;
+    const reason = typeof req.body?.reason === "string" ? req.body.reason.trim() : "";
+    if (reason.length < 5) {
+      return res.status(400).json({ success: false, message: "Escribe el motivo del rechazo (al menos 5 letras): se le envía al dueño." });
+    }
 
     const restaurant = await prisma.restaurant.findUnique({
       where: { id },

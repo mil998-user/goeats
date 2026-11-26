@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { prisma } from "../../config/database";
+import { waitsForAcceptance } from "../../utils/orderRules";
+import { cancelOrderAndNotify, readCancelReason } from "./orderCancel";
 
 // 1. Get order history for the logged-in customer
 export async function getMyOrders(req: Request, res: Response, next: NextFunction) {
@@ -60,6 +62,38 @@ export async function getMyOrders(req: Request, res: Response, next: NextFunctio
     });
 
     return res.status(200).json({ success: true, orders });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// The customer can cancel until the register accepts the order
+export async function cancelMyOrder(req: Request, res: Response, next: NextFunction) {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const order = await prisma.order.findFirst({ where: { id, customerId: req.user?.userId ?? -1 } });
+    if (!order) return res.status(404).json({ success: false, message: "Pedido no encontrado" });
+    if (!waitsForAcceptance(order)) {
+      return res.status(409).json({
+        success: false,
+        message:
+          order.status === "CANCELLED"
+            ? "Este pedido ya está cancelado."
+            : "El local ya aceptó tu pedido. Para cancelarlo, llama al local.",
+      });
+    }
+    const cancelled = await cancelOrderAndNotify(req.app.get("io"), order, {
+      by: "customer",
+      reason: readCancelReason(req.body?.cancelReason),
+    });
+    if (!cancelled) return res.status(409).json({ success: false, message: "Tu pedido cambió. Revísalo e intenta de nuevo." });
+    return res.status(200).json({
+      success: true,
+      message:
+        cancelled.paymentStatus === "REFUND_PENDING"
+          ? "Pedido cancelado. El local te devolverá la transferencia."
+          : "Pedido cancelado.",
+    });
   } catch (error) {
     next(error);
   }

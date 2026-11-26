@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { prisma } from "../../config/database";
 import { OrderItemStatus, OrderStatus } from "@prisma/client";
-import { canEditOrder, isTransferUnverified } from "../../utils/orderRules";
+import { canEditOrder } from "../../utils/orderRules";
 import { notifyDeliveryBoard } from "../../config/realtime";
 
 export async function getPendingKitchenItems(req: Request, res: Response, next: NextFunction) {
@@ -86,7 +86,8 @@ export async function updateItemStatus(req: Request, res: Response, next: NextFu
       return res.status(404).json({ success: false, message: "Order item not found" });
     }
 
-    if (!canEditOrder(orderItem.order) || isTransferUnverified(orderItem.order)) {
+    // A pending order is still waiting for the register: accepted, verified or charged first
+    if (!canEditOrder(orderItem.order) || orderItem.order.status === OrderStatus.PENDING) {
       return res.status(409).json({ success: false, message: "Este pedido no está en cocina" });
     }
 

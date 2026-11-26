@@ -15,6 +15,12 @@ export function isOrderPaid(order: Pick<OrderState, "paymentStatus" | "payphoneT
   return order.paymentStatus === "APPROVED" || !!order.payphoneTransactionId;
 }
 
+// Cash and transfer orders wait until the register accepts them; a paid card order goes straight to the kitchen
+// (engineers, 25 nov). Table orders don't wait here: the staff is already attending them
+export function waitsForAcceptance(order: Pick<OrderState, "type" | "status" | "paymentStatus" | "payphoneTransactionId">) {
+  return order.status === OrderStatus.PENDING && order.type !== OrderType.DINE_IN && !isOrderPaid(order);
+}
+
 export function isTransferUnverified(order: OrderState) {
   return order.status === OrderStatus.PENDING && order.paymentMethodString === "TRANSFER" && !isOrderPaid(order);
 }
@@ -25,7 +31,16 @@ export function canEditOrder(order: Pick<OrderState, "status">) {
 }
 
 // Returns why the order can't be cancelled, or null when it can
-export function getCancelError(order: Pick<OrderState, "status">, hasSale: boolean) {
+export function getCancelError(
+  order: Pick<OrderState, "status" | "type"> & { pickedUpAt?: Date | null },
+  hasSale: boolean,
+  role?: Role
+) {
+  if (role === Role.MOZO && order.type !== OrderType.DINE_IN) return "El mesero solo puede cancelar pedidos de mesa";
+  // The driver already paid for the food or is carrying it: only GoEats decides from here
+  if (order.status === OrderStatus.DELIVERING && order.pickedUpAt && role !== Role.SUPER_ADMIN) {
+    return "El motorizado ya retiró la comida. Este pedido ya no se puede cancelar desde el local";
+  }
   if (order.status === OrderStatus.DELIVERED) return "No se puede cancelar un pedido entregado";
   if (order.status === OrderStatus.CANCELLED) return "Este pedido ya está cancelado";
   if (hasSale) return "Este pedido ya fue cobrado en caja y no se puede cancelar";
@@ -88,6 +103,9 @@ export function getStatusChangeError(
 
   if (nextStatus === OrderStatus.PREPARING) {
     if (order.status !== OrderStatus.PENDING) return conflict("Solo un pedido pendiente puede pasar a preparación");
+    if (waitsForAcceptance(order) && (!role || !PAYMENT_ROLES.includes(role))) {
+      return { code: 403, message: "Solo la caja o el dueño aceptan los pedidos" };
+    }
     if (isTransferUnverified(order) && paymentStatus !== "APPROVED") {
       return conflict("Primero hay que verificar la transferencia");
     }

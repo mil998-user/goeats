@@ -11,6 +11,8 @@ import { errorHandler } from "./middlewares/errorHandler";
 import { prisma } from "./config/database";
 import { setupSocket } from "./config/socket";
 import { startDispatchWatcher } from "./modules/delivery/dispatch";
+import { startAcceptanceWatcher } from "./modules/orders/acceptanceWatcher";
+import { startPlusWatcher } from "./utils/plus";
 import { startRatingReminder } from "./modules/ratings/ratingReminder";
 
 const app = express();
@@ -52,6 +54,10 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 setupSocket(io);
 // Warns the administrator when a ready delivery waits longer than the configured time
 startDispatchWatcher(io);
+// Warns and cancels the orders that the register never answers
+startAcceptanceWatcher(io);
+// Switches off the Plus plans whose time is over
+startPlusWatcher();
 // Asks the customer to rate some minutes after the delivery
 startRatingReminder(io);
 
