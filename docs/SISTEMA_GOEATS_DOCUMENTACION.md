@@ -489,6 +489,14 @@ SISTEMA ACTUAL (Single-Tenant)          SISTEMA NUEVO (Multi-Tenant SaaS)
 
 ## 📝 Historial de Cambios
 
+### v0.8.2 — 2026-11-26 (Recargas: aviso al admin y cancelar la solicitud)
+Sin migraciones. En producción una recarga de $10 del 11 nov seguía pendiente; como solo se admite una a la vez, la nueva de $50 se rechazaba y el admin no tenía ningún aviso.
+- **Admin:** campanita con el número de pagos por revisar (lleva a la lista de pagos), aviso rojo "Hay N recargas esperando" en Saldo de Motorizados y etiqueta "Recarga por revisar · $X" en la fila del motorizado. Se actualiza en vivo (`saas-order-changed`).
+- El menú "Todos los Pedidos" pasa a llamarse **"Pagos de recargas y Plus"**, que es lo que muestra.
+- **Motorizado:** en Recargar ve su solicitud en revisión con la fecha y puede **cancelarla** (`POST /saas/my/:id/cancel`, solo la suya y solo si sigue pendiente; queda CANCELLED y el admin ya no la puede aprobar). Mientras haya una pendiente, el botón de transferencia dice "Ya tienes una recarga en revisión".
+- `/saas/my` ya no envía la foto del comprobante.
+- Pruebas en la copia aislada: 23 de 25 (las 2 restantes no son fallos: el menú del celular está dentro del ☰ y el admin recibe 409 en vez de 403 al intentar cancelar la ajena). Pantallas a 390 y 1366 px sin errores ni scroll de lado.
+
 ### v0.8.1 — 2026-11-26 (Pedidos viejos vencen)
 Sin migraciones. Al probar se vio que un pedido listo de la revisión anterior seguía ofreciéndose al motorizado.
 - Un domicilio **listo que nadie toma en 60 min** se cancela solo con el motivo "Ningún motorizado lo tomó a tiempo" (`NO_DRIVER_LIMIT_MIN` en `delivery/dispatch.ts`, revisión cada 30 s). Si estaba pagado queda "devolución pendiente". Avisa al cliente y al local.

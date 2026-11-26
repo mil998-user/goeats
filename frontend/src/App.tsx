@@ -221,7 +221,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         { to: "/admin/restaurants?tab=wallet", label: "Saldo de Motorizados" },
         { to: "/admin/restaurants?tab=saas_customers", label: "Clientes & Plus" },
         { to: "/admin/restaurants?tab=saas_plans", label: "Planes y Recargas" },
-        { to: "/admin/restaurants?tab=saas_orders", label: "Todos los Pedidos" },
+        { to: "/admin/restaurants?tab=saas_orders", label: "Pagos de recargas y Plus" },
         { to: "/admin/restaurants?tab=emails", label: "Correos & Gmail API" },
       ]
     },

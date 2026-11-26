@@ -39,6 +39,7 @@ import {
   Sparkles,
   CreditCard,
   Building2,
+  Bell,
 } from "lucide-react";
 import { EmailNotificationsTab } from "../components/admin/EmailNotificationsTab";
 
@@ -88,7 +89,7 @@ export const SuperAdmin: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
 
   // New tab state
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = (searchParams.get("tab") || "restaurants") as "restaurants" | "approvals" | "delivery" | "wallet" | "saas_customers" | "saas_plans" | "saas_orders" | "saas_categories" | "emails";
 
   // Restaurant Approval states
@@ -620,7 +621,15 @@ export const SuperAdmin: React.FC = () => {
       return;
     }
     loadRestaurants();
+    // Payments waiting for review: the bell and the drivers list need them on every tab
+    loadSaasOrders();
   }, [user, navigate]);
+
+  const pendingPayments = saasOrders.filter((o) => o.status === "PENDING");
+  const pendingRecharges = pendingPayments.filter((o) => o.type === "RECHARGE");
+  const pendingByUser = new Map<number, number>();
+  pendingRecharges.forEach((o) => pendingByUser.set(o.user.id, (pendingByUser.get(o.user.id) || 0) + o.amount));
+  const goToPayments = () => setSearchParams({ tab: "saas_orders" });
 
   useEffect(() => {
     if (activeTab === "restaurants" || activeTab === "approvals") {
@@ -888,6 +897,33 @@ export const SuperAdmin: React.FC = () => {
           >
             <Flame size={14} aria-hidden="true" /> Vaciar Sistema (Reset)
           </button>}
+
+          <button
+            type="button"
+            onClick={goToPayments}
+            aria-label={pendingPayments.length ? `${pendingPayments.length} pagos por revisar` : "Sin pagos por revisar"}
+            title={pendingPayments.length ? `${pendingPayments.length} pagos por revisar` : "Sin pagos por revisar"}
+            style={{
+              position: "relative",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "40px",
+              height: "38px",
+              backgroundColor: pendingPayments.length ? "color-mix(in srgb, var(--brand-red) 10%, transparent)" : "var(--bg-tertiary)",
+              border: `1px solid ${pendingPayments.length ? "var(--brand-red)" : "var(--border-light)"}`,
+              color: pendingPayments.length ? "var(--brand-red)" : "var(--text-primary)",
+              borderRadius: "var(--radius-md)",
+              cursor: "pointer",
+            }}
+          >
+            <Bell size={18} aria-hidden="true" />
+            {pendingPayments.length > 0 && (
+              <span style={{ position: "absolute", top: "-7px", right: "-7px", minWidth: "20px", height: "20px", padding: "0 5px", borderRadius: "999px", backgroundColor: "var(--brand-red)", color: "#ffffff", fontSize: "12px", fontWeight: 800, lineHeight: "20px", textAlign: "center" }}>
+                {pendingPayments.length}
+              </span>
+            )}
+          </button>
 
           <button
             onClick={logout}
@@ -1977,6 +2013,16 @@ export const SuperAdmin: React.FC = () => {
         {activeTab === "wallet" && (
           <div>
             <DeliveryIncidentsPanel />
+            {pendingRecharges.length > 0 && (
+              <div role="alert" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "12px", margin: "0 0 20px", padding: "14px 18px", borderRadius: "var(--radius-md)", backgroundColor: "color-mix(in srgb, var(--brand-red) 10%, transparent)", border: "1px solid var(--brand-red)", color: "var(--brand-red)" }}>
+                <strong style={{ fontSize: "14px" }}>
+                  {pendingRecharges.length === 1 ? "Hay 1 recarga esperando que revises el comprobante." : `Hay ${pendingRecharges.length} recargas esperando que revises el comprobante.`}
+                </strong>
+                <button type="button" className="glow-btn" style={{ padding: "8px 16px", fontSize: "13px" }} onClick={goToPayments}>
+                  Revisar ahora
+                </button>
+              </div>
+            )}
             <div style={{
               display: "flex",
               justifyContent: "space-between",
@@ -2029,6 +2075,11 @@ export const SuperAdmin: React.FC = () => {
                             <Truck size={16} color="var(--text-secondary)" />
                             {driver.name} (Ref: @{driver.username})
                           </div>
+                          {pendingByUser.has(driver.id) && (
+                            <button type="button" onClick={goToPayments} style={{ marginTop: "6px", padding: "3px 10px", borderRadius: "999px", border: "1px solid var(--brand-red)", backgroundColor: "color-mix(in srgb, var(--brand-red) 10%, transparent)", color: "var(--brand-red)", fontSize: "12px", fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" }}>
+                              Recarga por revisar · ${(pendingByUser.get(driver.id) || 0).toFixed(2)}
+                            </button>
+                          )}
                           <div style={{ marginTop: "4px", fontWeight: 400 }}>
                             <StarAverage average={driver.ratingAverage ?? null} count={driver.ratingCount ?? 0} />
                           </div>
@@ -2636,7 +2687,7 @@ export const SuperAdmin: React.FC = () => {
                               backgroundColor: order.status === "APPROVED" ? "rgba(30, 143, 78, 0.1)" : order.status === "PENDING" ? "color-mix(in srgb, var(--brand-yellow) 10%, transparent)" : "color-mix(in srgb, var(--brand-red) 10%, transparent)",
                               color: order.status === "APPROVED" ? "var(--success)" : order.status === "PENDING" ? "#f86015" : "var(--accent-primary)"
                             }}>
-                              {order.status === "APPROVED" ? "Aprobado" : order.status === "PENDING" ? "Pendiente" : "Rechazado"}
+                              {order.status === "APPROVED" ? "Aprobado" : order.status === "PENDING" ? "Pendiente" : order.status === "CANCELLED" ? "Cancelado por el usuario" : "Rechazado"}
                             </span>
                           </td>
                           <td style={{ padding: "16px 20px", fontSize: "13px", color: "var(--text-secondary)", textAlign: "center" }}>

@@ -10,6 +10,7 @@ import {
   getCustomers,
   toggleCustomerPlus,
   getMySaaSOrders,
+  cancelMySaaSOrder,
   getSaaSPlans,
   createSaaSPlan,
   updateSaaSPlan,
@@ -27,6 +28,7 @@ router.post("/purchase", authorize([Role.CUSTOMER, Role.MOTORIZADO]), submitSaaS
 
 // Retrieve logged-in user's orders
 router.get("/my", authorize([Role.CUSTOMER, Role.MOTORIZADO]), getMySaaSOrders);
+router.post("/my/:id/cancel", authorize([Role.CUSTOMER, Role.MOTORIZADO]), cancelMySaaSOrder);
 
 // SaaS plans routes
 router.get("/plans", getSaaSPlans); // Read access for all logged in users

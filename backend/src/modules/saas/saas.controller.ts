@@ -99,7 +99,7 @@ export async function submitSaaSOrder(req: Request, res: Response, next: NextFun
       // One request at a time: the same receipt can't be sent twice while it waits
       const waiting = await prisma.saaSOrder.count({ where: { userId, type, status: "PENDING" } });
       if (waiting > 0) {
-        return res.status(409).json({ success: false, message: "Ya tienes una solicitud esperando revisión. Espera la respuesta antes de enviar otra." });
+        return res.status(409).json({ success: false, message: "Ya tienes una solicitud esperando revisión. Espera la respuesta o cancélala en \"Mis solicitudes\" para enviar otra." });
       }
 
       const order = await prisma.saaSOrder.create({
@@ -119,6 +119,28 @@ export async function submitSaaSOrder(req: Request, res: Response, next: NextFun
     }
 
     return res.status(400).json({ success: false, message: "Método de pago no válido" });
+  } catch (error) {
+    next(error);
+  }
+}
+
+// The user withdraws a request still waiting (wrong receipt, or wants another amount)
+export async function cancelMySaaSOrder(req: Request, res: Response, next: NextFunction) {
+  try {
+    const userId = req.user?.userId;
+    const id = Number(req.params.id);
+    if (!userId || !Number.isInteger(id)) {
+      return res.status(400).json({ success: false, message: "Solicitud no válida" });
+    }
+    const updated = await prisma.saaSOrder.updateMany({
+      where: { id, userId, status: "PENDING" },
+      data: { status: "CANCELLED" },
+    });
+    if (updated.count === 0) {
+      return res.status(409).json({ success: false, message: "Esta solicitud ya fue revisada o no es tuya." });
+    }
+    notifySaasOrder(req.app.get("io"), userId);
+    return res.status(200).json({ success: true, message: "Solicitud cancelada. Ya puedes enviar otra." });
   } catch (error) {
     next(error);
   }
@@ -326,7 +348,9 @@ export async function getMySaaSOrders(req: Request, res: Response, next: NextFun
     }
     const orders = await prisma.saaSOrder.findMany({
       where: { userId },
-      orderBy: { createdAt: "desc" }
+      orderBy: { createdAt: "desc" },
+      // The receipt image stays on the server: the list only needs the state
+      omit: { paymentReceipt: true },
     });
     return res.status(200).json({ success: true, orders });
   } catch (error) {

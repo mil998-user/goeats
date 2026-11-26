@@ -205,6 +205,20 @@ export const DeliveryDashboard: React.FC = () => {
     }
   };
 
+  // A request waiting for GoEats: only one at a time (the server checks it too)
+  const pendingRecharge = rechargeRequests.find((r) => r.status === "PENDING" && r.type !== "PLUS_SUBSCRIPTION");
+
+  const cancelRecharge = async (id: number) => {
+    if (!(await appConfirm("¿Cancelar esta solicitud de recarga? GoEats ya no la revisará y podrás enviar otra."))) return;
+    try {
+      const res = await apiRequest(`/saas/my/${id}/cancel`, { method: "POST" });
+      alert(res.message || "Solicitud cancelada.");
+      loadData(true);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "No se pudo cancelar la solicitud.");
+    }
+  };
+
   const loadData = async (quiet = false) => {
     if (!quiet) setLoading(true);
     try {
@@ -1229,6 +1243,17 @@ export const DeliveryDashboard: React.FC = () => {
                 <p style={{ fontSize: "14px", color: "var(--text-secondary)", margin: 0 }}>
                   Adquiere saldo virtual al instante pagando con tu tarjeta de crédito/débito o subiendo el comprobante de tu transferencia bancaria.
                 </p>
+                {pendingRecharge && (
+                  <div role="status" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "12px", padding: "14px 16px", borderRadius: "var(--radius-md)", backgroundColor: "rgba(255, 202, 38, 0.25)", border: "1px solid #f86015" }}>
+                    <div style={{ minWidth: 0, fontSize: "14px" }}>
+                      <strong>Tu recarga de ${Number(pendingRecharge.amount || 0).toFixed(2)} está en revisión</strong> (enviada el{" "}
+                      {new Date(pendingRecharge.createdAt).toLocaleString("es-EC", { dateStyle: "short", timeStyle: "short" })}). Cuando GoEats la apruebe podrás enviar otra.
+                    </div>
+                    <button type="button" className="secondary-btn" style={{ padding: "8px 14px", fontSize: "13px" }} onClick={() => cancelRecharge(pendingRecharge.id)}>
+                      Cancelar solicitud
+                    </button>
+                  </div>
+                )}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "20px" }}>
                   {plans.filter(p => p.type === "RECHARGE").map((card, idx) => (
                     <div
@@ -1364,9 +1389,9 @@ export const DeliveryDashboard: React.FC = () => {
                       type="submit"
                       className="glow-btn"
                       style={{ width: "100%", padding: "12px" }}
-                      disabled={submittingRecharge || (rechargeMethod === "CARD" && !payphoneTransactionId) || (rechargeMethod === "TRANSFER" && !paymentReceipt)}
+                      disabled={submittingRecharge || (rechargeMethod === "TRANSFER" && !!pendingRecharge) || (rechargeMethod === "CARD" && !payphoneTransactionId) || (rechargeMethod === "TRANSFER" && !paymentReceipt)}
                     >
-                      {submittingRecharge ? "Procesando..." : "Confirmar Compra"}
+                      {submittingRecharge ? "Procesando..." : rechargeMethod === "TRANSFER" && pendingRecharge ? "Ya tienes una recarga en revisión" : "Confirmar Compra"}
                     </button>
                   </form>
                 ) : (
@@ -1389,6 +1414,8 @@ export const DeliveryDashboard: React.FC = () => {
                           ? { text: "Aprobada", bg: "rgba(30, 143, 78, 0.12)", color: "#1e8f4e" }
                           : r.status === "REJECTED"
                           ? { text: "Rechazada", bg: "rgba(212, 37, 24, 0.1)", color: "#d42518" }
+                          : r.status === "CANCELLED"
+                          ? { text: "Cancelada por ti", bg: "var(--bg-tertiary)", color: "var(--text-secondary)" }
                           : { text: "En revisión", bg: "rgba(255, 202, 38, 0.3)", color: "#000000" };
                       return (
                         <div key={r.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px", padding: "12px 14px", backgroundColor: "var(--bg-primary)", borderRadius: "var(--radius-sm)" }}>
@@ -1398,9 +1425,16 @@ export const DeliveryDashboard: React.FC = () => {
                               {new Date(r.createdAt).toLocaleString("es-EC")} · {r.paymentMethod === "TRANSFER" ? "Transferencia" : "Tarjeta"}
                             </div>
                           </div>
-                          <span style={{ flexShrink: 0, padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 700, backgroundColor: st.bg, color: st.color }}>
-                            {st.text}
-                          </span>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexShrink: 0 }}>
+                            <span style={{ padding: "3px 10px", borderRadius: "999px", fontSize: "12px", fontWeight: 700, backgroundColor: st.bg, color: st.color }}>
+                              {st.text}
+                            </span>
+                            {r.status === "PENDING" && (
+                              <button type="button" onClick={() => cancelRecharge(r.id)} style={{ background: "none", border: "none", padding: "4px", color: "var(--brand-red)", fontSize: "12px", fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}>
+                                Cancelar
+                              </button>
+                            )}
+                          </div>
                         </div>
                       );
                     })}
